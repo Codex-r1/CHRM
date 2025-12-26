@@ -1,7 +1,11 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useEffect } from "react";
-import useUser from "@/utils/useUser";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+
 import {
   Users,
   DollarSign,
@@ -13,7 +17,9 @@ import {
 } from "lucide-react";
 
 export default function AdminDashboard() {
-  const { data: user, loading } = useUser();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  
   const [activeTab, setActiveTab] = useState("overview");
   const [users, setUsers] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -26,15 +32,16 @@ export default function AdminDashboard() {
     pendingOrders: 0,
   });
 
+  // Redirect if not authenticated or not admin
   useEffect(() => {
-    if (!loading && !user) {
-      window.location.href = "/login";
-    } else if (user && user.role !== "admin") {
-      window.location.href = "/member/dashboard";
-    } else if (user && user.role === "admin") {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else if (status === "authenticated" && session?.user?.role !== "admin") {
+      router.push("/member/dashboard");
+    } else if (status === "authenticated" && session?.user?.role === "admin") {
       fetchData();
     }
-  }, [user, loading]);
+  }, [session, status, router]);
 
   const fetchData = async () => {
     try {
@@ -144,7 +151,8 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) {
+  // Loading state
+  if (status === "loading") {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
         <div className="text-[#f8fafc] text-xl">Loading...</div>
@@ -152,9 +160,12 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!user || user.role !== "admin") {
+  // Not authenticated or not admin
+  if (status !== "authenticated" || session?.user?.role !== "admin") {
     return null;
   }
+
+  const user = session.user;
 
   return (
     <div className="min-h-screen bg-[#0f172a] font-inter">

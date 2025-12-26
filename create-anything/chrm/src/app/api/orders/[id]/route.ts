@@ -1,16 +1,45 @@
 import sql from '@/app/api/utils/sql';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-type RouteParams = {
-  params: {
-    id: string;
-  };
-};
-
-// Update order status
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+// GET single order
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
+    
+    const orders = await sql`
+      SELECT o.*, u.full_name, u.email, u.membership_number
+      FROM orders o
+      LEFT JOIN users u ON o.user_id = u.id
+      WHERE o.id = ${id}
+    `;
+
+    if (!orders || orders.length === 0) {
+      return NextResponse.json(
+        { error: "Order not found" }, 
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(orders[0]);
+  } catch (error) {
+    console.error("Get order error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch order" }, 
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH (update) order
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
     const { status } = await request.json();
 
     if (
@@ -19,7 +48,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
         status,
       )
     ) {
-      return Response.json({ error: "Invalid status" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid status" }, 
+        { status: 400 }
+      );
     }
 
     const updatedOrders = await sql`
@@ -30,43 +62,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     `;
 
     if (!updatedOrders || updatedOrders.length === 0) {
-      return Response.json({ error: "Order not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Order not found" }, 
+        { status: 404 }
+      );
     }
 
-    return Response.json(updatedOrders[0]);
+    return NextResponse.json(updatedOrders[0]);
   } catch (error) {
     console.error("Update order error:", error);
-    return Response.json({ error: "Failed to update order" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update order" }, 
+      { status: 500 }
+    );
   }
 }
 
-// Add GET single order if needed
-export async function GET(request: NextRequest, { params }: RouteParams) {
+// DELETE order
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
-
-    const order = await sql`
-      SELECT o.*, u.full_name, u.email, u.membership_number
-      FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
-      WHERE o.id = ${id}
-    `;
-
-    if (!order || order.length === 0) {
-      return Response.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    return Response.json(order[0]);
-  } catch (error) {
-    console.error("Get order error:", error);
-    return Response.json({ error: "Failed to fetch order" }, { status: 500 });
-  }
-}
-
-// Optional: Add DELETE route
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  try {
-    const { id } = params;
+    const { id } = await context.params;
 
     const deletedOrders = await sql`
       DELETE FROM orders
@@ -75,12 +93,20 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     `;
 
     if (!deletedOrders || deletedOrders.length === 0) {
-      return Response.json({ error: "Order not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Order not found" }, 
+        { status: 404 }
+      );
     }
 
-    return Response.json({ message: "Order deleted successfully" });
+    return NextResponse.json(
+      { message: "Order deleted successfully" }
+    );
   } catch (error) {
     console.error("Delete order error:", error);
-    return Response.json({ error: "Failed to delete order" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to delete order" }, 
+      { status: 500 }
+    );
   }
 }

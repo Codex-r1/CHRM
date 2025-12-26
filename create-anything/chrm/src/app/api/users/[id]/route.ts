@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 import sql from "../../utils/sql";
 
 // Define User type
@@ -16,13 +16,6 @@ type User = {
   created_at: string;
 };
 
-// Define types for route parameters
-type RouteParams = {
-  params: {
-    id: string;
-  };
-};
-
 // Define update fields type
 type UpdateFields = {
   full_name?: string;
@@ -31,24 +24,28 @@ type UpdateFields = {
   membership_expiry?: string;
 };
 
-// Get single user
+/* =========================
+   GET SINGLE USER
+========================= */
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
 
     const users = await sql`
-      SELECT id, email, role, full_name, phone, membership_number, graduation_year, 
-             registration_fee, membership_paid, membership_expiry, created_at
+      SELECT id, email, role, full_name, phone,
+             membership_number, graduation_year,
+             registration_fee, membership_paid,
+             membership_expiry, created_at
       FROM users
       WHERE id = ${id}
     ` as User[];
 
-    if (!Array.isArray(users) || users.length === 0) {
+    if (!users.length) {
       return NextResponse.json(
-        { error: "User not found" }, 
+        { error: "User not found" },
         { status: 404 }
       );
     }
@@ -57,19 +54,21 @@ export async function GET(
   } catch (error) {
     console.error("Get user error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch user" }, 
+      { error: "Failed to fetch user" },
       { status: 500 }
     );
   }
 }
 
-// Update user
+/* =========================
+   UPDATE USER
+========================= */
 export async function PATCH(
   request: NextRequest,
-  { params }: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
     const updates: UpdateFields = await request.json();
 
     const allowedFields = [
@@ -78,41 +77,42 @@ export async function PATCH(
       "membership_paid",
       "membership_expiry",
     ];
-    
+
     const setClauses: string[] = [];
     const values: any[] = [];
-    let paramIndex = 1;
 
+    let index = 1;
     for (const [key, value] of Object.entries(updates)) {
       if (allowedFields.includes(key)) {
-        setClauses.push(`${key} = $${paramIndex}`);
+        setClauses.push(`${key} = $${index}`);
         values.push(value);
-        paramIndex++;
+        index++;
       }
     }
 
-    if (setClauses.length === 0) {
+    if (!setClauses.length) {
       return NextResponse.json(
         { error: "No valid fields to update" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     values.push(id);
+
     const query = `
-      UPDATE users 
+      UPDATE users
       SET ${setClauses.join(", ")}
-      WHERE id = $${paramIndex}
-      RETURNING id, email, role, full_name, phone, membership_number, membership_paid, membership_expiry
+      WHERE id = $${index}
+      RETURNING id, email, role, full_name, phone,
+                membership_number, membership_paid,
+                membership_expiry
     `;
 
-    // Note: You need to update your sql utility to handle parameterized queries
-    // For now, let's use the simpler approach
     const updatedUsers = await sql(query, ...values) as User[];
 
-    if (!Array.isArray(updatedUsers) || updatedUsers.length === 0) {
+    if (!updatedUsers.length) {
       return NextResponse.json(
-        { error: "User not found" }, 
+        { error: "User not found" },
         { status: 404 }
       );
     }
@@ -121,7 +121,7 @@ export async function PATCH(
   } catch (error) {
     console.error("Update user error:", error);
     return NextResponse.json(
-      { error: "Failed to update user" }, 
+      { error: "Failed to update user" },
       { status: 500 }
     );
   }

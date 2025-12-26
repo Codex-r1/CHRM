@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 import sql from "../../utils/sql";
 
-// Define Payment type
 type Payment = {
   id: number;
   user_id: number;
@@ -13,37 +12,21 @@ type Payment = {
   created_at: string;
 };
 
-// Define route parameters
-type RouteParams = {
-  params: {
-    id: string;
-  };
-};
-
-// Update payment request type
-type UpdatePaymentRequest = {
-  status: "pending" | "confirmed" | "rejected";
-};
-
-// Update payment status
 export async function PATCH(
   request: NextRequest,
-  { params }: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
-    const { status }: UpdatePaymentRequest = await request.json();
+    const { id } = await context.params;
+    const { status } = await request.json();
 
-    // Validate status
-    const validStatuses = ["pending", "confirmed", "rejected"] as const;
-    if (!status || !validStatuses.includes(status)) {
+    if (!["pending", "confirmed", "rejected"].includes(status)) {
       return NextResponse.json(
-        { error: "Invalid status" }, 
+        { error: "Invalid status" },
         { status: 400 }
       );
     }
 
-    // Update payment status
     const updatedPayments = await sql`
       UPDATE payments
       SET status = ${status}
@@ -51,28 +34,29 @@ export async function PATCH(
       RETURNING *
     ` as Payment[];
 
-    if (!Array.isArray(updatedPayments) || updatedPayments.length === 0) {
+    if (!updatedPayments.length) {
       return NextResponse.json(
-        { error: "Payment not found" }, 
+        { error: "Payment not found" },
         { status: 404 }
       );
     }
 
     const payment = updatedPayments[0];
 
-    // If payment confirmed and it's a registration or renewal, update user membership
-    if (status === "confirmed") {
-      if (payment.payment_type === "registration" || payment.payment_type === "renewal") {
-        const expiryDate = new Date();
-        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-        const expiryDateString = expiryDate.toISOString().split("T")[0];
+    if (
+      status === "confirmed" &&
+      (payment.payment_type === "registration" ||
+        payment.payment_type === "renewal")
+    ) {
+      const expiryDate = new Date();
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
 
-        await sql`
-          UPDATE users
-          SET membership_paid = true, membership_expiry = ${expiryDateString}
-          WHERE id = ${payment.user_id}
-        `;
-      }
+      await sql`
+        UPDATE users
+        SET membership_paid = true,
+            membership_expiry = ${expiryDate.toISOString()}
+        WHERE id = ${payment.user_id}
+      `;
     }
 
     return NextResponse.json(payment);
@@ -80,7 +64,7 @@ export async function PATCH(
     console.error("Update payment error:", error);
     return NextResponse.json(
       { error: "Failed to update payment" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
