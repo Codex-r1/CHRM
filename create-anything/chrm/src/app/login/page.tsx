@@ -135,16 +135,6 @@ export default function LoginPage() {
                 </a>
               </p>
             </div>
-
-            <div className="mt-4 p-4 bg-[#0f172a] rounded border border-[#334155]">
-              <p className="text-xs text-[#94a3b8] text-center">
-                <strong>Admin Login:</strong>
-                <br />
-                Email: chrmalumniassociation@gmail.com
-                <br />
-                Password: admin123
-              </p>
-            </div>
           </div>
         </div>
       </main>

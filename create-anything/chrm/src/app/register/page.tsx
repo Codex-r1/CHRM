@@ -258,9 +258,7 @@ export default function RegisterPage() {
                   className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
                   placeholder="2024"
                 />
-                <p className="text-sm text-[#94a3b8] mt-1">
-                  Fee: Ksh 1,000 (2025+) | Ksh 1,500 (Before 2025)
-                </p>
+               
               </div>
 
               <div>

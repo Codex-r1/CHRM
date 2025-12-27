@@ -1,7 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
-
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -16,32 +14,104 @@ import {
   Clock,
 } from "lucide-react";
 
+// Type definitions
+type User = {
+  id: string;
+  full_name: string;
+  email: string;
+  membership_number?: string;
+  membership_paid: boolean;
+  membership_expiry?: string;
+  role: string;
+  phone_number?: string;
+  address?: string;
+  created_at: string;
+};
+
+type Payment = {
+  id: string;
+  user_id: string;
+  payment_type: string;
+  amount: number;
+  status: 'pending' | 'confirmed' | 'rejected';
+  reference_code?: string;
+  payment_method?: string;
+  mpesa_code?: string;
+  description?: string;
+  created_at: string;
+};
+
+type Order = {
+  id: string;
+  user_id: string;
+  items: string;
+  total: number;
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  shipping_address?: string;
+  notes?: string;
+  created_at: string;
+};
+
+type Event = {
+  id: string;
+  name: string;
+  description: string;
+  event_date?: string;
+  location?: string;
+  price: number;
+  member_discount: number;
+  max_attendees?: number;
+  current_attendees?: number;
+  image_url?: string;
+  created_at: string;
+};
+
+type Stats = {
+  totalMembers: number;
+  pendingPayments: number;
+  totalRevenue: number;
+  pendingOrders: number;
+};
+
+// Extended session types
+interface ExtendedSessionUser {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role: string;
+}
+
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   
-  const [activeTab, setActiveTab] = useState("overview");
-  const [users, setUsers] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [stats, setStats] = useState({
+  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [users, setUsers] = useState<User[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [stats, setStats] = useState<Stats>({
     totalMembers: 0,
     pendingPayments: 0,
     totalRevenue: 0,
     pendingOrders: 0,
   });
 
+  // Type-safe session user access
+  const sessionUser = session?.user as ExtendedSessionUser | undefined;
+  const userRole = sessionUser?.role;
+
   // Redirect if not authenticated or not admin
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && session?.user?.role !== "admin") {
+    } else if (status === "authenticated" && userRole !== "admin") {
       router.push("/member/dashboard");
-    } else if (status === "authenticated" && session?.user?.role === "admin") {
+    } else if (status === "authenticated" && userRole === "admin") {
       fetchData();
     }
-  }, [session, status, router]);
+  }, [session, status, router, userRole]);
 
   const fetchData = async () => {
     try {
@@ -53,13 +123,13 @@ export default function AdminDashboard() {
       ]);
 
       if (usersRes.ok) {
-        const usersData = await usersRes.json();
+        const usersData: User[] = await usersRes.json();
         setUsers(usersData);
         setStats((prev) => ({ ...prev, totalMembers: usersData.length }));
       }
 
       if (paymentsRes.ok) {
-        const paymentsData = await paymentsRes.json();
+        const paymentsData: Payment[] = await paymentsRes.json();
         setPayments(paymentsData);
         const pending = paymentsData.filter(
           (p) => p.status === "pending",
@@ -75,14 +145,14 @@ export default function AdminDashboard() {
       }
 
       if (ordersRes.ok) {
-        const ordersData = await ordersRes.json();
+        const ordersData: Order[] = await ordersRes.json();
         setOrders(ordersData);
         const pending = ordersData.filter((o) => o.status === "pending").length;
         setStats((prev) => ({ ...prev, pendingOrders: pending }));
       }
 
       if (eventsRes.ok) {
-        const eventsData = await eventsRes.json();
+        const eventsData: Event[] = await eventsRes.json();
         setEvents(eventsData);
       }
     } catch (error) {
@@ -90,7 +160,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const updatePaymentStatus = async (paymentId, status) => {
+  const updatePaymentStatus = async (paymentId: string, status: 'confirmed' | 'rejected') => {
     try {
       const response = await fetch(`/api/payments/${paymentId}`, {
         method: "PATCH",
@@ -108,7 +178,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const updateOrderStatus = async (orderId, status) => {
+  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
       const response = await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
@@ -127,9 +197,9 @@ export default function AdminDashboard() {
   };
 
   const updateUserMembership = async (
-    userId,
-    membershipPaid,
-    membershipExpiry,
+    userId: string,
+    membershipPaid: boolean,
+    membershipExpiry: string,
   ) => {
     try {
       const response = await fetch(`/api/users/${userId}`, {
@@ -161,11 +231,11 @@ export default function AdminDashboard() {
   }
 
   // Not authenticated or not admin
-  if (status !== "authenticated" || session?.user?.role !== "admin") {
+  if (status !== "authenticated" || userRole !== "admin") {
     return null;
   }
 
-  const user = session.user;
+  const user = sessionUser;
 
   return (
     <div className="min-h-screen bg-[#0f172a] font-inter">
@@ -176,7 +246,7 @@ export default function AdminDashboard() {
             <h1 className="text-2xl font-bold text-[#f8fafc] font-poppins">
               Admin Dashboard
             </h1>
-            <p className="text-[#94a3b8]">Welcome, {user.name}</p>
+            <p className="text-[#94a3b8]">Welcome, {user?.name || 'Admin'}</p>
           </div>
           <div className="flex gap-4">
             <a
@@ -519,7 +589,7 @@ export default function AdminDashboard() {
                         <select
                           value={order.status}
                           onChange={(e) =>
-                            updateOrderStatus(order.id, e.target.value)
+                            updateOrderStatus(order.id, e.target.value as Order['status'])
                           }
                           className="text-sm px-3 py-1 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc]"
                         >

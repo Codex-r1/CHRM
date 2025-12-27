@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'; // Add this at the top
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
