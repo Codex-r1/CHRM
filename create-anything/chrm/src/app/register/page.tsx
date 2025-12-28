@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react"; // Added FormEvent import
+import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -15,11 +15,6 @@ type FormData = {
   graduation_year: string;
 };
 
-type RegistrationResponse = {
-  registration_fee: number;
-  account_number: string;
-};
-
 export default function RegisterPage() {
   const [step, setStep] = useState(1); // 1: form, 2: payment instructions, 3: success
   const [formData, setFormData] = useState<FormData>({
@@ -29,16 +24,28 @@ export default function RegisterPage() {
     password: "",
     graduation_year: "",
   });
-  const [registrationFee, setRegistrationFee] = useState(0);
+  const [registrationFee] = useState(1000); // Set your registration fee here
   const [accountNumber, setAccountNumber] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleFormSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError("");
+    
+    // Generate account number for payment
+    const generatedAccountNumber = `R-${formData.full_name.replace(/\s+/g, '')}`;
+    setAccountNumber(generatedAccountNumber);
+    
+    // Move to payment instructions
+    setStep(2);
+  };
+
+  const handleConfirmPayment = async () => {
     setLoading(true);
+    setError("");
+    
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -51,10 +58,8 @@ export default function RegisterPage() {
         throw new Error(data.error || "Registration failed");
       }
 
-      const data: RegistrationResponse = await response.json();
-      setRegistrationFee(data.registration_fee);
-      setAccountNumber(data.account_number);
-      setStep(2); // Move to payment instructions
+      // Account created successfully, move to success page
+      setStep(3);
     } catch (err) {
       console.error("Registration error:", err);
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -63,30 +68,31 @@ export default function RegisterPage() {
     }
   };
 
-  const handleConfirmPayment = () => {
-    setStep(3); // Move to success
+  const navigateHome = (): void => {
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
   };
 
   if (step === 3) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col font-inter">
+      <div className="min-h-screen bg-[#F7F9FC] dark:bg-[#121212] transition-colors duration-200">
         <Header />
         <main className="flex-1 flex items-center justify-center py-12 px-4">
           <div className="w-full max-w-md text-center">
-            <div className="bg-[#1e293b] p-8 rounded-lg border border-[#334155]">
-              <div className="bg-green-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="text-green-500" size={48} />
+            <div className="bg-white dark:bg-[#1E1E1E] border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-xl p-8 transition-colors duration-200">
+              <div className="bg-green(1000/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="text-green(1000" size={48} />
               </div>
-              <h1 className="text-3xl font-bold text-[#f8fafc] mb-4 font-poppins">
-                Registration Successful!
+              <h1 className="text-3xl font-bold font-poppins text-[#0B0F1A] dark:text-[#E5E7EB] mb-4 transition-colors duration-200">
+                Account Created Successfully!
               </h1>
-              <p className="text-[#cbd5e1] mb-6">
-                Your account has been created. Once your payment is confirmed by
-                the admin, you'll be able to access all member benefits.
+              <p className="text-[#6D7A8B] dark:text-[#9CA3AF] font-inter mb-6 transition-colors duration-200">
+                Your account has been created and you can now log in. Your payment will be verified by the admin, and once confirmed, you'll have full access to all member benefits.
               </p>
               <Link
                 href="/login"
-                className="inline-block px-8 py-3 bg-[#2563eb] text-white font-bold rounded hover:bg-[#1d4ed8] transition"
+                className="inline-block px-8 py-3 bg-[#2B4C73] text-white font-montserrat font-semibold rounded-lg hover:bg-[#1E3A5F] transition-colors duration-200"
               >
                 Go to Login
               </Link>
@@ -100,20 +106,26 @@ export default function RegisterPage() {
 
   if (step === 2) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col font-inter">
+      <div className="min-h-screen bg-[#F7F9FC] dark:bg-[#121212] transition-colors duration-200">
         <Header />
         <main className="flex-1 py-12 px-4">
           <div className="max-w-2xl mx-auto">
-            <div className="bg-[#1e293b] p-8 rounded-lg border border-[#334155]">
-              <h1 className="text-3xl font-bold text-[#f8fafc] mb-6 text-center font-poppins">
+            <div className="bg-white dark:bg-[#1E1E1E] border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-xl p-8 md:p-12 transition-colors duration-200">
+              <h1 className="text-3xl font-bold font-poppins text-[#0B0F1A] dark:text-[#E5E7EB] mb-6 text-center transition-colors duration-200">
                 Complete Your Payment
               </h1>
 
-              <div className="bg-[#d69e2e] p-6 rounded-lg mb-6">
-                <h2 className="text-2xl font-bold text-[#0f172a] mb-4 font-poppins">
+              {error && (
+                <div className="bg-red(1000/10 border border-red(1000 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg mb-6 font-inter transition-colors duration-200">
+                  {error}
+                </div>
+              )}
+
+              <div className="bg-[#E8F4FD] dark:bg-[#1A2F42] p-6 rounded-lg mb-6 transition-colors duration-200">
+                <h2 className="text-2xl font-bold font-poppins text-[#2B4C73] dark:text-[#4A6B8A] mb-4 transition-colors duration-200">
                   Registration Fee: Ksh {registrationFee.toLocaleString()}
                 </h2>
-                <div className="space-y-3 text-[#1e293b]">
+                <div className="space-y-3 text-[#0B0F1A] dark:text-[#E5E7EB] font-inter transition-colors duration-200">
                   <p className="text-lg">
                     <strong>Paybill Number:</strong> 263532
                   </p>
@@ -126,25 +138,25 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="bg-[#0f172a] p-6 rounded-lg mb-6">
-                <h3 className="text-xl font-bold text-[#f8fafc] mb-3 font-poppins">
+              <div className="bg-[#FFF4E6] dark:bg-[#3D2B1A] p-6 rounded-lg mb-6 transition-colors duration-200">
+                <h3 className="text-xl font-bold font-poppins text-[#0B0F1A] dark:text-[#E5E7EB] mb-3 transition-colors duration-200">
                   Payment Instructions:
                 </h3>
-                <ol className="list-decimal list-inside space-y-2 text-[#cbd5e1]">
+                <ol className="list-decimal list-inside space-y-2 text-[#6D7A8B] dark:text-[#9CA3AF] font-inter transition-colors duration-200">
                   <li>Go to M-PESA on your phone</li>
                   <li>Select Lipa na M-PESA</li>
                   <li>Select Pay Bill</li>
                   <li>
                     Enter Business Number:{" "}
-                    <strong className="text-[#d69e2e]">263532</strong>
+                    <strong className="text-[#FF7A00]">263532</strong>
                   </li>
                   <li>
                     Enter Account Number:{" "}
-                    <strong className="text-[#d69e2e]">{accountNumber}</strong>
+                    <strong className="text-[#FF7A00]">{accountNumber}</strong>
                   </li>
                   <li>
                     Enter Amount:{" "}
-                    <strong className="text-[#d69e2e]">
+                    <strong className="text-[#FF7A00]">
                       Ksh {registrationFee}
                     </strong>
                   </li>
@@ -154,14 +166,14 @@ export default function RegisterPage() {
 
               <button
                 onClick={handleConfirmPayment}
-                className="w-full px-4 py-3 bg-[#2563eb] text-white font-bold rounded hover:bg-[#1d4ed8] transition"
+                disabled={loading}
+                className="w-full px-4 py-3 bg-[#2B4C73] text-white font-montserrat font-semibold rounded-lg hover:bg-[#1E3A5F] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                I Have Completed Payment
+                {loading ? "Creating Account..." : "I Have Completed Payment"}
               </button>
 
-              <p className="text-sm text-[#94a3b8] text-center mt-4">
-                Your account will be activated once the admin confirms your
-                payment
+              <p className="text-sm text-[#6D7A8B] dark:text-[#9CA3AF] font-inter text-center mt-4 transition-colors duration-200">
+                Your account will be created when you click the button above. You can log in immediately, but full member benefits will be available once the admin confirms your payment.
               </p>
             </div>
           </div>
@@ -172,29 +184,29 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex flex-col font-inter">
+    <div className="min-h-screen bg-[#F7F9FC] dark:bg-[#121212] transition-colors duration-200">
       <Header />
 
       <main className="flex-1 py-12 px-4">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-[#1e293b] p-8 rounded-lg border border-[#334155]">
-            <h1 className="text-3xl font-bold text-[#f8fafc] mb-2 text-center font-poppins">
+          <div className="bg-white dark:bg-[#1E1E1E] border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-xl p-8 md:p-12 transition-colors duration-200">
+            <h1 className="text-3xl md:text-4xl font-bold font-poppins text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 text-center transition-colors duration-200">
               Join CHRMAA
             </h1>
-            <p className="text-[#cbd5e1] text-center mb-6">
+            <p className="text-[#6D7A8B] dark:text-[#9CA3AF] font-inter text-center mb-8 transition-colors duration-200">
               Register to become a member of the CHRM Alumni Association
             </p>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-3 rounded mb-4">
+              <div className="bg-red(1000/10 border border-red(1000 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg mb-6 font-inter transition-colors duration-200">
                 {error}
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleFormSubmit} className="space-y-6">
               <div>
-                <label className="block text-[#f8fafc] mb-2 font-semibold">
-                  Full Name <span className="text-red-500">*</span>
+                <label className="block font-montserrat font-semibold text-sm text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
+                  Full Name <span className="text-red(1000">*</span>
                 </label>
                 <input
                   type="text"
@@ -203,14 +215,14 @@ export default function RegisterPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, full_name: e.target.value })
                   }
-                  className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                  className="w-full px-4 py-3 border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-lg font-inter text-[#0B0F1A] dark:text-[#E5E7EB] bg-white dark:bg-[#262626] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
                   placeholder="John Doe"
                 />
               </div>
 
               <div>
-                <label className="block text-[#f8fafc] mb-2 font-semibold">
-                  Email <span className="text-red-500">*</span>
+                <label className="block font-montserrat font-semibold text-sm text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
+                  Email <span className="text-red(1000">*</span>
                 </label>
                 <input
                   type="email"
@@ -219,13 +231,13 @@ export default function RegisterPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                  className="w-full px-4 py-3 border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-lg font-inter text-[#0B0F1A] dark:text-[#E5E7EB] bg-white dark:bg-[#262626] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
                   placeholder="john.doe@example.com"
                 />
               </div>
 
               <div>
-                <label className="block text-[#f8fafc] mb-2 font-semibold">
+                <label className="block font-montserrat font-semibold text-sm text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
                   Phone Number
                 </label>
                 <input
@@ -234,14 +246,14 @@ export default function RegisterPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
-                  className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                  className="w-full px-4 py-3 border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-lg font-inter text-[#0B0F1A] dark:text-[#E5E7EB] bg-white dark:bg-[#262626] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
                   placeholder="0712345678"
                 />
               </div>
 
               <div>
-                <label className="block text-[#f8fafc] mb-2 font-semibold">
-                  Graduation Year <span className="text-red-500">*</span>
+                <label className="block font-montserrat font-semibold text-sm text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
+                  Graduation Year <span className="text-red(1000">*</span>
                 </label>
                 <input
                   type="number"
@@ -255,15 +267,14 @@ export default function RegisterPage() {
                       graduation_year: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                  className="w-full px-4 py-3 border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-lg font-inter text-[#0B0F1A] dark:text-[#E5E7EB] bg-white dark:bg-[#262626] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
                   placeholder="2024"
                 />
-               
               </div>
 
               <div>
-                <label className="block text-[#f8fafc] mb-2 font-semibold">
-                  Password <span className="text-red-500">*</span>
+                <label className="block font-montserrat font-semibold text-sm text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
+                  Password <span className="text-red(1000">*</span>
                 </label>
                 <input
                   type="password"
@@ -273,7 +284,7 @@ export default function RegisterPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                  className="w-full px-4 py-3 border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-lg font-inter text-[#0B0F1A] dark:text-[#E5E7EB] bg-white dark:bg-[#262626] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
                   placeholder="Minimum 6 characters"
                 />
               </div>
@@ -281,18 +292,18 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full px-4 py-3 bg-[#d69e2e] text-[#0f172a] font-bold rounded hover:bg-[#b8832a] transition disabled:opacity-50"
+                className="w-full px-4 py-4 bg-[#2B4C73] text-white font-montserrat font-semibold text-lg rounded-lg hover:bg-[#1E3A5F] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? "Processing..." : "Continue to Payment"}
+                Continue to Payment
               </button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-[#cbd5e1]">
+            <div className="mt-8 text-center">
+              <p className="text-[#6D7A8B] dark:text-[#9CA3AF] font-inter transition-colors duration-200">
                 Already have an account?{" "}
                 <Link
                   href="/login"
-                  className="text-[#d69e2e] hover:underline font-semibold"
+                  className="text-[#2B4C73] dark:text-[#4A6B8A] hover:underline font-semibold transition-colors duration-200"
                 >
                   Login here
                 </Link>

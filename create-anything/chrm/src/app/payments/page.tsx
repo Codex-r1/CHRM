@@ -4,24 +4,19 @@ import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Users, User } from "lucide-react";
 import Link from "next/link";
 
 // Define types
-type EventType = {
-  id: number;
-  name: string;
-  price: number;
-  member_discount: number;
-};
-
 type FormData = {
   membership_number: string;
   full_name: string;
   email: string;
   phone: string;
   renewal_year: string;
-  event_id: string;
+  event_name: string;
+  event_price: string;
+  is_alumni_member: string;
 };
 
 type PaybillInfo = {
@@ -31,14 +26,15 @@ type PaybillInfo = {
 
 export default function PaymentsPage() {
   const [paymentType, setPaymentType] = useState<"renewal" | "event">("renewal");
-  const [events, setEvents] = useState<EventType[]>([]);
   const [formData, setFormData] = useState<FormData>({
     membership_number: "",
     full_name: "",
     email: "",
     phone: "",
     renewal_year: new Date().getFullYear().toString(),
-    event_id: "",
+    event_name: "",
+    event_price: "",
+    is_alumni_member: "",
   });
   const [step, setStep] = useState(1); // 1: form, 2: payment instructions, 3: success
   const [paybillInfo, setPaybillInfo] = useState<PaybillInfo>({
@@ -49,22 +45,6 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
-    try {
-      const response = await fetch("/api/events");
-      if (response.ok) {
-        const data: EventType[] = await response.json();
-        setEvents(data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch events:", err);
-    }
-  };
-
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError("");
@@ -72,21 +52,36 @@ export default function PaymentsPage() {
     if (paymentType === "renewal") {
       setPaybillInfo({
         amount: 1000,
-        account_number: `R-${formData.full_name}`,
+        account_number: `RN-${formData.full_name}`,
       });
     } else {
-      const selectedEvent = events.find(
-        (e) => e.id === parseInt(formData.event_id),
-      );
-      if (selectedEvent) {
-        const discount = selectedEvent.member_discount || 5;
-        const discountedPrice =
-          selectedEvent.price - (selectedEvent.price * discount) / 100;
-        setPaybillInfo({
-          amount: discountedPrice,
-          account_number: `EVT-${formData.full_name}`,
-        });
+      const eventPrice = parseFloat(formData.event_price);
+      if (isNaN(eventPrice) || eventPrice <= 0) {
+        setError("Please enter a valid event price");
+        return;
       }
+
+      if (!formData.is_alumni_member) {
+        setError("Please select whether you are an alumni member");
+        return;
+      }
+
+      if (formData.is_alumni_member === "yes" && !formData.membership_number) {
+        setError("Please enter your membership number");
+        return;
+      }
+      
+      // Apply 5% discount only if member
+      let finalPrice = eventPrice;
+      if (formData.is_alumni_member === "yes") {
+        const discount = 5;
+        finalPrice = eventPrice - (eventPrice * discount) / 100;
+      }
+      
+      setPaybillInfo({
+        amount: finalPrice,
+        account_number: `EVT-${formData.full_name}`,
+      });
     }
 
     setStep(2);
@@ -94,6 +89,25 @@ export default function PaymentsPage() {
 
   const handleConfirmPayment = () => {
     setStep(3);
+  };
+
+  // Calculate discounted price for display
+  const calculateEventPrice = () => {
+    const eventPrice = parseFloat(formData.event_price);
+    if (isNaN(eventPrice) || eventPrice <= 0) return null;
+    
+    const isMember = formData.is_alumni_member === "yes";
+    const discount = isMember ? 5 : 0;
+    const finalPrice = isMember 
+      ? eventPrice - (eventPrice * discount) / 100
+      : eventPrice;
+    
+    return {
+      Price: eventPrice,
+      discount,
+      finalPrice,
+      isMember
+    };
   };
 
   if (step === 3) {
@@ -346,24 +360,109 @@ export default function PaymentsPage() {
                 <>
                   <div>
                     <label className="block text-[#f8fafc] mb-2 font-semibold">
-                      Select Event
+                      Event Name
                     </label>
-                    <select
+                    <input
+                      type="text"
                       required
-                      value={formData.event_id}
+                      value={formData.event_name}
                       onChange={(e) =>
-                        setFormData({ ...formData, event_id: e.target.value })
+                        setFormData({ ...formData, event_name: e.target.value })
                       }
                       className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
-                    >
-                      <option value="">Choose an event...</option>
-                      {events.map((event) => (
-                        <option key={event.id} value={event.id}>
-                          {event.name} - Ksh {event.price.toLocaleString()}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Enter event name"
+                    />
                   </div>
+
+                  <div>
+                    <label className="block text-[#f8fafc] mb-2 font-semibold">
+                      Event Price (Ksh)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="0.01"
+                      value={formData.event_price}
+                      onChange={(e) =>
+                        setFormData({ ...formData, event_price: e.target.value })
+                      }
+                      className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                      placeholder="5000"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[#f8fafc] mb-2 font-semibold">
+                      Are you a CHRM Alumni Association member?
+                    </label>
+                    <div className="space-y-3">
+                      <label className="flex items-center p-3 bg-[#0f172a] border border-[#334155] rounded-lg cursor-pointer hover:border-[#d69e2e] transition-colors duration-200">
+                        <input
+                          type="radio"
+                          name="is_alumni_member"
+                          value="yes"
+                          checked={formData.is_alumni_member === "yes"}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              is_alumni_member: e.target.value,
+                            })
+                          }
+                          className="mr-3"
+                        />
+                        <div className="flex items-center">
+                          <Users size={18} className="mr-2 text-[#d69e2e]" />
+                          <span className="font-semibold text-[#f8fafc]">
+                            Yes, I am a member
+                          </span>
+                        </div>
+                      </label>
+
+                      <label className="flex items-center p-3 bg-[#0f172a] border border-[#334155] rounded-lg cursor-pointer hover:border-[#d69e2e] transition-colors duration-200">
+                        <input
+                          type="radio"
+                          name="is_alumni_member"
+                          value="no"
+                          checked={formData.is_alumni_member === "no"}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              is_alumni_member: e.target.value,
+                            })
+                          }
+                          className="mr-3"
+                        />
+                        <div className="flex items-center">
+                          <User size={18} className="mr-2 text-[#cbd5e1]" />
+                          <span className="font-semibold text-[#f8fafc]">
+                            No, I am not a member
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {formData.is_alumni_member === "yes" && (
+                    <div>
+                      <label className="block text-[#f8fafc] mb-2 font-semibold">
+                        Membership Number
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.membership_number}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            membership_number: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                        placeholder="Enter your membership number"
+                      />
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-[#f8fafc] mb-2 font-semibold">
@@ -381,34 +480,30 @@ export default function PaymentsPage() {
                     />
                   </div>
 
-                  {formData.event_id && (
+                  {formData.event_price && calculateEventPrice() && (
                     <div className="bg-[#0f172a] p-4 rounded border border-[#334155]">
                       {(() => {
-                        const selectedEvent = events.find(
-                          (e) => e.id === parseInt(formData.event_id),
-                        );
-                        if (selectedEvent) {
-                          const discount = selectedEvent.member_discount || 5;
-                          const discountedPrice =
-                            selectedEvent.price -
-                            (selectedEvent.price * discount) / 100;
+                        const priceInfo = calculateEventPrice();
+                        if (priceInfo) {
                           return (
                             <div className="space-y-2 text-[#cbd5e1]">
                               <p>
                                 <strong className="text-[#d69e2e]">
-                                  Original Price:
+                                  Price:
                                 </strong>{" "}
-                                Ksh {selectedEvent.price.toLocaleString()}
+                                Ksh {priceInfo.Price.toLocaleString()}
                               </p>
-                              <p>
-                                <strong className="text-[#d69e2e]">
-                                  Member Discount:
-                                </strong>{" "}
-                                {discount}%
-                              </p>
+                              {priceInfo.isMember && (
+                                <p>
+                                  <strong className="text-[#d69e2e]">
+                                    Member Discount:
+                                  </strong>{" "}
+                                  {priceInfo.discount}%
+                                </p>
+                              )}
                               <p className="text-xl font-bold text-[#d69e2e]">
                                 Final Amount: Ksh{" "}
-                                {discountedPrice.toLocaleString()}
+                                {priceInfo.finalPrice.toLocaleString()}
                               </p>
                             </div>
                           );

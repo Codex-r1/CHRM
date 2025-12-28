@@ -7,9 +7,6 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} CHRM Alumni Association. All
             rights reserved.
           </p>
-          <p className="text-[#64748b] text-sm mt-2 font-inter">
-             Email: chrmalumniassociation@gmail.com
-          </p>
         </div>
       </div>
     </footer>

@@ -9,16 +9,27 @@ import Link from "next/link";
 import Image from "next/image";
 
 // Define types
+type ProductVariant = {
+  color: string;
+  sizes: string[];
+  image: string;
+};
+
 type Product = {
   id: number;
   name: string;
-  price: number;
-  image: string;
+  basePrice: number;
+  variants: ProductVariant[];
   description: string;
-  quantity?: number;
 };
 
-type CartItem = Product & {
+type CartItem = {
+  id: number;
+  name: string;
+  price: number;
+  color: string;
+  size: string;
+  image: string;
   quantity: number;
 };
 
@@ -28,40 +39,114 @@ type CustomerInfo = {
   email: string;
 };
 
+// Color options with their display names and hex codes
+const COLORS = [
+  { name: "Navy Blue", value: "navy", hex: "#1e3a5f" },
+  { name: "White", value: "white", hex: "#ffffff" },
+  { name: "Black", value: "black", hex: "#000000" },
+  { name: "Red", value: "red", hex: "#dc2626" },
+  { name: "Gray", value: "gray", hex: "#6b7280" },
+];
+
+// Size options
+const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+
 const PRODUCTS: Product[] = [
   {
     id: 1,
     name: "T-Shirt",
-    price: 1000,
-    image: "/T-SHIRT.jpeg",
+    basePrice: 1000,
     description: "Premium cotton CHRMAA t-shirt",
+    variants: [
+      {
+        color: "navy",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/T-SHIRT-navy.jpeg",
+      },
+      {
+        color: "white",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/T-SHIRT-white.jpeg",
+      },
+      {
+        color: "black",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/T-SHIRT-black.jpeg",
+      },
+    ],
   },
   {
     id: 2,
     name: "Polo Shirt",
-    price: 1500,
-    image: "/POLO.jpeg",
+    basePrice: 1500,
     description: "Professional CHRMAA polo shirt",
+    variants: [
+      {
+        color: "navy",
+        sizes: ["M", "L", "XL", "XXL"],
+        image: "/POLO-navy.jpeg",
+      },
+      {
+        color: "white",
+        sizes: ["M", "L", "XL"],
+        image: "/POLO-white.jpeg",
+      },
+      {
+        color: "gray",
+        sizes: ["M", "L", "XL"],
+        image: "/POLO-gray.jpeg",
+      },
+    ],
   },
   {
     id: 3,
     name: "Hoodie",
-    price: 1800,
-    image: "/Hoodie.jpeg",
+    basePrice: 1800,
     description: "Comfortable CHRMAA hoodie",
+    variants: [
+      {
+        color: "navy",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/Hoodie-navy.jpeg",
+      },
+      {
+        color: "black",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/Hoodie-black.jpeg",
+      },
+      {
+        color: "gray",
+        sizes: ["M", "L", "XL"],
+        image: "/Hoodie-gray.jpeg",
+      },
+    ],
   },
   {
     id: 4,
     name: "Lapel Pin",
-    price: 1000,
-    image: "/lapel Pin.jpeg",
+    basePrice: 1000,
     description: "Elegant CHRMAA lapel pin",
+    variants: [
+      {
+        color: "gold",
+        sizes: ["One Size"],
+        image: "/lapel-pin-gold.jpeg",
+      },
+      {
+        color: "silver",
+        sizes: ["One Size"],
+        image: "/lapel-pin-silver.jpeg",
+      },
+    ],
   },
 ];
 
 export default function MerchandisePage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [step, setStep] = useState(1); // 1: shopping, 2: checkout, 3: payment instructions, 4: success
+  const [selectedProducts, setSelectedProducts] = useState<
+    Record<number, { color: string; size: string }>
+  >({});
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
     full_name: "",
     phone: "",
@@ -69,26 +154,98 @@ export default function MerchandisePage() {
   });
   const router = useRouter();
 
-  const addToCart = (product: Product) => {
-    const existing = cart.find((item) => item.id === product.id);
-    if (existing) {
+  const getAvailableColors = (productId: number) => {
+    const product = PRODUCTS.find((p) => p.id === productId);
+    if (!product) return [];
+    return product.variants.map((v) => v.color);
+  };
+
+  const getAvailableSizes = (productId: number, color: string) => {
+    const product = PRODUCTS.find((p) => p.id === productId);
+    if (!product) return [];
+    const variant = product.variants.find((v) => v.color === color);
+    return variant ? variant.sizes : [];
+  };
+
+  const getProductImage = (productId: number, color: string) => {
+    const product = PRODUCTS.find((p) => p.id === productId);
+    if (!product) return "";
+    const variant = product.variants.find((v) => v.color === color);
+    return variant ? variant.image : product.variants[0].image;
+  };
+
+  const getProductPrice = (productId: number) => {
+    const product = PRODUCTS.find((p) => p.id === productId);
+    return product ? product.basePrice : 0;
+  };
+
+  const handleColorSelect = (productId: number, color: string) => {
+    setSelectedProducts((prev) => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        color,
+        size: "", // Reset size when color changes
+      },
+    }));
+  };
+
+  const handleSizeSelect = (productId: number, size: string) => {
+    setSelectedProducts((prev) => ({
+      ...prev,
+      [productId]: {
+        ...prev[productId],
+        size,
+      },
+    }));
+  };
+
+  const addToCart = (productId: number) => {
+    const selection = selectedProducts[productId];
+    if (!selection || !selection.color || !selection.size) {
+      alert("Please select both color and size before adding to cart!");
+      return;
+    }
+
+    const product = PRODUCTS.find((p) => p.id === productId);
+    if (!product) return;
+
+    const existingItem = cart.find(
+      (item) =>
+        item.id === productId &&
+        item.color === selection.color &&
+        item.size === selection.size,
+    );
+
+    if (existingItem) {
       setCart(
         cart.map((item) =>
-          item.id === product.id
+          item.id === productId &&
+          item.color === selection.color &&
+          item.size === selection.size
             ? { ...item, quantity: item.quantity + 1 }
             : item,
         ),
       );
     } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
+      const newItem: CartItem = {
+        id: productId,
+        name: product.name,
+        price: product.basePrice,
+        color: selection.color,
+        size: selection.size,
+        image: getProductImage(productId, selection.color),
+        quantity: 1,
+      };
+      setCart([...cart, newItem]);
     }
   };
 
-  const updateQuantity = (productId: number, delta: number) => {
+  const updateQuantity = (itemIndex: number, delta: number) => {
     setCart(
       cart
-        .map((item) => {
-          if (item.id === productId) {
+        .map((item, index) => {
+          if (index === itemIndex) {
             const newQuantity = item.quantity + delta;
             return newQuantity > 0 ? { ...item, quantity: newQuantity } : null;
           }
@@ -98,8 +255,8 @@ export default function MerchandisePage() {
     );
   };
 
-  const removeFromCart = (productId: number) => {
-    setCart(cart.filter((item) => item.id !== productId));
+  const removeFromCart = (itemIndex: number) => {
+    setCart(cart.filter((_, index) => index !== itemIndex));
   };
 
   const calculateTotal = () => {
@@ -125,8 +282,19 @@ export default function MerchandisePage() {
 
   const resetCart = () => {
     setCart([]);
+    setSelectedProducts({});
     setStep(1);
     setCustomerInfo({ full_name: "", phone: "", email: "" });
+  };
+
+  const getColorName = (colorValue: string) => {
+    const color = COLORS.find((c) => c.value === colorValue);
+    return color ? color.name : colorValue;
+  };
+
+  const getColorHex = (colorValue: string) => {
+    const color = COLORS.find((c) => c.value === colorValue);
+    return color ? color.hex : "#cccccc";
   };
 
   if (step === 4) {
@@ -196,10 +364,11 @@ export default function MerchandisePage() {
                   Order Summary:
                 </h3>
                 <div className="space-y-2 text-[#cbd5e1]">
-                  {cart.map((item) => (
-                    <div key={item.id} className="flex justify-between">
+                  {cart.map((item, index) => (
+                    <div key={index} className="flex justify-between">
                       <span>
-                        {item.name} x {item.quantity}
+                        {item.name} ({getColorName(item.color)}, {item.size}) x{" "}
+                        {item.quantity}
                       </span>
                       <span>
                         Ksh {(item.price * item.quantity).toLocaleString()}
@@ -269,9 +438,9 @@ export default function MerchandisePage() {
                 <h3 className="text-xl font-bold text-[#f8fafc] mb-4 font-poppins">
                   Order Summary
                 </h3>
-                {cart.map((item) => (
+                {cart.map((item, index) => (
                   <div
-                    key={item.id}
+                    key={index}
                     className="flex justify-between items-center py-2 border-b border-[#334155]"
                   >
                     <div>
@@ -279,7 +448,8 @@ export default function MerchandisePage() {
                         {item.name}
                       </p>
                       <p className="text-[#94a3b8] text-sm">
-                        Qty: {item.quantity}
+                        {getColorName(item.color)}, Size: {item.size} | Qty:{" "}
+                        {item.quantity}
                       </p>
                     </div>
                     <p className="text-[#d69e2e] font-bold">
@@ -394,41 +564,121 @@ export default function MerchandisePage() {
 
           {/* Products Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
-            {PRODUCTS.map((product) => (
-              <div
-                key={product.id}
-                className="bg-[#1e293b] rounded-lg border border-[#334155] overflow-hidden hover:border-[#d69e2e] transition"
-              >
-                {/* Using next/image for better optimization */}
-                <div className="relative w-full h-64">
-                  <Image
-                    src={product.image}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                  />
-                </div>
-                <div className="p-6">
-                  <h3 className="text-xl font-bold text-[#f8fafc] mb-2 font-poppins">
-                    {product.name}
-                  </h3>
-                  <p className="text-[#cbd5e1] mb-4">{product.description}</p>
-                  <div className="flex justify-between items-center">
-                    <span className="text-2xl font-bold text-[#d69e2e]">
-                      Ksh {product.price.toLocaleString()}
-                    </span>
-                    <button
-                      onClick={() => addToCart(product)}
-                      className="px-4 py-2 bg-[#2563eb] text-white font-semibold rounded hover:bg-[#1d4ed8] transition flex items-center gap-2"
-                    >
-                      <ShoppingCart size={18} />
-                      Add
-                    </button>
+            {PRODUCTS.map((product) => {
+              const selection = selectedProducts[product.id] || {
+                color: "",
+                size: "",
+              };
+              const availableColors = getAvailableColors(product.id);
+              const availableSizes = selection.color
+                ? getAvailableSizes(product.id, selection.color)
+                : [];
+
+              return (
+                <div
+                  key={product.id}
+                  className="bg-[#1e293b] rounded-lg border border-[#334155] overflow-hidden hover:border-[#d69e2e] transition"
+                >
+                  {/* Product Image */}
+                  <div className="relative w-full h-64">
+                    <Image
+                      src={
+                        selection.color
+                          ? getProductImage(product.id, selection.color)
+                          : product.variants[0].image
+                      }
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                    />
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-bold text-[#f8fafc] mb-2 font-poppins">
+                      {product.name}
+                    </h3>
+                    <p className="text-[#cbd5e1] mb-4">{product.description}</p>
+
+                    {/* Color Selection */}
+                    <div className="mb-4">
+                      <label className="block text-[#f8fafc] text-sm font-semibold mb-2">
+                        Color
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {availableColors.map((color) => {
+                          const colorObj = COLORS.find((c) => c.value === color);
+                          return (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => handleColorSelect(product.id, color)}
+                              className={`w-8 h-8 rounded-full border-2 ${
+                                selection.color === color
+                                  ? "border-[#d69e2e]"
+                                  : "border-[#334155]"
+                              }`}
+                              style={{
+                                backgroundColor: colorObj?.hex || "#cccccc",
+                              }}
+                              title={colorObj?.name || color}
+                            />
+                          );
+                        })}
+                      </div>
+                      {selection.color && (
+                        <p className="text-[#cbd5e1] text-sm mt-1">
+                          {getColorName(selection.color)}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Size Selection */}
+                    {selection.color && (
+                      <div className="mb-4">
+                        <label className="block text-[#f8fafc] text-sm font-semibold mb-2">
+                          Size
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {availableSizes.map((size) => (
+                            <button
+                              key={size}
+                              type="button"
+                              onClick={() => handleSizeSelect(product.id, size)}
+                              className={`px-3 py-1 text-sm rounded border ${
+                                selection.size === size
+                                  ? "bg-[#d69e2e] text-[#0f172a] border-[#d69e2e]"
+                                  : "bg-[#0f172a] text-[#f8fafc] border-[#334155] hover:border-[#64748b]"
+                              }`}
+                            >
+                              {size}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Price and Add to Cart */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-2xl font-bold text-[#d69e2e]">
+                        Ksh {product.basePrice.toLocaleString()}
+                      </span>
+                      <button
+                        onClick={() => addToCart(product.id)}
+                        disabled={!selection.color || !selection.size}
+                        className={`px-4 py-2 font-semibold rounded flex items-center gap-2 transition ${
+                          !selection.color || !selection.size
+                            ? "bg-[#334155] text-[#94a3b8] cursor-not-allowed"
+                            : "bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
+                        }`}
+                      >
+                        <ShoppingCart size={18} />
+                        Add
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Cart */}
@@ -441,9 +691,9 @@ export default function MerchandisePage() {
               </h2>
 
               <div className="space-y-4 mb-6">
-                {cart.map((item) => (
+                {cart.map((item, index) => (
                   <div
-                    key={item.id}
+                    key={index}
                     className="flex items-center justify-between bg-[#0f172a] p-4 rounded border border-[#334155]"
                   >
                     <div className="flex items-center gap-4">
@@ -460,15 +710,25 @@ export default function MerchandisePage() {
                         <h4 className="text-[#f8fafc] font-semibold">
                           {item.name}
                         </h4>
-                        <p className="text-[#94a3b8]">
-                          Ksh {item.price.toLocaleString()}
-                        </p>
+                        <div className="flex items-center gap-3 text-sm text-[#94a3b8]">
+                          <div className="flex items-center gap-1">
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: getColorHex(item.color) }}
+                            />
+                            <span>{getColorName(item.color)}</span>
+                          </div>
+                          <span>|</span>
+                          <span>Size: {item.size}</span>
+                          <span>|</span>
+                          <span>Ksh {item.price.toLocaleString()}</span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => updateQuantity(item.id, -1)}
+                          onClick={() => updateQuantity(index, -1)}
                           className="bg-[#1e293b] p-2 rounded hover:bg-[#334155] transition"
                         >
                           <Minus size={16} className="text-[#f8fafc]" />
@@ -477,7 +737,7 @@ export default function MerchandisePage() {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(item.id, 1)}
+                          onClick={() => updateQuantity(index, 1)}
                           className="bg-[#1e293b] p-2 rounded hover:bg-[#334155] transition"
                         >
                           <Plus size={16} className="text-[#f8fafc]" />
@@ -487,8 +747,8 @@ export default function MerchandisePage() {
                         Ksh {(item.price * item.quantity).toLocaleString()}
                       </span>
                       <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="text-red-500 hover:text-red-400 font-bold w-24 text-sm rounded hover:bg-[#b8832a]"
+                        onClick={() => removeFromCart(index)}
+                        className="px-3 py-1 text-red-500 hover:text-red-400 text-sm font-bold bg-red-500/10 hover:bg-red-500/20 rounded transition"
                       >
                         Remove
                       </button>
