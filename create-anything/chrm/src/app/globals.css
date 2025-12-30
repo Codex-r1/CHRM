@@ -1,22 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: hsl(0, 0%, 100%);
-  --foreground: #fff;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --background: #fff;
-    --foreground: #ededed;
-  }
+  --background: #ffffff;
+  --foreground: #0f172a; /* dark slate (Tailwind slate-900) */
 }
 
 body {

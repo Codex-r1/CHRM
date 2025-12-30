@@ -112,7 +112,7 @@ export default function PaymentsPage() {
 
   if (step === 3) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col font-inter">
+      <div className="min-h-screen bg-[#0f172a] flex flex-col font-poppins">
         <Header />
         <main className="flex-1 flex items-center justify-center py-12 px-4">
           <div className="w-full max-w-md text-center">
@@ -213,13 +213,13 @@ export default function PaymentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex flex-col font-inter">
+    <div className="min-h-screen bg-[#fff] flex flex-col font-poppins">
       <Header />
 
       <main className="flex-1 py-12 px-4">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-[#1e293b] p-8 rounded-lg border border-[#334155]">
-            <h1 className="text-3xl font-bold text-[#f8fafc] mb-6 text-center font-poppins">
+          <div className="bg-[#fff] p-8 rounded-lg ">
+            <h1 className="text-3xl font-bold text-[#000] mb-6 text-center font-poppins">
               Make a Payment
             </h1>
 
@@ -257,7 +257,7 @@ export default function PaymentsPage() {
               {paymentType === "renewal" ? (
                 <>
                   <div>
-                    <label className="block text-[#f8fafc] mb-2 font-semibold">
+                    <label className="block text-[#000] mb-2 font-semibold">
                       Membership Number
                     </label>
                     <input
@@ -270,13 +270,13 @@ export default function PaymentsPage() {
                           membership_number: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
-                      placeholder="M-1234567890"
+                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
+                      placeholder="M-123456"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#f8fafc] mb-2 font-semibold">
+                    <label className="block text-[#000] mb-2 font-semibold">
                       Full Name
                     </label>
                     <input
@@ -286,13 +286,13 @@ export default function PaymentsPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, full_name: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                      className="w-full px-4 py-3 border border-[#2B4C73] rounded-lg font-inter text-[#000] bg-white light:bg-[#fff] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
                       placeholder="John Doe"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#f8fafc] mb-2 font-semibold">
+                    <label className="block text-[#000] mb-2 font-semibold">
                       Email
                     </label>
                     <input
@@ -302,13 +302,13 @@ export default function PaymentsPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, email: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
                       placeholder="john.doe@example.com"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#f8fafc] mb-2 font-semibold">
+                    <label className="block text-[#000] mb-2 font-semibold">
                       Phone
                     </label>
                     <input
@@ -318,13 +318,13 @@ export default function PaymentsPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, phone: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
                       placeholder="0712345678"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#f8fafc] mb-2 font-semibold">
+                    <label className="block text-[#000] mb-2 font-semibold">
                       Renewal Year
                     </label>
                     <select
@@ -336,7 +336,7 @@ export default function PaymentsPage() {
                           renewal_year: e.target.value,
                         })
                       }
-                      className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
                     >
                       {Array.from(
                         { length: 7 },
@@ -359,7 +359,7 @@ export default function PaymentsPage() {
               ) : (
                 <>
                   <div>
-                    <label className="block text-[#f8fafc] mb-2 font-semibold">
+                    <label className="block text-[#000] mb-2 font-semibold">
                       Event Name
                     </label>
                     <input
@@ -369,13 +369,13 @@ export default function PaymentsPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, event_name: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
                       placeholder="Enter event name"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#f8fafc] mb-2 font-semibold">
+                    <label className="block text-[#000] mb-2 font-semibold">
                       Event Price (Ksh)
                     </label>
                     <input
@@ -387,17 +387,17 @@ export default function PaymentsPage() {
                       onChange={(e) =>
                         setFormData({ ...formData, event_price: e.target.value })
                       }
-                      className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
                       placeholder="5000"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[#f8fafc] mb-2 font-semibold">
+                    <label className="block text-[#000] mb-2 font-semibold">
                       Are you a CHRM Alumni Association member?
                     </label>
                     <div className="space-y-3">
-                      <label className="flex items-center p-3 bg-[#0f172a] border border-[#334155] rounded-lg cursor-pointer hover:border-[#d69e2e] transition-colors duration-200">
+                      <label className="flex items-center p-3 bg-[#fff] border border-[#334155] rounded-lg cursor-pointer hover:border-[#d69e2e] transition-colors duration-200">
                         <input
                           type="radio"
                           name="is_alumni_member"
@@ -413,13 +413,13 @@ export default function PaymentsPage() {
                         />
                         <div className="flex items-center">
                           <Users size={18} className="mr-2 text-[#d69e2e]" />
-                          <span className="font-semibold text-[#f8fafc]">
+                          <span className="font-semibold text-[#000]">
                             Yes, I am a member
                           </span>
                         </div>
                       </label>
 
-                      <label className="flex items-center p-3 bg-[#0f172a] border border-[#334155] rounded-lg cursor-pointer hover:border-[#d69e2e] transition-colors duration-200">
+                      <label className="flex items-center p-3 bg-[#fff] border border-[#334155] rounded-lg cursor-pointer hover:border-[#d69e2e] transition-colors duration-200">
                         <input
                           type="radio"
                           name="is_alumni_member"
@@ -435,7 +435,7 @@ export default function PaymentsPage() {
                         />
                         <div className="flex items-center">
                           <User size={18} className="mr-2 text-[#cbd5e1]" />
-                          <span className="font-semibold text-[#f8fafc]">
+                          <span className="font-semibold text-[#000]">
                             No, I am not a member
                           </span>
                         </div>
@@ -445,7 +445,7 @@ export default function PaymentsPage() {
 
                   {formData.is_alumni_member === "yes" && (
                     <div>
-                      <label className="block text-[#f8fafc] mb-2 font-semibold">
+                      <label className="block text-[#000] mb-2 font-semibold">
                         Membership Number
                       </label>
                       <input
@@ -458,27 +458,11 @@ export default function PaymentsPage() {
                             membership_number: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                        className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
                         placeholder="Enter your membership number"
                       />
                     </div>
                   )}
-
-                  <div>
-                    <label className="block text-[#f8fafc] mb-2 font-semibold">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.full_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, full_name: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
-                      placeholder="John Doe"
-                    />
-                  </div>
 
                   {formData.event_price && calculateEventPrice() && (
                     <div className="bg-[#0f172a] p-4 rounded border border-[#334155]">

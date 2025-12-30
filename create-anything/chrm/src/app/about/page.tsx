@@ -52,25 +52,25 @@ export default function AboutPage() {
   ];
 
   const administrator = {
-    name: "MS Mercy Wambui",
+    name: "Ms. Mercy Wambui",
     position: "CHRMAA Administrator",
     email: "alumni@chrm.or.ke",
     phone: ["0700773322", "0733883322"],
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F9FC] dark:bg-[#121212] transition-colors duration-200">
+    <div className="min-h-screen bg-[#F7F9FC] light:bg-[#fff] transition-colors duration-200">
       <Header />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-12 space-y-16">
+      <main className="max-w-7xl mx-auto px-6 py-12 space-y-8">
         {/* Mission & Vision Section */}
-        <section className="bg-white dark:bg-[#1E1E1E] border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-xl p-8 md:p-12 transition-colors duration-200">
+        <section className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200">
           <div className="text-center mb-12">
-            <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-6 transition-colors duration-200">
+            <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200">
               About CHRM Alumni Association
             </h2>
-            <p className="font-inter text-lg text-[#6D7A8B] dark:text-[#9CA3AF] leading-relaxed max-w-4xl mx-auto transition-colors duration-200">
+            <p className="font-inter text-lg text-[#000] dark:text-[#000] leading-relaxed max-w-4xl mx-auto transition-colors duration-200">
               CHRMAA was established to provide its Alumni with a platform for
               networking, mentorship, and to promote the growth of the college
               through marketing, advising management on areas of improvement,
@@ -121,13 +121,14 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
+
 {/* Core Values Section */}
-        <section className="bg-white dark:bg-[#1E1E1E] border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-xl p-8 md:p-12 transition-colors duration-200">
+        <section className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200">
           <div className="text-center mb-12">
-            <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-6 transition-colors duration-200">
+            <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200">
               Our Core Values
             </h2>
-            <p className="font-inter text-lg text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200">
+            <p className="font-inter text-lg text-[#000] dark:text-[#000] transition-colors duration-200">
               These principles guide all CHRMAA operations and reflect our
               aspiration to be the Alumni Association of choice in the region.
             </p>
@@ -186,13 +187,13 @@ export default function AboutPage() {
             </div>
           </div>
         </section>
-        {/* Officials Section - ADDED */}
-        <section className="bg-white dark:bg-[#1E1E1E] border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-xl p-8 md:p-12 transition-colors duration-200">
+        {/* Officials Section*/}
+        <section className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200">
           <div className="text-center mb-12">
-            <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-6 transition-colors duration-200">
+            <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200">
               Officials of CHRMAA
             </h2>
-            <p className="font-inter text-lg text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200">
+            <p className="font-inter text-lg text-[#000] dark:text-[#000] transition-colors duration-200">
               Meet the dedicated professionals who lead our alumni association
             </p>
           </div>
@@ -218,9 +219,9 @@ export default function AboutPage() {
         </section>
 
         {/* Administrator Section - ADDED */}
-        <section className="bg-white dark:bg-[#1E1E1E] border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-xl p-8 md:p-12 transition-colors duration-200">
+        <section className="bg-white light:bg-[#fff]  rounded-xl p-8 md:p-12 transition-colors duration-200">
           <div className="text-center mb-12">
-            <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-6 transition-colors duration-200">
+            <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200">
               Administrator
             </h2>
           </div>
@@ -233,7 +234,7 @@ export default function AboutPage() {
             </div>
 
             <div className="text-center md:text-left flex-1">
-              <h3 className="font-montserrat font-bold text-2xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-3 transition-colors duration-200">
+              <h3 className="font-montserrat font-bold text-2xl text-[#000] dark:text-[#000] mb-3 transition-colors duration-200">
                 {administrator.name}
               </h3>
               <p className="font-inter font-semibold text-lg text-[#2B4C73] dark:text-[#4A6B8A] mb-6 transition-colors duration-200">
@@ -276,15 +277,15 @@ export default function AboutPage() {
         </section>
 
         {/* Journey Section - ADDED */}
-        <section className="bg-gradient-to-r from-[#E8F4FD] to-[#FFF4E6] dark:from-[#1A2F42] dark:to-[#3D2B1A] rounded-xl p-8 md:p-12 transition-colors duration-200">
+        <section className="bg-gradient-to-r from-[#fff] to-[#FFF] rounded-xl p-8 md:p-12 transition-colors duration-200">
           <div className="text-center mb-12">
-            <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-6 transition-colors duration-200">
+            <h2 className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200">
               Our Journey
             </h2>
           </div>
 
           <div className="max-w-4xl mx-auto">
-            <p className="font-inter text-lg text-[#6D7A8B] dark:text-[#9CA3AF] mb-6 leading-relaxed transition-colors duration-200">
+            <p className="font-inter text-lg text-[#000] dark:text-[#000] mb-6 leading-relaxed transition-colors duration-200">
               Since our establishment, the CHRM Alumni Association has grown
               from a small group of passionate HR professionals to a thriving
               network of over 1,000 members across the country. Our alumni have
@@ -293,7 +294,7 @@ export default function AboutPage() {
               various industries.
             </p>
 
-            <p className="font-inter text-lg text-[#6D7A8B] dark:text-[#9CA3AF] mb-8 leading-relaxed transition-colors duration-200">
+            <p className="font-inter text-lg text-[#000] dark:text-[#000] mb-8 leading-relaxed transition-colors duration-200">
               Through our events, workshops, and networking opportunities, we
               continue to strengthen the bonds between our members and provide
               valuable resources for career advancement and professional

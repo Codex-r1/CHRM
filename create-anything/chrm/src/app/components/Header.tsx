@@ -9,7 +9,7 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="bg-[#1e293b] border-b border-[#334155] sticky top-0 z-50">
+    <header className="bg-[#FFF] border-b border-[#000] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           {/* Logos */}
@@ -38,37 +38,41 @@ export default function Header() {
           <nav className="hidden md:flex items-center gap-6">
             <Link
               href="/"
-              className="text-[#f8fafc] hover:text-[#d69e2e] transition font-inter"
+              className="text-[#0F172A] hover:text-[#d69e2e] transition font-inter"
             >
               Home
             </Link>
             <Link
               href="/about"
-              className="text-[#f8fafc] hover:text-[#d69e2e] transition font-inter"
+              className="text-[#0F172A] hover:text-[#d69e2e] transition font-inter"
             >
               About Us
             </Link>
             <Link
               href="/register"
-              className="text-[#f8fafc] hover:text-[#d69e2e] transition font-inter"
+              className="text-[#0f172a]
+ hover:text-[#d69e2e] transition font-inter"
             >
               Register
             </Link>
             <Link
               href="/payments"
-              className="text-[#f8fafc] hover:text-[#d69e2e] transition font-inter"
+              className="text-[#0f172a]
+ hover:text-[#d69e2e] transition font-inter"
             >
               Payments
             </Link>
             <Link
               href="/merchandise"
-              className="text-[#f8fafc] hover:text-[#d69e2e] transition font-inter"
+              className="text-[#0f172a]
+ hover:text-[#d69e2e] transition font-inter"
             >
               Merchandise
             </Link>
             <Link
               href="/contact"
-              className="text-[#f8fafc] hover:text-[#d69e2e] transition font-inter"
+              className="text-[#0f172a]
+ hover:text-[#d69e2e] transition font-inter"
             >
               Contact
             </Link>
@@ -93,7 +97,8 @@ export default function Header() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden text-[#f8fafc]"
+            className="md:hidden text-[#0f172a]
+"
             aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -107,42 +112,48 @@ export default function Header() {
           <nav className="flex flex-col px-4 py-4 gap-3">
             <Link
               href="/"
-              className="text-[#f8fafc] hover:text-[#d69e2e] py-2 font-inter"
+              className="text-[#0f172a]
+ hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
               Home
             </Link>
             <Link
               href="/about"
-              className="text-[#f8fafc] hover:text-[#d69e2e] py-2 font-inter"
+              className="text-[#0f172a]
+ hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
               About Us
             </Link>
             <Link
               href="/register"
-              className="text-[#f8fafc] hover:text-[#d69e2e] py-2 font-inter"
+              className="text-[#0f172a]
+ hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
               Register
             </Link>
             <Link
               href="/payments"
-              className="text-[#f8fafc] hover:text-[#d69e2e] py-2 font-inter"
+              className="text-[#0f172a]
+ hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
               Payments
             </Link>
             <Link
               href="/merchandise"
-              className="text-[#f8fafc] hover:text-[#d69e2e] py-2 font-inter"
+              className="text-[#0f172a]
+ hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
               Merchandise
             </Link>
             <Link
               href="/contact"
-              className="text-[#f8fafc] hover:text-[#d69e2e] py-2 font-inter"
+              className="text-[#0f172a]
+ hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
               Contact

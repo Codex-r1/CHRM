@@ -334,7 +334,8 @@ export default function MerchandisePage() {
 
   if (step === 4) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col font-inter">
+      <div className="min-h-screen bg-white
+ flex flex-col font-inter">
         <Header />
         <main className="flex-1 flex items-center justify-center py-12 px-4">
           <div className="w-full max-w-md text-center">
@@ -367,7 +368,8 @@ export default function MerchandisePage() {
   if (step === 3) {
     const total = calculateTotal();
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col font-inter">
+      <div className="min-h-screen bg-white
+ flex flex-col font-inter">
         <Header />
         <main className="flex-1 py-12 px-4">
           <div className="max-w-2xl mx-auto">
@@ -394,7 +396,8 @@ export default function MerchandisePage() {
                 </div>
               </div>
 
-              <div className="bg-[#0f172a] p-6 rounded-lg mb-6">
+              <div className="bg-white
+ p-6 rounded-lg mb-6">
                 <h3 className="text-xl font-bold text-[#f8fafc] mb-3 font-poppins">
                   Order Summary:
                 </h3>
@@ -417,7 +420,8 @@ export default function MerchandisePage() {
                 </div>
               </div>
 
-              <div className="bg-[#0f172a] p-6 rounded-lg mb-6">
+              <div className="bg-white
+ p-6 rounded-lg mb-6">
                 <h3 className="text-xl font-bold text-[#f8fafc] mb-3 font-poppins">
                   Payment Instructions:
                 </h3>
@@ -460,7 +464,8 @@ export default function MerchandisePage() {
   if (step === 2) {
     const total = calculateTotal();
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col font-inter">
+      <div className="min-h-screen bg-white
+ flex flex-col font-inter">
         <Header />
         <main className="flex-1 py-12 px-4">
           <div className="max-w-2xl mx-auto">
@@ -469,7 +474,8 @@ export default function MerchandisePage() {
                 Checkout
               </h1>
 
-              <div className="bg-[#0f172a] p-6 rounded-lg mb-6">
+              <div className="bg-white
+ p-6 rounded-lg mb-6">
                 <h3 className="text-xl font-bold text-[#f8fafc] mb-4 font-poppins">
                   Order Summary
                 </h3>
@@ -515,7 +521,8 @@ export default function MerchandisePage() {
                         full_name: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                    className="w-full px-4 py-3 bg-white
+ border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
                     placeholder="John Doe"
                   />
                 </div>
@@ -534,7 +541,8 @@ export default function MerchandisePage() {
                         phone: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                    className="w-full px-4 py-3 bg-white
+ border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
                     placeholder="0712345678"
                   />
                 </div>
@@ -553,7 +561,8 @@ export default function MerchandisePage() {
                         email: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-3 bg-[#0f172a] border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
+                    className="w-full px-4 py-3 bg-white
+ border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
                     placeholder="john.doe@example.com"
                   />
                 </div>
@@ -562,7 +571,8 @@ export default function MerchandisePage() {
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="flex-1 px-4 py-3 bg-[#0f172a] border border-[#334155] text-white font-bold rounded hover:bg-[#1e293b] transition"
+                    className="flex-1 px-4 py-3 bg-white
+ border border-[#334155] text-white font-bold rounded hover:bg-[#1e293b] transition"
                   >
                     Back to Shop
                   </button>
@@ -583,16 +593,17 @@ export default function MerchandisePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] flex flex-col font-inter">
+    <div className="min-h-screen bg-white
+ flex flex-col font-inter">
       <Header />
 
       <main className="flex-1 py-12 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-[#f8fafc] mb-4 font-poppins">
+            <h1 className="text-4xl md:text-5xl font-bold text-[#0f172a]] mb-4 font-poppins">
               CHRMAA Merchandise
             </h1>
-            <p className="text-xl text-[#cbd5e1]">
+            <p className="text-xl text-[#0F172A]">
               Show your alumni pride with official CHRMAA branded items
             </p>
           </div>
@@ -682,7 +693,7 @@ export default function MerchandisePage() {
                               className={`px-3 py-1 text-sm rounded border ${
                                 selection.size === size
                                   ? "bg-[#d69e2e] text-[#0f172a] border-[#d69e2e]"
-                                  : "bg-[#0f172a] text-[#f8fafc] border-[#334155] hover:border-[#64748b]"
+                                  : "bg-[#fff] text-[#f8fafc] border-[#334155] hover:border-[#64748b]"
                               }`}
                             >
                               {size}
@@ -729,7 +740,8 @@ export default function MerchandisePage() {
                 {cart.map((item, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between bg-[#0f172a] p-4 rounded border border-[#334155]"
+                    className="flex items-center justify-between bg-white
+ p-4 rounded border border-[#334155]"
                   >
                     <div className="flex items-center gap-4">
                       <div className="relative w-16 h-16">

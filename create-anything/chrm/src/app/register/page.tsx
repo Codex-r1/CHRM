@@ -184,16 +184,16 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F9FC] dark:bg-[#121212] transition-colors duration-200">
+    <div className="min-h-screen bg-[#FFF]  transition-colors duration-200">
       <Header />
 
       <main className="flex-1 py-12 px-4">
         <div className="max-w-2xl mx-auto">
-          <div className="bg-white dark:bg-[#1E1E1E] border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-xl p-8 md:p-12 transition-colors duration-200">
-            <h1 className="text-3xl md:text-4xl font-bold font-poppins text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 text-center transition-colors duration-200">
+          <div className="bg-white  p-8 md:p-12 transition-colors duration-200">
+            <h1 className="text-3xl md:text-4xl font-bold font-poppins text-[#000]  mb-2 text-center transition-colors duration-200">
               Join CHRMAA
             </h1>
-            <p className="text-[#6D7A8B] dark:text-[#9CA3AF] font-inter text-center mb-8 transition-colors duration-200">
+            <p className="text-[#000] font-inter text-center mb-8 transition-colors duration-200">
               Register to become a member of the CHRM Alumni Association
             </p>
 
@@ -205,7 +205,7 @@ export default function RegisterPage() {
 
             <form onSubmit={handleFormSubmit} className="space-y-6">
               <div>
-                <label className="block font-montserrat font-semibold text-sm text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
+                <label className="block font-poppins font-semibold text-sm text-[#000] mb-2 transition-colors duration-200">
                   Full Name <span className="text-red(1000">*</span>
                 </label>
                 <input
@@ -215,13 +215,12 @@ export default function RegisterPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, full_name: e.target.value })
                   }
-                  className="w-full px-4 py-3 border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-lg font-inter text-[#0B0F1A] dark:text-[#E5E7EB] bg-white dark:bg-[#262626] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
-                  placeholder="John Doe"
+                  className="w-full px-4 py-3 border border-[#2B4C73] rounded-lg font-inter text-[#000] bg-white light:bg-[#fff] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block font-montserrat font-semibold text-sm text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
+                <label className="block font-poppins font-semibold text-sm text-[#000] mb-2 transition-colors duration-200">
                   Email <span className="text-red(1000">*</span>
                 </label>
                 <input
@@ -231,13 +230,13 @@ export default function RegisterPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className="w-full px-4 py-3 border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-lg font-inter text-[#0B0F1A] dark:text-[#E5E7EB] bg-white dark:bg-[#262626] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
-                  placeholder="john.doe@example.com"
+                  className="w-full px-4 py-3 border border-[#2B4C73] rounded-lg font-inter text-[#000] bg-white light:bg-[#fff] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
+                  
                 />
               </div>
 
               <div>
-                <label className="block font-montserrat font-semibold text-sm text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
+                <label className="block font-poppins font-semibold text-sm text-[#000] mb-2 transition-colors duration-200">
                   Phone Number
                 </label>
                 <input
@@ -246,13 +245,13 @@ export default function RegisterPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
-                  className="w-full px-4 py-3 border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-lg font-inter text-[#0B0F1A] dark:text-[#E5E7EB] bg-white dark:bg-[#262626] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
-                  placeholder="0712345678"
+                  className="w-full px-4 py-3 border border-[#2B4C73] rounded-lg font-inter text-[#000] bg-white light:bg-[#fff] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
+                  
                 />
               </div>
 
               <div>
-                <label className="block font-montserrat font-semibold text-sm text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
+                <label className="block font-poppins font-semibold text-sm text-[#000] mb-2 transition-colors duration-200">
                   Graduation Year <span className="text-red(1000">*</span>
                 </label>
                 <input
@@ -267,13 +266,13 @@ export default function RegisterPage() {
                       graduation_year: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-3 border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-lg font-inter text-[#0B0F1A] dark:text-[#E5E7EB] bg-white dark:bg-[#262626] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-[#2B4C73] rounded-lg font-inter text-[#000] bg-white light:bg-[#fff] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
                   placeholder="2024"
                 />
               </div>
 
               <div>
-                <label className="block font-montserrat font-semibold text-sm text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
+                <label className="block font-poppins font-semibold text-sm text-[#000] mb-2 transition-colors duration-200">
                   Password <span className="text-red(1000">*</span>
                 </label>
                 <input
@@ -284,7 +283,7 @@ export default function RegisterPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  className="w-full px-4 py-3 border border-[#E7ECF3] dark:border-[#2A2A2A] rounded-lg font-inter text-[#0B0F1A] dark:text-[#E5E7EB] bg-white dark:bg-[#262626] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-[#2B4C73] rounded-lg font-inter text-[#000] bg-white light:bg-[#fff] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
                   placeholder="Minimum 6 characters"
                 />
               </div>
@@ -299,7 +298,7 @@ export default function RegisterPage() {
             </form>
 
             <div className="mt-8 text-center">
-              <p className="text-[#6D7A8B] dark:text-[#9CA3AF] font-inter transition-colors duration-200">
+              <p className="text-[#000] font-inter transition-colors duration-200">
                 Already have an account?{" "}
                 <Link
                   href="/login"
