@@ -46,6 +46,11 @@ const COLORS = [
   { name: "Black", value: "black", hex: "#000000" },
   { name: "Red", value: "red", hex: "#dc2626" },
   { name: "Gray", value: "gray", hex: "#6b7280" },
+  { name: "Green", value: "green", hex: "#16a34a" },
+  { name: "Pink", value: "pink", hex: "#ec4899" },
+  { name: "Gold", value: "gold", hex: "#d4af37" },
+  { name: "Light Blue", value: "lightblue", hex: "#3b82f6" },
+  { name: "Maroon", value: "maroon", hex: "#800000" },
 ];
 
 // Size options
@@ -59,9 +64,9 @@ const PRODUCTS: Product[] = [
     description: "Premium cotton CHRMAA t-shirt",
     variants: [
       {
-        color: "navy",
+        color: "black",
         sizes: ["S", "M", "L", "XL"],
-        image: "/T-SHIRT-navy.jpeg",
+        image: "/T-SHIRT.jpeg",
       },
       {
         color: "white",
@@ -69,7 +74,17 @@ const PRODUCTS: Product[] = [
         image: "/T-SHIRT-white.jpeg",
       },
       {
-        color: "black",
+        color: "green",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/T-SHIRT-black.jpeg",
+      },
+       {
+        color: "blue",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/T-SHIRT-black.jpeg",
+      },
+       {
+        color: "red",
         sizes: ["S", "M", "L", "XL"],
         image: "/T-SHIRT-black.jpeg",
       },
@@ -82,19 +97,29 @@ const PRODUCTS: Product[] = [
     description: "Professional CHRMAA polo shirt",
     variants: [
       {
-        color: "navy",
-        sizes: ["M", "L", "XL", "XXL"],
-        image: "/POLO-navy.jpeg",
+        color: "green",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/POLO.jpeg",
       },
       {
         color: "white",
-        sizes: ["M", "L", "XL"],
-        image: "/POLO-white.jpeg",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/T-SHIRT-white.jpeg",
       },
       {
-        color: "gray",
-        sizes: ["M", "L", "XL"],
-        image: "/POLO-gray.jpeg",
+        color: "black",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/xx.jpeg",
+      },
+       {
+        color: "blue",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/T-SHIRT-black.jpeg",
+      },
+       {
+        color: "red",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/T-SHIRT-black.jpeg",
       },
     ],
   },
@@ -105,9 +130,9 @@ const PRODUCTS: Product[] = [
     description: "Comfortable CHRMAA hoodie",
     variants: [
       {
-        color: "navy",
+        color: "pink",
         sizes: ["S", "M", "L", "XL"],
-        image: "/Hoodie-navy.jpeg",
+        image: "/Hoodie.jpeg",
       },
       {
         color: "black",
@@ -116,6 +141,21 @@ const PRODUCTS: Product[] = [
       },
       {
         color: "gray",
+        sizes: ["M", "L", "XL"],
+        image: "/Hoodie-gray.jpeg",
+      },
+       {
+        color: "white",
+        sizes: ["M", "L", "XL"],
+        image: "/Hoodie-gray.jpeg",
+      },
+      {
+        color: "lightblue",
+        sizes: ["M", "L", "XL"],
+        image: "/Hoodie-gray.jpeg",
+      },
+      {
+        color: "maroon",
         sizes: ["M", "L", "XL"],
         image: "/Hoodie-gray.jpeg",
       },
@@ -130,12 +170,7 @@ const PRODUCTS: Product[] = [
       {
         color: "gold",
         sizes: ["One Size"],
-        image: "/lapel-pin-gold.jpeg",
-      },
-      {
-        color: "silver",
-        sizes: ["One Size"],
-        image: "/lapel-pin-silver.jpeg",
+        image: "/Lapel Pin.jpeg",
       },
     ],
   },
