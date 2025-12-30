@@ -112,7 +112,7 @@ export default function Header() {
           <nav className="flex flex-col px-4 py-4 gap-3">
             <Link
               href="/"
-              className="text-[#0f172a]
+              className="text-[#fff]
  hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -120,7 +120,7 @@ export default function Header() {
             </Link>
             <Link
               href="/about"
-              className="text-[#0f172a]
+              className="text-[#fff]
  hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -128,7 +128,7 @@ export default function Header() {
             </Link>
             <Link
               href="/register"
-              className="text-[#0f172a]
+              className="text-[#fff]
  hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -136,7 +136,7 @@ export default function Header() {
             </Link>
             <Link
               href="/payments"
-              className="text-[#0f172a]
+              className="text-[#fff]
  hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -144,7 +144,7 @@ export default function Header() {
             </Link>
             <Link
               href="/merchandise"
-              className="text-[#0f172a]
+              className="text-[#fff]
  hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -152,7 +152,7 @@ export default function Header() {
             </Link>
             <Link
               href="/contact"
-              className="text-[#0f172a]
+              className="text-[#fff]
  hover:text-[#d69e2e] py-2 font-inter"
               onClick={() => setMobileMenuOpen(false)}
             >
