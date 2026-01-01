@@ -1,22 +1,13 @@
-import type { Metadata } from "next";
-import { Inter, Poppins } from "next/font/google";
-import "./globals.css";
+import { Poppins } from 'next/font/google'
+import './globals.css'
+import React from 'react'
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: "--font-inter"  
-});
-
-const poppins = Poppins({ 
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-poppins"  // Add this for CSS variable
-});
-
-export const metadata: Metadata = {
-  title: "CHRM Alumni Association",
-  description: "CHRM Alumni Association Portal",
-};
+const poppins = Poppins({
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  display: 'swap',
+})
 
 export default function RootLayout({
   children,
@@ -24,9 +15,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
-      <body className={inter.className}>
-        {children}
+    <html lang="en">
+      <body
+        className={`${poppins.variable} antialiased`}
+      >
+        
+        <main className="min-h-screen">
+          {children}
+        </main>
+        
       </body>
     </html>
   );

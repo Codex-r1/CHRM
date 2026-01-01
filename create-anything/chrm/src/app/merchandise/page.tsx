@@ -4,9 +4,11 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { ShoppingCart, Minus, Plus, CheckCircle } from "lucide-react";
+import { ShoppingCart, Minus, Plus, CheckCircle, Package, Tag, Truck, Shield } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { motion } from "framer-motion";
+import type { Variants } from "framer-motion";
 
 // Define types
 type ProductVariant = {
@@ -39,6 +41,46 @@ type CustomerInfo = {
   email: string;
 };
 
+// Animation Variants
+const fadeUp: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 24,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+};
+
+const scaleIn: Variants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.9,
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.6,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+};
+
+const staggerContainer: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
 // Color options with their display names and hex codes
 const COLORS = [
   { name: "Navy Blue", value: "navy", hex: "#1e3a5f" },
@@ -61,7 +103,7 @@ const PRODUCTS: Product[] = [
     id: 1,
     name: "T-Shirt",
     basePrice: 1000,
-    description: "Premium cotton CHRMAA t-shirt",
+    description: "Premium cotton CHRMAA t-shirt with embroidered logo",
     variants: [
       {
         color: "black",
@@ -78,23 +120,23 @@ const PRODUCTS: Product[] = [
         sizes: ["S", "M", "L", "XL"],
         image: "/T-SHIRT-black.jpeg",
       },
-       {
-        color: "blue",
-        sizes: ["S", "M", "L", "XL"],
-        image: "/T-SHIRT-black.jpeg",
-      },
-       {
+      {
         color: "red",
         sizes: ["S", "M", "L", "XL"],
-        image: "/T-SHIRT-black.jpeg",
+        image: "/T-SHIRT-red.jpeg",
       },
+      {
+        color:"gray",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/T-SHIRT-gray.jpeg",
+      }
     ],
   },
   {
     id: 2,
     name: "Polo Shirt",
     basePrice: 1500,
-    description: "Professional CHRMAA polo shirt",
+    description: "Professional CHRMAA polo shirt with embroidered logo",
     variants: [
       {
         color: "green",
@@ -111,23 +153,23 @@ const PRODUCTS: Product[] = [
         sizes: ["S", "M", "L", "XL"],
         image: "/xx.jpeg",
       },
-       {
-        color: "blue",
+      {
+        color:"red",
         sizes: ["S", "M", "L", "XL"],
-        image: "/T-SHIRT-black.jpeg",
+        image: "/POLO-red.jpeg",
       },
-       {
-        color: "red",
+      {
+        color:"gray",
         sizes: ["S", "M", "L", "XL"],
-        image: "/T-SHIRT-black.jpeg",
-      },
+        image: "/POLO-gray.jpeg",
+      }
     ],
   },
   {
     id: 3,
     name: "Hoodie",
     basePrice: 1800,
-    description: "Comfortable CHRMAA hoodie",
+    description: "Comfortable CHRMAA hoodie with embroidered logo",
     variants: [
       {
         color: "pink",
@@ -144,41 +186,59 @@ const PRODUCTS: Product[] = [
         sizes: ["M", "L", "XL"],
         image: "/Hoodie-gray.jpeg",
       },
-       {
-        color: "white",
-        sizes: ["M", "L", "XL"],
-        image: "/Hoodie-gray.jpeg",
-      },
       {
         color: "lightblue",
-        sizes: ["M", "L", "XL"],
-        image: "/Hoodie-gray.jpeg",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/Hoodie-blue.jpeg",
       },
       {
-        color: "maroon",
-        sizes: ["M", "L", "XL"],
-        image: "/Hoodie-gray.jpeg",
-      },
+        color:"maroon",
+        sizes: ["S", "M", "L", "XL"],
+        image: "/Hoodie-maroon.jpeg",
+      }
     ],
   },
   {
     id: 4,
     name: "Lapel Pin",
     basePrice: 1000,
-    description: "Elegant CHRMAA lapel pin",
+    description: "Elegant CHRMAA lapel pin for formal occasions",
     variants: [
       {
         color: "gold",
-        sizes: ["One Size"],
+        sizes: [],
         image: "/Lapel Pin.jpeg",
       },
     ],
   },
 ];
 
+const benefits = [
+  {
+    icon: Package,
+    title: "Premium Quality",
+    description: "High-quality materials and durable construction"
+  },
+  {
+    icon: Tag,
+    title: "Member Discounts",
+    description: "Exclusive prices for CHRMAA members"
+  },
+  {
+    icon: Truck,
+    title: "Fast Delivery",
+    description: "Free delivery within major cities"
+  },
+  {
+    icon: Shield,
+    title: "Secure Payment",
+    description: "Safe and encrypted payment process"
+  }
+];
+
 export default function MerchandisePage() {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [step, setStep] = useState(1); // 1: shopping, 2: checkout, 3: payment instructions, 4: success
+  const [step, setStep] = useState(1);
   const [selectedProducts, setSelectedProducts] = useState<
     Record<number, { color: string; size: string }>
   >({});
@@ -220,7 +280,7 @@ export default function MerchandisePage() {
       [productId]: {
         ...prev[productId],
         color,
-        size: "", // Reset size when color changes
+        size: "",
       },
     }));
   };
@@ -332,284 +392,450 @@ export default function MerchandisePage() {
     return color ? color.hex : "#cccccc";
   };
 
+  const paymentSteps = [
+    "Go to M-PESA on your phone",
+    "Select Lipa na M-PESA",
+    "Select Pay Bill",
+    `Enter Business Number: 263532`,
+    `Enter Account Number: MERCH-${customerInfo.full_name.toUpperCase()}`,
+    `Enter Amount: Ksh ${calculateTotal()}`,
+    "Enter your M-PESA PIN and confirm"
+  ];
+
   if (step === 4) {
     return (
-      <div className="min-h-screen bg-white
- flex flex-col font-inter">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col"
+      >
         <Header />
         <main className="flex-1 flex items-center justify-center py-12 px-4">
-          <div className="w-full max-w-md text-center">
-            <div className="bg-[#1e293b] p-8 rounded-lg border border-[#334155]">
-              <div className="bg-green-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="text-green-500" size={48} />
+          <motion.div
+            variants={scaleIn}
+            initial="hidden"
+            animate="visible"
+            className="w-full max-w-md text-center"
+          >
+            <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
+              <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-green-100 to-emerald-50 rounded-full -translate-x-16 -translate-y-16" />
+              <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-100 to-indigo-50 rounded-full translate-x-20 translate-y-20" />
+              
+              <div className="relative z-10">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                  className="w-24 h-24 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg"
+                >
+                  <CheckCircle className="text-white" size={48} />
+                </motion.div>
+                
+                <motion.h1
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-3xl font-bold text-gray-900 mb-4 font-poppins"
+                >
+                  Order Placed!
+                </motion.h1>
+                
+                <motion.p
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
+                  transition={{ delay: 0.1 }}
+                  className="text-gray-600 mb-8 leading-relaxed"
+                >
+                  Your merchandise order has been received. We'll process it once
+                  your payment is confirmed. You'll receive updates via email.
+                </motion.p>
+                
+                <Link
+                  href="/merchandise"
+                  onClick={resetCart}
+                  className="group inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300"
+                >
+                  Continue Shopping
+                </Link>
               </div>
-              <h1 className="text-3xl font-bold text-[#f8fafc] mb-4 font-poppins">
-                Order Placed!
-              </h1>
-              <p className="text-[#cbd5e1] mb-6">
-                Your merchandise order has been received. We'll process it once
-                your payment is confirmed.
-              </p>
-              <Link
-                href="/merchandise"
-                onClick={resetCart}
-                className="inline-block px-8 py-3 bg-[#2563eb] text-white font-bold rounded hover:bg-[#1d4ed8] transition"
-              >
-                Continue Shopping
-              </Link>
             </div>
-          </div>
+          </motion.div>
         </main>
         <Footer />
-      </div>
+      </motion.div>
     );
   }
 
   if (step === 3) {
     const total = calculateTotal();
     return (
-      <div className="min-h-screen bg-white
- flex flex-col font-inter">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col"
+      >
         <Header />
         <main className="flex-1 py-12 px-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-[#1e293b] p-8 rounded-lg border border-[#334155]">
-              <h1 className="text-3xl font-bold text-[#f8fafc] mb-6 text-center font-poppins">
-                Complete Your Payment
-              </h1>
-
-              <div className="bg-[#d69e2e] p-6 rounded-lg mb-6">
-                <h2 className="text-2xl font-bold text-[#0f172a] mb-4 font-poppins">
-                  Total Amount: Ksh {total.toLocaleString()}
-                </h2>
-                <div className="space-y-3 text-[#1e293b]">
-                  <p className="text-lg">
-                    <strong>Paybill Number:</strong> 263532
-                  </p>
-                  <p className="text-lg">
-                    <strong>Account Number:</strong> MERCH-
-                    {customerInfo.full_name}
-                  </p>
-                  <p className="text-lg">
-                    <strong>Amount:</strong> Ksh {total}
-                  </p>
-                </div>
-              </div>
-
-              <div className="bg-white
- p-6 rounded-lg mb-6">
-                <h3 className="text-xl font-bold text-[#f8fafc] mb-3 font-poppins">
-                  Order Summary:
-                </h3>
-                <div className="space-y-2 text-[#cbd5e1]">
-                  {cart.map((item, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span>
-                        {item.name} ({getColorName(item.color)}, {item.size}) x{" "}
-                        {item.quantity}
-                      </span>
-                      <span>
-                        Ksh {(item.price * item.quantity).toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                  <div className="border-t border-[#334155] pt-2 mt-2 flex justify-between font-bold text-[#d69e2e]">
-                    <span>Total</span>
-                    <span>Ksh {total.toLocaleString()}</span>
+          <motion.div
+            variants={scaleIn}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="max-w-2xl mx-auto"
+          >
+            <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-full translate-x-20 -translate-y-20" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full -translate-x-16 translate-y-16" />
+              
+              <div className="relative z-10">
+                <motion.div
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="flex items-center justify-center gap-3 mb-6"
+                >
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-full flex items-center justify-center">
+                    <ShoppingCart className="text-white" size={24} />
                   </div>
-                </div>
-              </div>
+                  <h1 className="text-3xl font-bold font-poppins text-gray-900">
+                    Complete Your Payment
+                  </h1>
+                </motion.div>
 
-              <div className="bg-white
- p-6 rounded-lg mb-6">
-                <h3 className="text-xl font-bold text-[#f8fafc] mb-3 font-poppins">
-                  Payment Instructions:
-                </h3>
-                <ol className="list-decimal list-inside space-y-2 text-[#cbd5e1]">
-                  <li>Go to M-PESA on your phone</li>
-                  <li>Select Lipa na M-PESA</li>
-                  <li>Select Pay Bill</li>
-                  <li>
-                    Enter Business Number:{" "}
-                    <strong className="text-[#d69e2e]">263532</strong>
-                  </li>
-                  <li>
-                    Enter Account Number:{" "}
-                    <strong className="text-[#d69e2e]">
-                      MERCH-{customerInfo.full_name}
-                    </strong>
-                  </li>
-                  <li>
-                    Enter Amount:{" "}
-                    <strong className="text-[#d69e2e]">Ksh {total}</strong>
-                  </li>
-                  <li>Enter your M-PESA PIN and confirm</li>
-                </ol>
-              </div>
+                <motion.div
+                  variants={scaleIn}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="bg-gradient-to-r from-amber-50 to-yellow-50 p-6 rounded-2xl mb-8 border border-amber-100"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold font-poppins text-amber-900">
+                      Total Amount
+                    </h2>
+                    <div className="px-4 py-2 bg-amber-600 text-white rounded-full font-bold text-lg">
+                      Ksh {total.toLocaleString()}
+                    </div>
+                  </div>
+                  
+                  <motion.div
+                    variants={staggerContainer}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    className="space-y-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                        <Tag className="text-amber-600" size={20} />
+                      </div>
+                      <div>
+                        <div className="text-sm text-amber-800 font-medium">Paybill Number</div>
+                        <div className="text-xl font-bold text-gray-900">263532</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                        <Package className="text-amber-600" size={20} />
+                      </div>
+                      <div>
+                        <div className="text-sm text-amber-800 font-medium">Account Number</div>
+                        <div className="text-xl font-bold text-gray-900 font-mono">MERCH-{customerInfo.full_name.toUpperCase()}</div>
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
 
-              <button
-                onClick={handleConfirmPayment}
-                className="w-full px-4 py-3 bg-[#2563eb] text-white font-bold rounded hover:bg-[#1d4ed8] transition"
-              >
-                I Have Completed Payment
-              </button>
+                <motion.div
+                  variants={scaleIn}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl mb-8 border border-blue-100"
+                >
+                  <h3 className="text-xl font-bold font-poppins text-gray-900 mb-4">
+                    📱 Payment Instructions
+                  </h3>
+                  
+                  <motion.div
+                    variants={staggerContainer}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    className="space-y-3"
+                  >
+                    {paymentSteps.map((stepText, index) => (
+                      <motion.div
+                        key={index}
+                        variants={fadeUp}
+                        className="flex items-start gap-3"
+                      >
+                        <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-700 font-bold text-sm">{index + 1}</span>
+                        </div>
+                        <p className="text-gray-700 flex-1">
+                          {stepText.includes("263532") || stepText.includes("MERCH-") || stepText.includes("Ksh") ? (
+                            <>
+                              {stepText.split(/(263532|Ksh \d+|MERCH-\w+)/).map((part, i) => 
+                                /(263532|Ksh \d+|MERCH-\w+)/.test(part) ? (
+                                  <span key={i} className="font-bold text-blue-700">{part}</span>
+                                ) : (
+                                  part
+                                )
+                              )}
+                            </>
+                          ) : (
+                            stepText
+                          )}
+                        </p>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </motion.div>
+
+                <button
+                  onClick={handleConfirmPayment}
+                  className="w-full px-4 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  <Shield size={20} />
+                  I Have Completed Payment
+                </button>
+              </div>
             </div>
-          </div>
+          </motion.div>
         </main>
         <Footer />
-      </div>
+      </motion.div>
     );
   }
 
   if (step === 2) {
     const total = calculateTotal();
     return (
-      <div className="min-h-screen bg-white
- flex flex-col font-inter">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col"
+      >
         <Header />
         <main className="flex-1 py-12 px-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-[#1e293b] p-8 rounded-lg border border-[#334155]">
-              <h1 className="text-3xl font-bold text-[#f8fafc] mb-6 text-center font-poppins">
-                Checkout
-              </h1>
+          <motion.div
+            variants={scaleIn}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="max-w-2xl mx-auto"
+          >
+            <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
+              <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full -translate-x-16 -translate-y-16" />
+              <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-full translate-x-20 translate-y-20" />
+              
+              <div className="relative z-10">
+                <motion.h1
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  className="text-3xl font-bold text-gray-900 mb-6 text-center font-poppins"
+                >
+                  Checkout
+                </motion.h1>
 
-              <div className="bg-white
- p-6 rounded-lg mb-6">
-                <h3 className="text-xl font-bold text-[#f8fafc] mb-4 font-poppins">
-                  Order Summary
-                </h3>
-                {cart.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex justify-between items-center py-2 border-b border-[#334155]"
-                  >
-                    <div>
-                      <p className="text-[#f8fafc] font-semibold">
-                        {item.name}
-                      </p>
-                      <p className="text-[#94a3b8] text-sm">
-                        {getColorName(item.color)}, Size: {item.size} | Qty:{" "}
-                        {item.quantity}
+                <motion.div
+                  variants={scaleIn}
+                  initial="hidden"
+                  whileInView="visible"
+                  className="bg-gradient-to-r from-gray-50 to-blue-50 p-6 rounded-2xl mb-8 border border-gray-200"
+                >
+                  <h3 className="text-xl font-bold font-poppins text-gray-900 mb-4">
+                    Order Summary
+                  </h3>
+                  {cart.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex justify-between items-center py-3 border-b border-gray-200 last:border-0"
+                    >
+                      <div>
+                        <p className="text-gray-900 font-semibold">
+                          {item.name}
+                        </p>
+                        <p className="text-gray-600 text-sm">
+                          {getColorName(item.color)}, Size: {item.size} | Qty: {item.quantity}
+                        </p>
+                      </div>
+                      <p className="text-amber-600 font-bold">
+                        Ksh {(item.price * item.quantity).toLocaleString()}
                       </p>
                     </div>
-                    <p className="text-[#d69e2e] font-bold">
-                      Ksh {(item.price * item.quantity).toLocaleString()}
-                    </p>
+                  ))}
+                  <div className="flex justify-between items-center pt-4 text-xl font-bold border-t border-gray-200 mt-4">
+                    <span className="text-gray-900">Total</span>
+                    <span className="text-amber-600">
+                      Ksh {total.toLocaleString()}
+                    </span>
                   </div>
-                ))}
-                <div className="flex justify-between items-center pt-4 text-xl font-bold">
-                  <span className="text-[#f8fafc]">Total</span>
-                  <span className="text-[#d69e2e]">
-                    Ksh {total.toLocaleString()}
-                  </span>
-                </div>
+                </motion.div>
+
+                <motion.form
+                  onSubmit={handleConfirmOrder}
+                  className="space-y-6"
+                >
+                  <motion.div
+                    variants={fadeUp}
+                    initial="hidden"
+                    whileInView="visible"
+                    className="space-y-4"
+                  >
+                    <div>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={customerInfo.full_name}
+                        onChange={(e) =>
+                          setCustomerInfo({
+                            ...customerInfo,
+                            full_name: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                        placeholder="John Doe"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={customerInfo.phone}
+                        onChange={(e) =>
+                          setCustomerInfo({
+                            ...customerInfo,
+                            phone: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                        placeholder="0712345678"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={customerInfo.email}
+                        onChange={(e) =>
+                          setCustomerInfo({
+                            ...customerInfo,
+                            email: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                        placeholder="john.doe@example.com"
+                      />
+                    </div>
+                  </motion.div>
+
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-200"
+                    >
+                      Back to Shop
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-200"
+                    >
+                      Continue to Payment
+                    </button>
+                  </div>
+                </motion.form>
               </div>
-
-              <form onSubmit={handleConfirmOrder} className="space-y-4">
-                <div>
-                  <label className="block text-[#f8fafc] mb-2 font-semibold">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={customerInfo.full_name}
-                    onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        full_name: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white
- border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
-                    placeholder="John Doe"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[#f8fafc] mb-2 font-semibold">
-                    Phone <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={customerInfo.phone}
-                    onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        phone: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white
- border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
-                    placeholder="0712345678"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[#f8fafc] mb-2 font-semibold">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    value={customerInfo.email}
-                    onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        email: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-white
- border border-[#334155] rounded text-[#f8fafc] focus:outline-none focus:border-[#d69e2e]"
-                    placeholder="john.doe@example.com"
-                  />
-                </div>
-
-                <div className="flex gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="flex-1 px-4 py-3 bg-white
- border border-[#334155] text-white font-bold rounded hover:bg-[#1e293b] transition"
-                  >
-                    Back to Shop
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-3 bg-[#d69e2e] text-[#0f172a] font-bold rounded hover:bg-[#b8832a] transition"
-                  >
-                    Continue to Payment
-                  </button>
-                </div>
-              </form>
             </div>
-          </div>
+          </motion.div>
         </main>
         <Footer />
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white
- flex flex-col font-inter">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col"
+    >
       <Header />
 
       <main className="flex-1 py-12 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-[#0f172a]] mb-4 font-poppins">
+          <motion.div
+            variants={scaleIn}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 font-poppins">
               CHRMAA Merchandise
             </h1>
-            <p className="text-xl text-[#0F172A]">
+            <p className="text-xl text-gray-600">
               Show your alumni pride with official CHRMAA branded items
             </p>
-          </div>
+          </motion.div>
+
+          {/* Benefits Section */}
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
+          >
+            {benefits.map((benefit, index) => (
+              <motion.div
+                key={index}
+                variants={scaleIn}
+                custom={index}
+                className="bg-white p-6 rounded-2xl border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-xl flex items-center justify-center mb-4">
+                  <benefit.icon className="text-blue-600" size={24} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  {benefit.title}
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  {benefit.description}
+                </p>
+              </motion.div>
+            ))}
+          </motion.div>
 
           {/* Products Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12"
+          >
             {PRODUCTS.map((product) => {
               const selection = selectedProducts[product.id] || {
                 color: "",
@@ -621,12 +847,13 @@ export default function MerchandisePage() {
                 : [];
 
               return (
-                <div
+                <motion.div
                   key={product.id}
-                  className="bg-[#1e293b] rounded-lg border border-[#334155] overflow-hidden hover:border-[#d69e2e] transition"
+                  variants={scaleIn}
+                  className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300"
                 >
                   {/* Product Image */}
-                  <div className="relative w-full h-64">
+                  <div className="relative w-full h-64 bg-gradient-to-br from-gray-100 to-gray-200">
                     <Image
                       src={
                         selection.color
@@ -638,16 +865,19 @@ export default function MerchandisePage() {
                       className="object-cover"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                     />
+                    <div className="absolute top-3 right-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                      Ksh {product.basePrice.toLocaleString()}
+                    </div>
                   </div>
                   <div className="p-6">
-                    <h3 className="text-xl font-bold text-[#f8fafc] mb-2 font-poppins">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 font-poppins">
                       {product.name}
                     </h3>
-                    <p className="text-[#cbd5e1] mb-4">{product.description}</p>
+                    <p className="text-gray-600 mb-4 text-sm">{product.description}</p>
 
                     {/* Color Selection */}
                     <div className="mb-4">
-                      <label className="block text-[#f8fafc] text-sm font-semibold mb-2">
+                      <label className="block text-gray-700 text-sm font-semibold mb-2">
                         Color
                       </label>
                       <div className="flex flex-wrap gap-2">
@@ -658,10 +888,10 @@ export default function MerchandisePage() {
                               key={color}
                               type="button"
                               onClick={() => handleColorSelect(product.id, color)}
-                              className={`w-8 h-8 rounded-full border-2 ${
+                              className={`w-8 h-8 rounded-full border-2 transition-all ${
                                 selection.color === color
-                                  ? "border-[#d69e2e]"
-                                  : "border-[#334155]"
+                                  ? "border-amber-500 scale-110"
+                                  : "border-gray-300 hover:border-gray-400"
                               }`}
                               style={{
                                 backgroundColor: colorObj?.hex || "#cccccc",
@@ -672,7 +902,7 @@ export default function MerchandisePage() {
                         })}
                       </div>
                       {selection.color && (
-                        <p className="text-[#cbd5e1] text-sm mt-1">
+                        <p className="text-gray-600 text-sm mt-1">
                           {getColorName(selection.color)}
                         </p>
                       )}
@@ -680,8 +910,8 @@ export default function MerchandisePage() {
 
                     {/* Size Selection */}
                     {selection.color && (
-                      <div className="mb-4">
-                        <label className="block text-[#f8fafc] text-sm font-semibold mb-2">
+                      <div className="mb-6">
+                        <label className="block text-gray-700 text-sm font-semibold mb-2">
                           Size
                         </label>
                         <div className="flex flex-wrap gap-2">
@@ -690,10 +920,10 @@ export default function MerchandisePage() {
                               key={size}
                               type="button"
                               onClick={() => handleSizeSelect(product.id, size)}
-                              className={`px-3 py-1 text-sm rounded border ${
+                              className={`px-3 py-1 text-sm rounded-xl border transition-all ${
                                 selection.size === size
-                                  ? "bg-[#d69e2e] text-[#0f172a] border-[#d69e2e]"
-                                  : "bg-[#fff] text-[#f8fafc] border-[#334155] hover:border-[#64748b]"
+                                  ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-amber-500"
+                                  : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
                               }`}
                             >
                               {size}
@@ -703,45 +933,42 @@ export default function MerchandisePage() {
                       </div>
                     )}
 
-                    {/* Price and Add to Cart */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-2xl font-bold text-[#d69e2e]">
-                        Ksh {product.basePrice.toLocaleString()}
-                      </span>
-                      <button
-                        onClick={() => addToCart(product.id)}
-                        disabled={!selection.color || !selection.size}
-                        className={`px-4 py-2 font-semibold rounded flex items-center gap-2 transition ${
-                          !selection.color || !selection.size
-                            ? "bg-[#334155] text-[#94a3b8] cursor-not-allowed"
-                            : "bg-[#2563eb] text-white hover:bg-[#1d4ed8]"
-                        }`}
-                      >
-                        <ShoppingCart size={18} />
-                        Add
-                      </button>
-                    </div>
+                    {/* Add to Cart Button */}
+                    <button
+                      onClick={() => addToCart(product.id)}
+                      disabled={!selection.color || !selection.size}
+                      className={`w-full px-4 py-3 font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-200 ${
+                        !selection.color || !selection.size
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg hover:scale-[1.02]"
+                      }`}
+                    >
+                      <ShoppingCart size={18} />
+                      Add to Cart
+                    </button>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
 
           {/* Cart */}
           {cart.length > 0 && (
-            <div className="bg-[#1e293b] p-8 rounded-lg border border-[#334155]">
-              <h2 className="text-2xl font-bold text-[#f8fafc] mb-6 font-poppins flex items-center gap-2">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white p-8 rounded-2xl border border-gray-200 shadow-xl"
+            >
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 font-poppins flex items-center gap-2">
                 <ShoppingCart size={24} />
-                Your Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)}{" "}
-                items)
+                Your Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)} items)
               </h2>
 
               <div className="space-y-4 mb-6">
                 {cart.map((item, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between bg-white
- p-4 rounded border border-[#334155]"
+                    className="flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       <div className="relative w-16 h-16">
@@ -749,15 +976,15 @@ export default function MerchandisePage() {
                           src={item.image}
                           alt={item.name}
                           fill
-                          className="object-cover rounded"
+                          className="object-cover rounded-lg"
                           sizes="64px"
                         />
                       </div>
                       <div>
-                        <h4 className="text-[#f8fafc] font-semibold">
+                        <h4 className="text-gray-900 font-semibold">
                           {item.name}
                         </h4>
-                        <div className="flex items-center gap-3 text-sm text-[#94a3b8]">
+                        <div className="flex items-center gap-3 text-sm text-gray-600">
                           <div className="flex items-center gap-1">
                             <div
                               className="w-3 h-3 rounded-full"
@@ -776,26 +1003,26 @@ export default function MerchandisePage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => updateQuantity(index, -1)}
-                          className="bg-[#1e293b] p-2 rounded hover:bg-[#334155] transition"
+                          className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 transition-colors"
                         >
-                          <Minus size={16} className="text-[#f8fafc]" />
+                          <Minus size={16} className="text-gray-700" />
                         </button>
-                        <span className="text-[#f8fafc] font-bold w-8 text-center">
+                        <span className="text-gray-900 font-bold w-8 text-center">
                           {item.quantity}
                         </span>
                         <button
                           onClick={() => updateQuantity(index, 1)}
-                          className="bg-[#1e293b] p-2 rounded hover:bg-[#334155] transition"
+                          className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 transition-colors"
                         >
-                          <Plus size={16} className="text-[#f8fafc]" />
+                          <Plus size={16} className="text-gray-700" />
                         </button>
                       </div>
-                      <span className="text-[#d69e2e] font-bold w-24 text-right">
+                      <span className="text-amber-600 font-bold w-24 text-right">
                         Ksh {(item.price * item.quantity).toLocaleString()}
                       </span>
                       <button
                         onClick={() => removeFromCart(index)}
-                        className="px-3 py-1 text-red-500 hover:text-red-400 text-sm font-bold bg-red-500/10 hover:bg-red-500/20 rounded transition"
+                        className="px-3 py-1 text-red-600 hover:text-red-700 text-sm font-bold bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
                       >
                         Remove
                       </button>
@@ -804,26 +1031,26 @@ export default function MerchandisePage() {
                 ))}
               </div>
 
-              <div className="flex justify-between items-center pt-6 border-t border-[#334155]">
-                <div className="text-2xl font-bold text-[#f8fafc]">
+              <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                <div className="text-2xl font-bold text-gray-900">
                   Total:{" "}
-                  <span className="text-[#d69e2e]">
+                  <span className="text-amber-600">
                     Ksh {calculateTotal().toLocaleString()}
                   </span>
                 </div>
                 <button
                   onClick={handleCheckout}
-                  className="px-8 py-3 bg-[#d69e2e] text-[#0f172a] font-bold rounded hover:bg-[#b8832a] transition"
+                  className="px-8 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold rounded-xl hover:shadow-xl transition-all duration-200"
                 >
                   Proceed to Checkout
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
       </main>
 
       <Footer />
-    </div>
+    </motion.div>
   );
 }

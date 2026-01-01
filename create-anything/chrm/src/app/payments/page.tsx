@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { CheckCircle, Users, User } from "lucide-react";
+import { CheckCircle, Users, User, CreditCard, Shield, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import type { Variants } from "framer-motion";
 
 // Define types
 type FormData = {
@@ -24,6 +26,58 @@ type PaybillInfo = {
   account_number: string;
 };
 
+// Animation Variants
+const fadeUp: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 24,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+};
+
+const fadeIn: Variants = {
+  hidden: {
+    opacity: 0,
+  },
+  visible: {
+    opacity: 1,
+    transition: {
+      duration: 0.5,
+    },
+  },
+};
+
+const scaleIn: Variants = {
+  hidden: {
+    opacity: 0,
+    scale: 0.9,
+  },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.6,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+};
+
+const staggerContainer: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
 export default function PaymentsPage() {
   const [paymentType, setPaymentType] = useState<"renewal" | "event">("renewal");
   const [formData, setFormData] = useState<FormData>({
@@ -36,7 +90,7 @@ export default function PaymentsPage() {
     event_price: "",
     is_alumni_member: "",
   });
-  const [step, setStep] = useState(1); // 1: form, 2: payment instructions, 3: success
+  const [step, setStep] = useState(1);
   const [paybillInfo, setPaybillInfo] = useState<PaybillInfo>({
     amount: 0,
     account_number: "",
@@ -52,7 +106,7 @@ export default function PaymentsPage() {
     if (paymentType === "renewal") {
       setPaybillInfo({
         amount: 1000,
-        account_number: `RN-${formData.full_name}`,
+        account_number: `RN-${formData.full_name.toUpperCase()}`,
       });
     } else {
       const eventPrice = parseFloat(formData.event_price);
@@ -71,16 +125,12 @@ export default function PaymentsPage() {
         return;
       }
       
-      // Apply 5% discount only if member
-      let finalPrice = eventPrice;
-      if (formData.is_alumni_member === "yes") {
-        const discount = 5;
-        finalPrice = eventPrice - (eventPrice * discount) / 100;
-      }
+      const discount = formData.is_alumni_member === "yes" ? 5 : 0;
+      const finalPrice = eventPrice - (eventPrice * discount) / 100;
       
       setPaybillInfo({
         amount: finalPrice,
-        account_number: `EVT-${formData.full_name}`,
+        account_number: `EVT-${formData.full_name.toUpperCase()}`,
       });
     }
 
@@ -91,7 +141,6 @@ export default function PaymentsPage() {
     setStep(3);
   };
 
-  // Calculate discounted price for display
   const calculateEventPrice = () => {
     const eventPrice = parseFloat(formData.event_price);
     if (isNaN(eventPrice) || eventPrice <= 0) return null;
@@ -103,349 +152,336 @@ export default function PaymentsPage() {
       : eventPrice;
     
     return {
-      Price: eventPrice,
+      originalPrice: eventPrice,
       discount,
       finalPrice,
       isMember
     };
   };
 
+  const paymentSteps = [
+    "Go to M-PESA on your phone",
+    "Select Lipa na M-PESA",
+    "Select Pay Bill",
+    `Enter Business Number: 263532`,
+    `Enter Account Number: ${paybillInfo.account_number}`,
+    `Enter Amount: Ksh ${paybillInfo.amount}`,
+    "Enter your M-PESA PIN and confirm"
+  ];
+
   if (step === 3) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col font-poppins">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="min-h-screen bg-gradient-to-br from-gray-50 to-white"
+      >
         <Header />
         <main className="flex-1 flex items-center justify-center py-12 px-4">
-          <div className="w-full max-w-md text-center">
-            <div className="bg-[#1e293b] p-8 rounded-lg border border-[#334155]">
-              <div className="bg-green-500/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="text-green-500" size={48} />
+          <motion.div
+            variants={scaleIn}
+            initial="hidden"
+            animate="visible"
+            className="w-full max-w-md text-center"
+          >
+            <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
+              <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-green-100 to-emerald-50 rounded-full -translate-x-16 -translate-y-16" />
+              <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-100 to-indigo-50 rounded-full translate-x-20 translate-y-20" />
+              
+              <div className="relative z-10">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                  className="w-24 h-24 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg"
+                >
+                  <CheckCircle className="text-white" size={48} />
+                </motion.div>
+                
+                <motion.h1
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
+                  className="text-3xl font-bold font-poppins text-gray-900 mb-4"
+                >
+                  Payment Submitted!
+                </motion.h1>
+                
+                <motion.p
+                  variants={fadeUp}
+                  initial="hidden"
+                  animate="visible"
+                  transition={{ delay: 0.1 }}
+                  className="text-gray-600 mb-8 leading-relaxed"
+                >
+                  Your payment will be verified by our team. You'll be notified once it's confirmed and your membership/registration will be activated.
+                </motion.p>
+                
+                <Link
+                  href="/"
+                  className="group inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300"
+                >
+                  Back to Home
+                  <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                </Link>
               </div>
-              <h1 className="text-3xl font-bold text-[#f8fafc] mb-4 font-poppins">
-                Payment Submitted!
-              </h1>
-              <p className="text-[#cbd5e1] mb-6">
-                Your payment will be verified by the admin. You'll be notified
-                once it's confirmed.
-              </p>
-              <Link
-                href="/"
-                className="inline-block px-8 py-3 bg-[#2563eb] text-white font-bold rounded hover:bg-[#1d4ed8] transition"
-              >
-                Back to Home
-              </Link>
             </div>
-          </div>
+          </motion.div>
         </main>
         <Footer />
-      </div>
+      </motion.div>
     );
   }
 
   if (step === 2) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col font-inter">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="min-h-screen bg-gradient-to-br from-gray-50 to-white"
+      >
         <Header />
         <main className="flex-1 py-12 px-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-[#1e293b] p-8 rounded-lg border border-[#334155]">
-              <h1 className="text-3xl font-bold text-[#f8fafc] mb-6 text-center font-poppins">
-                Complete Your Payment
-              </h1>
+          <motion.div
+            variants={scaleIn}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="max-w-2xl mx-auto"
+          >
+            <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-full translate-x-20 -translate-y-20" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full -translate-x-16 translate-y-16" />
+              
+              <div className="relative z-10">
+                <motion.div
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="flex items-center justify-center gap-3 mb-6"
+                >
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-full flex items-center justify-center">
+                    <CreditCard className="text-white" size={24} />
+                  </div>
+                  <h1 className="text-3xl font-bold font-poppins text-gray-900">
+                    Complete Your Payment
+                  </h1>
+                </motion.div>
 
-              <div className="bg-[#d69e2e] p-6 rounded-lg mb-6">
-                <h2 className="text-2xl font-bold text-[#0f172a] mb-4 font-poppins">
-                  Amount: Ksh {paybillInfo.amount.toLocaleString()}
-                </h2>
-                <div className="space-y-3 text-[#1e293b]">
-                  <p className="text-lg">
-                    <strong>Paybill Number:</strong> 263532
-                  </p>
-                  <p className="text-lg">
-                    <strong>Account Number:</strong>{" "}
-                    {paybillInfo.account_number}
-                  </p>
-                  <p className="text-lg">
-                    <strong>Amount:</strong> Ksh {paybillInfo.amount}
-                  </p>
-                </div>
+                <motion.div
+                  variants={scaleIn}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="bg-gradient-to-r from-amber-50 to-yellow-50 p-6 rounded-2xl mb-8 border border-amber-100"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-2xl font-bold font-poppins text-amber-900">
+                      Amount to Pay
+                    </h2>
+                    <div className="px-4 py-2 bg-amber-600 text-white rounded-full font-bold text-lg">
+                      Ksh {paybillInfo.amount.toLocaleString()}
+                    </div>
+                  </div>
+                  
+                  <motion.div
+                    variants={staggerContainer}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    className="space-y-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                        <Shield className="text-amber-600" size={20} />
+                      </div>
+                      <div>
+                        <div className="text-sm text-amber-800 font-medium">Paybill Number</div>
+                        <div className="text-xl font-bold text-gray-900">263532</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                        <User className="text-amber-600" size={20} />
+                      </div>
+                      <div>
+                        <div className="text-sm text-amber-800 font-medium">Account Number</div>
+                        <div className="text-xl font-bold text-gray-900 font-mono">{paybillInfo.account_number}</div>
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+
+                <motion.div
+                  variants={scaleIn}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl mb-8 border border-blue-100"
+                >
+                  <h3 className="text-xl font-bold font-poppins text-gray-900 mb-4">
+                    📱 Payment Instructions
+                  </h3>
+                  
+                  <motion.div
+                    variants={staggerContainer}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    className="space-y-3"
+                  >
+                    {paymentSteps.map((stepText, index) => (
+                      <motion.div
+                        key={index}
+                        variants={fadeUp}
+                        className="flex items-start gap-3"
+                      >
+                        <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-blue-700 font-bold text-sm">{index + 1}</span>
+                        </div>
+                        <p className="text-gray-700 flex-1">
+                          {stepText.includes("263532") || stepText.includes(paybillInfo.account_number) || stepText.includes("Ksh") ? (
+                            <>
+                              {stepText.split(/(263532|Ksh \d+|RN-\w+|EVT-\w+)/).map((part, i) => 
+                                /(263532|Ksh \d+|RN-\w+|EVT-\w+)/.test(part) ? (
+                                  <span key={i} className="font-bold text-blue-700">{part}</span>
+                                ) : (
+                                  part
+                                )
+                              )}
+                            </>
+                          ) : (
+                            stepText
+                          )}
+                        </p>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </motion.div>
+
+                <button
+                  onClick={handleConfirmPayment}
+                  className="group w-full px-4 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
+                >
+                  <Shield size={20} />
+                  I Have Completed Payment
+                  <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                </button>
               </div>
-
-              <div className="bg-[#0f172a] p-6 rounded-lg mb-6">
-                <h3 className="text-xl font-bold text-[#f8fafc] mb-3 font-poppins">
-                  Payment Instructions:
-                </h3>
-                <ol className="list-decimal list-inside space-y-2 text-[#cbd5e1]">
-                  <li>Go to M-PESA on your phone</li>
-                  <li>Select Lipa na M-PESA</li>
-                  <li>Select Pay Bill</li>
-                  <li>
-                    Enter Business Number:{" "}
-                    <strong className="text-[#d69e2e]">263532</strong>
-                  </li>
-                  <li>
-                    Enter Account Number:{" "}
-                    <strong className="text-[#d69e2e]">
-                      {paybillInfo.account_number}
-                    </strong>
-                  </li>
-                  <li>
-                    Enter Amount:{" "}
-                    <strong className="text-[#d69e2e]">
-                      Ksh {paybillInfo.amount}
-                    </strong>
-                  </li>
-                  <li>Enter your M-PESA PIN and confirm</li>
-                </ol>
-              </div>
-
-              <button
-                onClick={handleConfirmPayment}
-                className="w-full px-4 py-3 bg-[#2563eb] text-white font-bold rounded hover:bg-[#1d4ed8] transition"
-              >
-                I Have Completed Payment
-              </button>
             </div>
-          </div>
+          </motion.div>
         </main>
         <Footer />
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#fff] flex flex-col font-poppins">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50"
+    >
       <Header />
 
       <main className="flex-1 py-12 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-[#fff] p-8 rounded-lg ">
-            <h1 className="text-3xl font-bold text-[#000] mb-6 text-center font-poppins">
-              Make a Payment
-            </h1>
-
-            {/* Payment Type Selection */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <button
-                onClick={() => setPaymentType("renewal")}
-                className={`px-6 py-4 rounded-lg font-bold transition ${
-                  paymentType === "renewal"
-                    ? "bg-[#d69e2e] text-[#0f172a]"
-                    : "bg-[#0f172a] text-[#f8fafc] border border-[#334155]"
-                }`}
+        <motion.div
+          variants={scaleIn}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          className="max-w-2xl mx-auto"
+        >
+          <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
+            {/* Background Elements */}
+            <div className="absolute top-0 left-0 w-40 h-40 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full -translate-x-20 -translate-y-20" />
+            <div className="absolute bottom-0 right-0 w-48 h-48 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-full translate-x-24 translate-y-24" />
+            
+            <div className="relative z-10">
+              <motion.div
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className="text-center mb-8"
               >
-                Membership Renewal
-              </button>
-              <button
-                onClick={() => setPaymentType("event")}
-                className={`px-6 py-4 rounded-lg font-bold transition ${
-                  paymentType === "event"
-                    ? "bg-[#d69e2e] text-[#0f172a]"
-                    : "bg-[#0f172a] text-[#f8fafc] border border-[#334155]"
-                }`}
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-full flex items-center justify-center">
+                    <CreditCard className="text-white" size={24} />
+                  </div>
+                  <h1 className="text-3xl md:text-4xl font-bold font-poppins text-gray-900">
+                    Make a Payment
+                  </h1>
+                </div>
+                <p className="text-gray-600">
+                  Pay for membership renewal or register for events
+                </p>
+              </motion.div>
+
+              {/* Payment Type Selection */}
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className="grid grid-cols-2 gap-4 mb-8"
               >
-                Event Payment
-              </button>
-            </div>
+                <motion.button
+                  variants={scaleIn}
+                  custom={0}
+                  onClick={() => setPaymentType("renewal")}
+                  className={`px-6 py-4 rounded-xl font-bold transition-all duration-300 flex flex-col items-center gap-2 ${
+                    paymentType === "renewal"
+                      ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-lg"
+                      : "bg-white border-2 border-gray-200 text-gray-700 hover:border-amber-300 hover:shadow-md"
+                  }`}
+                >
+                  <Users size={24} />
+                  Membership Renewal
+                </motion.button>
+                
+                <motion.button
+                  variants={scaleIn}
+                  custom={1}
+                  onClick={() => setPaymentType("event")}
+                  className={`px-6 py-4 rounded-xl font-bold transition-all duration-300 flex flex-col items-center gap-2 ${
+                    paymentType === "event"
+                      ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-white shadow-lg"
+                      : "bg-white border-2 border-gray-200 text-gray-700 hover:border-amber-300 hover:shadow-md"
+                  }`}
+                >
+                  <User size={24} />
+                  Event Payment
+                </motion.button>
+              </motion.div>
 
-            {error && (
-              <div className="bg-red-500/10 border border-red-500 text-red-500 px-4 py-3 rounded mb-4">
-                {error}
-              </div>
-            )}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6"
+                >
+                  {error}
+                </motion.div>
+              )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {paymentType === "renewal" ? (
-                <>
-                  <div>
-                    <label className="block text-[#000] mb-2 font-semibold">
-                      Membership Number
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.membership_number}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          membership_number: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
-                      placeholder="M-123456"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[#000] mb-2 font-semibold">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.full_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, full_name: e.target.value })
-                      }
-                      className="w-full px-4 py-3 border border-[#2B4C73] rounded-lg font-inter text-[#000] bg-white light:bg-[#fff] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent"
-                      placeholder="John Doe"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[#000] mb-2 font-semibold">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
-                      placeholder="john.doe@example.com"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[#000] mb-2 font-semibold">
-                      Phone
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={formData.phone}
-                      onChange={(e) =>
-                        setFormData({ ...formData, phone: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
-                      placeholder="0712345678"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[#000] mb-2 font-semibold">
-                      Renewal Year
-                    </label>
-                    <select
-                      required
-                      value={formData.renewal_year}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          renewal_year: e.target.value,
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
-                    >
-                      {Array.from(
-                        { length: 7 },
-                        (_, i) => new Date().getFullYear() + i,
-                      ).map((year) => (
-                        <option key={year} value={year}>
-                          {year}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="bg-[#0f172a] p-4 rounded border border-[#334155]">
-                    <p className="text-[#cbd5e1]">
-                      <strong className="text-[#d69e2e]">Amount:</strong> Ksh
-                      1,000
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-[#000] mb-2 font-semibold">
-                      Event Name
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.event_name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, event_name: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
-                      placeholder="Enter event name"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[#000] mb-2 font-semibold">
-                      Event Price (Ksh)
-                    </label>
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      step="0.01"
-                      value={formData.event_price}
-                      onChange={(e) =>
-                        setFormData({ ...formData, event_price: e.target.value })
-                      }
-                      className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
-                      placeholder="5000"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[#000] mb-2 font-semibold">
-                      Are you a CHRM Alumni Association member?
-                    </label>
-                    <div className="space-y-3">
-                      <label className="flex items-center p-3 bg-[#fff] border border-[#334155] rounded-lg cursor-pointer hover:border-[#d69e2e] transition-colors duration-200">
-                        <input
-                          type="radio"
-                          name="is_alumni_member"
-                          value="yes"
-                          checked={formData.is_alumni_member === "yes"}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              is_alumni_member: e.target.value,
-                            })
-                          }
-                          className="mr-3"
-                        />
-                        <div className="flex items-center">
-                          <Users size={18} className="mr-2 text-[#d69e2e]" />
-                          <span className="font-semibold text-[#000]">
-                            Yes, I am a member
-                          </span>
-                        </div>
-                      </label>
-
-                      <label className="flex items-center p-3 bg-[#fff] border border-[#334155] rounded-lg cursor-pointer hover:border-[#d69e2e] transition-colors duration-200">
-                        <input
-                          type="radio"
-                          name="is_alumni_member"
-                          value="no"
-                          checked={formData.is_alumni_member === "no"}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              is_alumni_member: e.target.value,
-                            })
-                          }
-                          className="mr-3"
-                        />
-                        <div className="flex items-center">
-                          <User size={18} className="mr-2 text-[#cbd5e1]" />
-                          <span className="font-semibold text-[#000]">
-                            No, I am not a member
-                          </span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  {formData.is_alumni_member === "yes" && (
-                    <div>
-                      <label className="block text-[#000] mb-2 font-semibold">
+              <motion.form
+                onSubmit={handleSubmit}
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-50px" }}
+                className="space-y-6"
+              >
+                {paymentType === "renewal" ? (
+                  <>
+                    <motion.div variants={scaleIn}>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
                         Membership Number
                       </label>
                       <input
@@ -458,60 +494,263 @@ export default function PaymentsPage() {
                             membership_number: e.target.value,
                           })
                         }
-                        className="w-full px-4 py-3 bg-[#fff] border border-[#334155] rounded text-[#000] focus:outline-none focus:border-[#d69e2e]"
-                        placeholder="Enter your membership number"
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                        placeholder="M-123456"
                       />
-                    </div>
-                  )}
+                    </motion.div>
 
-                  {formData.event_price && calculateEventPrice() && (
-                    <div className="bg-[#0f172a] p-4 rounded border border-[#334155]">
-                      {(() => {
-                        const priceInfo = calculateEventPrice();
-                        if (priceInfo) {
-                          return (
-                            <div className="space-y-2 text-[#cbd5e1]">
-                              <p>
-                                <strong className="text-[#d69e2e]">
-                                  Price:
-                                </strong>{" "}
-                                Ksh {priceInfo.Price.toLocaleString()}
-                              </p>
-                              {priceInfo.isMember && (
-                                <p>
-                                  <strong className="text-[#d69e2e]">
-                                    Member Discount:
-                                  </strong>{" "}
-                                  {priceInfo.discount}%
-                                </p>
-                              )}
-                              <p className="text-xl font-bold text-[#d69e2e]">
-                                Final Amount: Ksh{" "}
-                                {priceInfo.finalPrice.toLocaleString()}
-                              </p>
-                            </div>
-                          );
+                    <motion.div variants={scaleIn}>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.full_name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, full_name: e.target.value })
                         }
-                        return null;
-                      })()}
-                    </div>
-                  )}
-                </>
-              )}
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                        placeholder="John Doe"
+                      />
+                    </motion.div>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full px-4 py-3 bg-[#d69e2e] text-[#0f172a] font-bold rounded hover:bg-[#b8832a] transition disabled:opacity-50"
-              >
-                Continue to Payment
-              </button>
-            </form>
+                    <motion.div variants={scaleIn}>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={formData.email}
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                        placeholder="john.doe@example.com"
+                      />
+                    </motion.div>
+
+                    <motion.div variants={scaleIn}>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                        Phone
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={formData.phone}
+                        onChange={(e) =>
+                          setFormData({ ...formData, phone: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                        placeholder="0712345678"
+                      />
+                    </motion.div>
+
+                    <motion.div variants={scaleIn}>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                        Renewal Year
+                      </label>
+                      <select
+                        required
+                        value={formData.renewal_year}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            renewal_year: e.target.value,
+                          })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                      >
+                        {Array.from(
+                          { length: 7 },
+                          (_, i) => new Date().getFullYear() + i,
+                        ).map((year) => (
+                          <option key={year} value={year}>
+                            {year}
+                          </option>
+                        ))}
+                      </select>
+                    </motion.div>
+
+                    <motion.div
+                      variants={scaleIn}
+                      className="bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-xl border border-amber-100"
+                    >
+                      <p className="text-gray-700">
+                        <strong className="text-amber-700">Amount:</strong> Ksh 1,000
+                      </p>
+                    </motion.div>
+                  </>
+                ) : (
+                  <>
+                    <motion.div variants={scaleIn}>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                        Event Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.event_name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, event_name: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                        placeholder="Annual HR Conference 2024"
+                      />
+                    </motion.div>
+
+                    <motion.div variants={scaleIn}>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                        Event Price (Ksh)
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        step="0.01"
+                        value={formData.event_price}
+                        onChange={(e) =>
+                          setFormData({ ...formData, event_price: e.target.value })
+                        }
+                        className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                        placeholder="5000"
+                      />
+                    </motion.div>
+
+                    <motion.div variants={scaleIn}>
+                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                        Are you a CHRM Alumni Association member?
+                      </label>
+                      <div className="space-y-3">
+                        <label className="flex items-center p-3 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-amber-300 transition-all duration-200">
+                          <input
+                            type="radio"
+                            name="is_alumni_member"
+                            value="yes"
+                            checked={formData.is_alumni_member === "yes"}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                is_alumni_member: e.target.value,
+                              })
+                            }
+                            className="mr-3 text-amber-500 focus:ring-amber-200"
+                          />
+                          <div className="flex items-center">
+                            <Users size={18} className="mr-2 text-amber-500" />
+                            <span className="font-semibold text-gray-700">
+                              Yes, I am a member
+                            </span>
+                          </div>
+                        </label>
+
+                        <label className="flex items-center p-3 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-amber-300 transition-all duration-200">
+                          <input
+                            type="radio"
+                            name="is_alumni_member"
+                            value="no"
+                            checked={formData.is_alumni_member === "no"}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                is_alumni_member: e.target.value,
+                              })
+                            }
+                            className="mr-3 text-amber-500 focus:ring-amber-200"
+                          />
+                          <div className="flex items-center">
+                            <User size={18} className="mr-2 text-gray-400" />
+                            <span className="font-semibold text-gray-700">
+                              No, I am not a member
+                            </span>
+                          </div>
+                        </label>
+                      </div>
+                    </motion.div>
+
+                    {formData.is_alumni_member === "yes" && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                          Membership Number
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.membership_number}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              membership_number: e.target.value,
+                            })
+                          }
+                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                          placeholder="Enter your membership number"
+                        />
+                      </motion.div>
+                    )}
+
+                    {formData.event_price && calculateEventPrice() && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100"
+                      >
+                        {(() => {
+                          const priceInfo = calculateEventPrice();
+                          if (priceInfo) {
+                            return (
+                              <div className="space-y-2">
+                                <p className="text-gray-700">
+                                  <strong className="text-green-700">
+                                    Original Price:
+                                  </strong>{" "}
+                                  Ksh {priceInfo.originalPrice.toLocaleString()}
+                                </p>
+                                {priceInfo.isMember && (
+                                  <p className="text-gray-700">
+                                    <strong className="text-green-700">
+                                      Member Discount:
+                                    </strong>{" "}
+                                    {priceInfo.discount}%
+                                  </p>
+                                )}
+                                <p className="text-xl font-bold text-green-700">
+                                  Final Amount: Ksh{" "}
+                                  {priceInfo.finalPrice.toLocaleString()}
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </motion.div>
+                    )}
+                  </>
+                )}
+
+                <motion.button
+                  variants={fadeUp}
+                  type="submit"
+                  disabled={loading}
+                  className="group w-full px-4 py-4 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <CreditCard size={20} />
+                  Continue to Payment
+                  <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                </motion.button>
+              </motion.form>
+            </div>
           </div>
-        </div>
+        </motion.div>
       </main>
 
       <Footer />
-    </div>
+    </motion.div>
   );
 }
