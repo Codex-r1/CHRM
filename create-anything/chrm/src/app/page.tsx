@@ -255,14 +255,27 @@ export default function HomePage() {
                   whileTap={buttonTap}
                 >
                   <Link
-                    href="/register"
+                    href="/payments
+"
                     className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#d69e2e] to-[#b8832a] text-[#0f172a] font-bold rounded-lg hover:shadow-xl transition-all duration-300 text-lg"
                   >
                     Join the Association
                     <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
                   </Link>
                 </motion.div>
-                
+                <motion.div
+                  variants={fadeUp}
+                  whileHover={buttonHover}
+                  whileTap={buttonTap}
+                >
+                  <Link
+                    href="/payments"
+                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#d69e2e] to-[#b8832a] text-[#0f172a] font-bold rounded-lg hover:shadow-xl transition-all duration-300 text-lg text-[#0B0F1A] dark:text-[#E5E7EB]"
+                  >
+                    Renew Membership
+                    <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                  </Link>
+                </motion.div>
                 <motion.div
                   variants={fadeUp}
                   transition={{ delay: 0.1 }}
@@ -467,7 +480,8 @@ export default function HomePage() {
                 className="inline-block"
               >
                 <Link
-                  href="/register"
+                  href="/payments
+"
                   className="group inline-flex items-center gap-2 px-10 py-5 bg-black text-white font-bold rounded-xl hover:shadow-2xl transition-all duration-300 text-lg"
                 >
                   <span>Register Now</span>

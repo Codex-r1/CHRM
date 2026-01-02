@@ -1,7 +1,7 @@
 "use client"
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { Mail, Phone, MapPin, Clock, User, MessageSquare, Shield, ArrowRight } from "lucide-react";
+import { Mail, Phone, MapPin, Clock, User, MessageSquare, ArrowRight, CreditCard } from "lucide-react";
 import Link from "next/link";
 
 export default function ContactPage() {
@@ -20,7 +20,7 @@ export default function ContactPage() {
       icon: Phone,
       title: "Phone",
       description: "Speak with our administrator",
-      color: "blue",
+      color: "amber",
       items: [
         { text: "0700 773 322", href: "tel:+254700773322" },
         { text: "0733 883 322", href: "tel:+254733883322" }
@@ -47,7 +47,7 @@ export default function ContactPage() {
   const ctaButtons = [
     {
       text: "Register Now",
-      href: "/register",
+      href: "/payments",
       color: "amber",
       icon: User
     },
@@ -61,7 +61,7 @@ export default function ContactPage() {
       text: "Payments",
       href: "/payments",
       color: "green",
-      icon: Shield
+      icon: CreditCard
     }
   ];
 

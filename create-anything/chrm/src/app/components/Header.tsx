@@ -49,13 +49,6 @@ export default function Header() {
               About Us
             </Link>
             <Link
-              href="/register"
-              className="text-[#0f172a]
- hover:text-[#d69e2e] transition font-inter"
-            >
-              Register
-            </Link>
-            <Link
               href="/payments"
               className="text-[#0f172a]
  hover:text-[#d69e2e] transition font-inter"
@@ -81,7 +74,8 @@ export default function Header() {
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
             <Link
-              href="/register"
+              href="/payments
+"
               className="px-4 py-2 bg-[#d69e2e] text-[#0f172a] font-semibold rounded hover:bg-[#b8832a] transition font-inter"
             >
               Register
@@ -127,14 +121,6 @@ export default function Header() {
               About Us
             </Link>
             <Link
-              href="/register"
-              className="text-[#fff]
- hover:text-[#d69e2e] py-2 font-inter"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Register
-            </Link>
-            <Link
               href="/payments"
               className="text-[#fff]
  hover:text-[#d69e2e] py-2 font-inter"
@@ -160,8 +146,8 @@ export default function Header() {
             </Link>
             <div className="flex flex-col gap-2 mt-2">
               <Link
-                href="/register"
-                className="px-4 py-2 bg-[#d69e2e] text-[#0f172a] font-semibold rounded text-center font-inter"
+                href="/payments
+"className="px-4 py-2 bg-[#d69e2e] text-[#0f172a] font-semibold rounded text-center font-inter"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Register
