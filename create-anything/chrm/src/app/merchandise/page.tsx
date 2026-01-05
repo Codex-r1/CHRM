@@ -221,7 +221,7 @@ const benefits = [
   },
   {
     icon: Tag,
-    title: "Member Discounts",
+    title: "Affordable prices",
     description: "Exclusive prices for CHRMAA members"
   },
   {

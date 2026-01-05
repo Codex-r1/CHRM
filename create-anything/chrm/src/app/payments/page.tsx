@@ -155,7 +155,7 @@ export default function CombinedPaymentsPage() {
         return;
       }
 
-      const registrationFee = 1000;
+      const registrationFee = 1500;
 const generatedAccountNumber = `R-${formData.full_name.replace(/\s+/g, '').toUpperCase()}`;      
       setPaybillInfo({
         amount: registrationFee,
@@ -792,7 +792,7 @@ const generatedAccountNumber = `R-${formData.full_name.replace(/\s+/g, '').toUpp
                         </div>
                         <div className="pt-4 border-t border-green-200">
                           <p className="text-lg font-bold text-green-700">
-                            Registration Fee: Ksh 1,000
+                            Registration Fee: Ksh 1,500
                           </p>
                         </div>
                       </motion.div>

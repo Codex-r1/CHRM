@@ -1,7 +1,7 @@
 "use client";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
-import { Users, Calendar, ShoppingBag, Award, ArrowRight, Star, Sparkles } from "lucide-react";
+import { Users, Calendar, ShoppingBag, Award, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
@@ -190,20 +190,7 @@ export default function HomePage() {
             className="absolute bottom-10 right-10 w-40 h-40 bg-gradient-to-br from-[#2563eb]/10 to-[#d69e2e]/10 rounded-full blur-xl"
           />
           
-          {/* Floating Stars */}
-          {[...Array(3)].map((_, i) => (
-            <motion.div
-              key={i}
-              animate={floatAnimation}
-              className="absolute"
-              style={{
-                top: `${20 + i * 25}%`,
-                left: `${10 + i * 30}%`,
-              }}
-            >
-              <Star size={20} className="text-[#d69e2e]/30" />
-            </motion.div>
-          ))}
+         
           
           <div className="max-w-7xl mx-auto text-center relative z-10">
             <motion.div
@@ -215,9 +202,9 @@ export default function HomePage() {
                 animate={pulseAnimation}
                 className="inline-flex items-center gap-2 bg-[#d69e2e]/10 px-4 py-2 rounded-full mb-6"
               >
-                <Sparkles size={16} className="text-[#d69e2e]" />
+                
                 <span className="text-[#d69e2e] font-medium">Welcome Alumni</span>
-                <Sparkles size={16} className="text-[#d69e2e]" />
+          
               </motion.div>
               
               <motion.h1
@@ -433,21 +420,7 @@ export default function HomePage() {
             animate={pulseAnimation}
             className="absolute inset-0 bg-gradient-to-r from-[#d69e2e] to-[#b8832a]"
           />
-          
-          {/* Sparkles */}
-          {[...Array(5)].map((_, i) => (
-            <motion.div
-              key={i}
-              animate={floatAnimation}
-              className="absolute"
-              style={{
-                top: `${10 + i * 20}%`,
-                left: `${5 + i * 20}%`,
-              }}
-            >
-              <Sparkles size={24} className="text-white/50" />
-            </motion.div>
-          ))}
+        
           
           <div className="max-w-4xl mx-auto text-center relative z-10">
             <motion.div
