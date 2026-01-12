@@ -1,7 +1,8 @@
 {
-  "buildCommand": "npm run vercel-build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "outputDirectory": ".next"
+  "routes": [
+    {
+      "src": "/(.*)",
+      "status": 404
+    }
+  ]
 }
