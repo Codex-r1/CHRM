@@ -1180,7 +1180,7 @@ export default function CombinedPaymentsPage() {
   );
 }
 
-export const CHRM_COURSES = [
+const CHRM_COURSES = [
   // Diploma / Higher Diploma Programmes
   "Diploma in Human Resource Management (KNEC)",
   "Diploma in Business Management",
@@ -1224,7 +1224,7 @@ export const CHRM_COURSES = [
   "Other Professional Short Courses",
 ];
 
-export const COUNTIES_IN_KENYA = [
+ const COUNTIES_IN_KENYA = [
   "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita Taveta", "Garissa", 
   "Wajir", "Mandera", "Marsabit", "Isiolo", "Meru", "Tharaka Nithi", "Embu", 
   "Kitui", "Machakos", "Makueni", "Nyandarua", "Nyeri", "Kirinyaga", "Murang'a", 
