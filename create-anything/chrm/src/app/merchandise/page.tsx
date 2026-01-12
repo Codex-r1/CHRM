@@ -227,7 +227,7 @@ const benefits = [
   {
     icon: Truck,
     title: "Fast Delivery",
-    description: "Free delivery within major cities"
+    description: "Free delivery within CBD"
   },
   {
     icon: Shield,

@@ -21,6 +21,9 @@ type FormData = {
   is_alumni_member: string;
   password: string;
   graduation_year: string;
+  // Add these new fields
+  course: string;
+  county: string;
 };
 
 type PaybillInfo = {
@@ -82,7 +85,6 @@ const staggerContainer: Variants = {
   },
 };
 
-
 const buttonHover = {
   scale: 1.02,
   y: -2,
@@ -132,6 +134,9 @@ export default function CombinedPaymentsPage() {
     is_alumni_member: "",
     password: "",
     graduation_year: "",
+    // Add these new fields
+    course: "",
+    county: "",
   });
   const [step, setStep] = useState(1);
   const [paybillInfo, setPaybillInfo] = useState<PaybillInfo>({
@@ -150,13 +155,13 @@ export default function CombinedPaymentsPage() {
 
     if (paymentType === "registration") {
       // Registration form validation
-      if (!formData.full_name || !formData.email || !formData.password || !formData.graduation_year) {
+      if (!formData.full_name || !formData.email || !formData.password || !formData.graduation_year || !formData.course || !formData.county) {
         setError("Please fill in all required fields");
         return;
       }
 
       const registrationFee = 1500;
-const generatedAccountNumber = `R-${formData.full_name.replace(/\s+/g, '').toUpperCase()}`;      
+      const generatedAccountNumber = `R-${formData.full_name.replace(/\s+/g, '').toUpperCase()}`;      
       setPaybillInfo({
         amount: registrationFee,
         account_number: generatedAccountNumber,
@@ -742,6 +747,56 @@ const generatedAccountNumber = `R-${formData.full_name.replace(/\s+/g, '').toUpp
                             placeholder="e.g., 2024"
                           />
                         </motion.div>
+
+                        {/* Add Course Selection Field */}
+                        <motion.div variants={scaleIn}>
+                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
+                            <BookOpen size={16} className="text-gray-500" />
+                            Course Studied *
+                          </label>
+                          <motion.select
+                            whileHover={inputHover}
+                            whileFocus={inputFocus}
+                            required
+                            value={formData.course}
+                            onChange={(e) =>
+                              setFormData({ ...formData, course: e.target.value })
+                            }
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                          >
+                            <option value="">Select your course</option>
+                            {CHRM_COURSES.map((course) => (
+                              <option key={course} value={course}>
+                                {course}
+                              </option>
+                            ))}
+                          </motion.select>
+                        </motion.div>
+
+                        {/* Add County Selection Field */}
+                        <motion.div variants={scaleIn}>
+                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
+                            <Users size={16} className="text-gray-500" />
+                            County of Residence *
+                          </label>
+                          <motion.select
+                            whileHover={inputHover}
+                            whileFocus={inputFocus}
+                            required
+                            value={formData.county}
+                            onChange={(e) =>
+                              setFormData({ ...formData, county: e.target.value })
+                            }
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                          >
+                            <option value="">Select your county</option>
+                            {COUNTIES_IN_KENYA.map((county) => (
+                              <option key={county} value={county}>
+                                {county}
+                              </option>
+                            ))}
+                          </motion.select>
+                        </motion.div>
                       </div>
 
                       <motion.div variants={scaleIn}>
@@ -1124,3 +1179,57 @@ const generatedAccountNumber = `R-${formData.full_name.replace(/\s+/g, '').toUpp
     </motion.div>
   );
 }
+
+export const CHRM_COURSES = [
+  // Diploma / Higher Diploma Programmes
+  "Diploma in Human Resource Management (KNEC)",
+  "Diploma in Business Management",
+  "Diploma in Banking and Finance",
+  "Diploma in Supply Chain Management (KNEC)",
+  "Diploma in Information Communication Technology (ICT) – KNEC",
+  "Diploma in Computer Science / Computer Programming (TVET CDACC)",
+  "Diploma in Cyber Security (TVET CDACC)",
+  "Diploma in Criminal Justice (TVET CDACC)",
+  "Diploma in Security Management (TVET CDACC)",
+  "Diploma in Forensic Investigation (TVET CDACC)",
+  "Diploma in Customer Service (ICM)",
+  "Diploma in Digital Journalism Level 6",
+  "Diploma in Food and Beverage Production (Culinary Arts) Level 6",
+  "Diploma in Food and Beverage Sales Management Level 6",
+  "Higher Diploma in Human Resource Management",
+
+  // Certificate Courses
+  "Certificate in Human Resource Management (KNEC)",
+  "Certificate in Business Management (KNEC)",
+  "Certificate in Banking and Finance (KNEC)",
+  "Certificate in Supply Chain Management (KNEC)",
+  "Certificate in Information Communication Technology (ICT) – KNEC",
+  "Certificate in Security Management – TVET CDACC Level 5",
+  "Certificate in Cyber Security – TVET CDACC Level 5",
+  "Certificate in Forensic Investigation – TVET CDACC Level 5",
+  "Certificate in Accounting and Management Skills (CAMS – KASNEB)",
+
+  // Artisan & Vocational Courses
+  "Artisan in Store-Keeping (KNEC)",
+  "Artisan in Salesmanship (KNEC)",
+
+  // Professional & Short-Courses / Specialized Trainings
+  "ICT & Computer Application Packages",
+  "Digital Marketing & Social Media Courses",
+  "Graphic Design & CAD Courses",
+  "Leadership & Management Training",
+  "HR Consultancy Training",
+  "CHRP",
+  "HRCi",
+  "Other Professional Short Courses",
+];
+
+export const COUNTIES_IN_KENYA = [
+  "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita Taveta", "Garissa", 
+  "Wajir", "Mandera", "Marsabit", "Isiolo", "Meru", "Tharaka Nithi", "Embu", 
+  "Kitui", "Machakos", "Makueni", "Nyandarua", "Nyeri", "Kirinyaga", "Murang'a", 
+  "Kiambu", "Turkana", "West Pokot", "Samburu", "Trans Nzoia", "Uasin Gishu", 
+  "Elgeyo Marakwet", "Nandi", "Baringo", "Laikipia", "Nakuru", "Narok", "Kajiado", 
+  "Kericho", "Bomet", "Kakamega", "Vihiga", "Bungoma", "Busia", "Siaya", 
+  "Kisumu", "Homa Bay", "Migori", "Kisii", "Nyamira", "Nairobi"
+];
