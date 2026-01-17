@@ -283,7 +283,7 @@ export default function HomePage() {
         </section>
 
         {/* Features Section */}
-        <section className="py-16 px-4">
+        <section className="py-12 px-4 text-black">
           <div className="max-w-7xl mx-auto">
             <motion.div
               variants={scaleIn}
@@ -312,7 +312,7 @@ export default function HomePage() {
                 transition={{ delay: 0.2 }}
                 className="text-lg text-[#64748b] max-w-2xl mx-auto"
               >
-                Discover the exclusive benefits of joining our thriving alumni community
+                Discover the exclusive benefits of joining our alumni community
               </motion.p>
             </motion.div>
 
@@ -329,7 +329,7 @@ export default function HomePage() {
                   variants={scaleIn}
                   custom={index}
                   whileHover={cardHover}
-                  className="group bg-[#1e293b] p-8 rounded-xl border border-[#334155] hover:border-[#d69e2e] transition-all duration-300 relative overflow-hidden"
+                  className="group bg-[#fff] p-8 rounded-xl border border-[#334155] hover:border-[#d69e2e] transition-all duration-300 relative overflow-hidden color-black text-black"
                 >
                   {/* Background Glow */}
                   <div className="absolute inset-0 bg-gradient-to-br from-[#d69e2e]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -348,7 +348,7 @@ export default function HomePage() {
                     initial="hidden"
                     whileInView="visible"
                     viewport={{ once: true }}
-                    className="text-xl font-bold text-white mb-3 font-poppins relative z-10"
+                    className="text-xl font-bold  mb-3 font-poppins relative z-10 text-black"
                   >
                     {feature.title}
                   </motion.h3>
@@ -358,7 +358,7 @@ export default function HomePage() {
                     whileInView="visible"
                     viewport={{ once: true }}
                     transition={{ delay: 0.1 }}
-                    className="text-[#cbd5e1] relative z-10"
+                    className="text-[#cbd5e1] relative z-10 text-black"
                   >
                     {feature.description}
                   </motion.p>

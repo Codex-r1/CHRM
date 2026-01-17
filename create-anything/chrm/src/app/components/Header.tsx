@@ -43,12 +43,6 @@ export default function Header() {
               Home
             </Link>
             <Link
-              href="/about"
-              className="text-[#0F172A] hover:text-[#d69e2e] transition font-inter"
-            >
-              About Us
-            </Link>
-            <Link
               href="/payments"
               className="text-[#0f172a]
  hover:text-[#d69e2e] transition font-inter"
@@ -61,6 +55,12 @@ export default function Header() {
  hover:text-[#d69e2e] transition font-inter"
             >
               Merchandise
+            </Link>
+            <Link
+              href="/about"
+              className="text-[#0F172A] hover:text-[#d69e2e] transition font-inter"
+            >
+              About Us
             </Link>
             <Link
               href="/contact"

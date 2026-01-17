@@ -231,7 +231,7 @@ export default function AboutPage() {
             <motion.p
               variants={fadeUp}
               transition={{ delay: 0.1 }}
-              className="font-inter text-lg text-[#000] dark:text-[#000] leading-relaxed max-w-4xl mx-auto transition-colors duration-200"
+              className="font-poppins text-lg text-[#000] dark:text-[#000] leading-relaxed max-w-4xl mx-auto transition-colors duration-200"
             >
               CHRMAA was established to provide its Alumni with a platform for
               networking, mentorship, and to promote the growth of the college
@@ -269,7 +269,7 @@ export default function AboutPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className="font-montserrat font-bold text-xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-4 transition-colors duration-200"
+                className="font-poppins font-bold text-xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-4 transition-colors duration-200"
               >
                 Our Mission
               </motion.h3>
@@ -279,7 +279,7 @@ export default function AboutPage() {
                 whileInView="visible"
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="font-inter text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
+                className="font-poppins text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
               >
                 To establish and enhance mutually beneficial and enduring
                 relationships between the alumni, students, and the college
@@ -308,7 +308,7 @@ export default function AboutPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className="font-montserrat font-bold text-xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-4 transition-colors duration-200"
+                className="font-poppins font-bold text-xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-4 transition-colors duration-200"
               >
                 Our Vision
               </motion.h3>
@@ -318,7 +318,7 @@ export default function AboutPage() {
                 whileInView="visible"
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="font-inter text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
+                className="font-poppins text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
               >
                 Be the model alumni association in the region.
               </motion.p>
@@ -345,7 +345,7 @@ export default function AboutPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className="font-montserrat font-bold text-xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-4 transition-colors duration-200"
+                className="font-poppins font-bold text-xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-4 transition-colors duration-200"
               >
                 Key Functions
               </motion.h3>
@@ -355,7 +355,7 @@ export default function AboutPage() {
                 whileInView="visible"
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="font-inter text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
+                className="font-poppins text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
               >
                 Advising college management, linking students to employment,
                 providing mentorship, facilitating networking, and supporting
@@ -389,7 +389,7 @@ export default function AboutPage() {
             <motion.p
               variants={fadeUp}
               transition={{ delay: 0.1 }}
-              className="font-inter text-lg text-[#000] dark:text-[#000] transition-colors duration-200"
+              className="font-poppins text-lg text-[#000] dark:text-[#000] transition-colors duration-200"
             >
               These principles guide all CHRMAA operations and reflect our
               aspiration to be the Alumni Association of choice in the region.
@@ -455,7 +455,7 @@ export default function AboutPage() {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  className="font-montserrat font-bold text-lg text-[#0B0F1A] dark:text-[#E5E7EB] mb-3 transition-colors duration-200"
+                  className="font-poppins font-bold text-lg text-[#0B0F1A] dark:text-[#E5E7EB] mb-3 transition-colors duration-200"
                 >
                   {value.title}
                 </motion.h3>
@@ -465,7 +465,7 @@ export default function AboutPage() {
                   whileInView="visible"
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
-                  className="font-inter text-sm text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
+                  className="font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
                 >
                   {value.description}
                 </motion.p>
@@ -498,7 +498,7 @@ export default function AboutPage() {
             <motion.p
               variants={fadeUp}
               transition={{ delay: 0.1 }}
-              className="font-inter text-lg text-[#000] dark:text-[#000] transition-colors duration-200"
+              className="font-poppins text-lg text-[#000] dark:text-[#000] transition-colors duration-200"
             >
               Meet the dedicated professionals who lead our alumni association
             </motion.p>
@@ -534,7 +534,7 @@ export default function AboutPage() {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  className="font-montserrat font-bold text-lg text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200"
+                  className="font-poppins font-bold text-lg text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200"
                 >
                   {official.name}
                 </motion.h3>
@@ -544,7 +544,7 @@ export default function AboutPage() {
                   whileInView="visible"
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
-                  className="font-inter font-semibold text-sm text-[#2B4C73] dark:text-[#4A6B8A] transition-colors duration-200"
+                  className="font-poppins font-semibold text-sm text-[#2B4C73] dark:text-[#4A6B8A] transition-colors duration-200"
                 >
                   {official.position}
                 </motion.p>
@@ -603,7 +603,7 @@ export default function AboutPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className="font-montserrat font-bold text-2xl text-[#000] dark:text-[#000] mb-3 transition-colors duration-200"
+                className="font-poppins font-bold text-2xl text-[#000] dark:text-[#000] mb-3 transition-colors duration-200"
               >
                 {administrator.name}
               </motion.h3>
@@ -613,7 +613,7 @@ export default function AboutPage() {
                 whileInView="visible"
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="font-inter font-semibold text-lg text-[#2B4C73] dark:text-[#4A6B8A] mb-6 transition-colors duration-200"
+                className="font-poppins font-semibold text-lg text-[#2B4C73] dark:text-[#4A6B8A] mb-6 transition-colors duration-200"
               >
                 {administrator.position}
               </motion.p>
@@ -630,7 +630,7 @@ export default function AboutPage() {
                   <Mail size={20} className="text-[#2B4C73] dark:text-[#4A6B8A] mr-3" />
                   <a
                     href={`mailto:${administrator.email}`}
-                    className="font-inter text-lg text-[#2B4C73] dark:text-[#4A6B8A] hover:text-[#1E3A5F] dark:hover:text-[#2B4C73] transition-colors duration-200"
+                    className="font-poppins text-lg text-[#2B4C73] dark:text-[#4A6B8A] hover:text-[#1E3A5F] dark:hover:text-[#2B4C73] transition-colors duration-200"
                   >
                     {administrator.email}
                   </a>
@@ -646,7 +646,7 @@ export default function AboutPage() {
                 >
                   <div className="flex items-center">
                     <Phone size={20} className="text-[#2B4C73] dark:text-[#4A6B8A] mr-3" />
-                    <span className="font-inter text-lg text-[#6D7A8B] dark:text-[#9CA3AF]">
+                    <span className="font-poppins text-lg text-[#6D7A8B] dark:text-[#9CA3AF]">
                       Phone Numbers:
                     </span>
                   </div>
@@ -658,7 +658,7 @@ export default function AboutPage() {
                         whileTap={{ scale: 0.95 }}
                         transition={{ type: "spring", stiffness: 300, damping: 20 }}
                         href={`tel:+254${phone.substring(1)}`}
-                        className="font-inter text-lg text-[#2B4C73] dark:text-[#4A6B8A] hover:text-[#1E3A5F] dark:hover:text-[#2B4C73] transition-colors duration-200"
+                        className="font-poppins text-lg text-[#2B4C73] dark:text-[#4A6B8A] hover:text-[#1E3A5F] dark:hover:text-[#2B4C73] transition-colors duration-200"
                       >
                         {phone}
                       </motion.a>
@@ -705,7 +705,7 @@ export default function AboutPage() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
-              className="font-inter text-lg text-[#000] dark:text-[#000] mb-6 leading-relaxed transition-colors duration-200"
+              className="font-poppins text-lg text-[#000] dark:text-[#000] mb-6 leading-relaxed transition-colors duration-200"
             >
               Since our establishment, the CHRM Alumni Association has grown
               from a small group of passionate HR professionals to a thriving
@@ -721,7 +721,7 @@ export default function AboutPage() {
               whileInView="visible"
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="font-inter text-lg text-[#000] dark:text-[#000] mb-8 leading-relaxed transition-colors duration-200"
+              className="font-poppins text-lg text-[#000] dark:text-[#000] mb-8 leading-relaxed transition-colors duration-200"
             >
               Through our events, workshops, and networking opportunities, we
               continue to strengthen the bonds between our members and provide
@@ -760,7 +760,7 @@ export default function AboutPage() {
                   >
                     {stat.value}
                   </motion.div>
-                  <div className="font-inter text-sm text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200">
+                  <div className="font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200">
                     {stat.label}
                   </div>
                 </motion.div>
@@ -778,11 +778,11 @@ export default function AboutPage() {
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
         
-        .font-inter {
+        .font-poppins {
           font-family: 'Inter', sans-serif;
         }
         
-        .font-montserrat {
+        .font-poppins {
           font-family: 'Montserrat', sans-serif;
         }
         

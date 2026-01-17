@@ -76,7 +76,7 @@ const staggerContainer: Variants = {
   hidden: {},
   visible: {
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.5,
     },
   },
 };
@@ -206,7 +206,7 @@ const PRODUCTS: Product[] = [
     variants: [
       {
         color: "gold",
-        sizes: [],
+        sizes: ["One"],
         image: "/Lapel Pin.jpeg",
       },
     ],
