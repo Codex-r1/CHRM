@@ -29,6 +29,7 @@ import {
   Shield,
 } from "lucide-react";
 import { useAuth } from "../../context/auth";
+import Footer from "@/app/components/Footer";
 
 // Type definitions
 type User = {
@@ -1258,6 +1259,7 @@ export default function AdminDashboard() {
               </button>
             </div>
           )}
+          <Footer />
         </div>
       </div>
     </div>

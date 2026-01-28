@@ -59,8 +59,9 @@ type STKPushStatus = 'idle' | 'initiating' | 'pending' | 'success' | 'failed' | 
 export default function EventRegistrationPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.eventId as string;
   
+  // FIX: Properly extract the eventId from params
+  const eventId = params?.eventsId as string | undefined;
   
   const { user: authUser, loading: authLoading } = useAuth();
   
@@ -88,40 +89,43 @@ export default function EventRegistrationPage() {
     };
   }, [pollingInterval]);
 
-  // Update the fetchEvent useEffect:
-useEffect(() => {
-  const fetchEvent = async () => {
-    try {
-      setLoading(true);
-      console.log('Fetching event with ID:', id);
-      
-      const response = await fetch(`/api/events/${id}`);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Event fetch failed:', response.status, errorText);
-        throw new Error(`Event not found (${response.status})`);
+  // Fetch event data
+  useEffect(() => {
+    const fetchEvent = async () => {
+      // Check if eventId exists
+      if (!eventId) {
+        console.error('No event ID in URL params:', params);
+        setError("No event ID provided");
+        setLoading(false);
+        return;
       }
-      
-      const data = await response.json();
-      console.log('Event data received:', data);
-      setEvent(data);
-      setError("");
-    } catch (err) {
-      console.error('Event fetch error:', err);
-      setError("Event not found or is no longer available");
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  if (id) {
+      try {
+        setLoading(true);
+        console.log('Fetching event with ID:', eventId);
+        
+        const response = await fetch(`/api/events/${eventId}`);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Event fetch failed:', response.status, errorData);
+          throw new Error(errorData.error || `Event not found (${response.status})`);
+        }
+        
+        const data = await response.json();
+        console.log('Event data received:', data);
+        setEvent(data);
+        setError("");
+      } catch (err: any) {
+        console.error('Event fetch error:', err);
+        setError(err.message || "Event not found or is no longer available");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchEvent();
-  } else {
-    setError("No event ID provided");
-    setLoading(false);
-  }
-}, [id]);
+  }, [eventId, params]);
 
   // Pre-fill user data if logged in
   useEffect(() => {
@@ -149,6 +153,10 @@ useEffect(() => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
+if (!event) {
+    setError("Event information is still loading. Please wait.");
+    return;
+  }
 
     // Validation
     if (!formData.full_name || !formData.email || !formData.phone) {
@@ -204,7 +212,7 @@ useEffect(() => {
           userName: userName,
           description: `Event Registration - ${event!.name}`,
           metadata: {
-            event_id: id,
+            event_id: eventId,
             event_name: event!.name,
             membership_number: formData.membership_number || null,
             is_alumni_member: formData.is_alumni_member,
@@ -268,23 +276,33 @@ useEffect(() => {
     setPollingInterval(interval);
   };
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex items-center justify-center">
-        <div className="text-gray-900 text-xl">Loading event details...</div>
+        <div className="text-center">
+          <Loader2 className="animate-spin mx-auto mb-4 text-blue-600" size={48} />
+          <p className="text-gray-900 text-xl">Loading event details...</p>
+        </div>
       </div>
     );
   }
 
-  if (!event) {
+  // Error state - event not found
+  if (!event || error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center p-4">
-          <div className="text-center">
+          <div className="text-center max-w-md">
             <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h1>
             <p className="text-gray-600 mb-6">{error || "The event you're looking for doesn't exist or is no longer available."}</p>
+            <div className="bg-gray-100 p-4 rounded-lg mb-6">
+              <p className="text-sm text-gray-700 mb-2">Debug Info:</p>
+              <p className="text-xs text-gray-600">Event ID: {eventId || 'Not provided'}</p>
+              <p className="text-xs text-gray-600">Params: {JSON.stringify(params)}</p>
+            </div>
             <Link
               href="/events"
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
@@ -299,6 +317,7 @@ useEffect(() => {
     );
   }
 
+  // Success screen (Step 3)
   if (step === 3) {
     return (
       <motion.div 
@@ -397,6 +416,7 @@ useEffect(() => {
     );
   }
 
+  // Payment waiting screen (Step 2)
   if (step === 2) {
     const amount = formData.is_alumni_member === "yes" ? calculateMemberPrice() : event.price;
     
@@ -524,11 +544,10 @@ useEffect(() => {
                   {/* Payment Instructions */}
                   <div className="space-y-3">
                     {[
-                      "Enter your M-PESA phone number in the form",
-                      "Click 'Pay via M-PESA' button",
-                      "Check your phone for STK Push prompt",
-                      "Enter your M-PESA PIN when prompted",
-                      "Wait for payment confirmation"
+                      "Check your phone for M-PESA STK Push prompt",
+                      "Enter your M-PESA PIN to authorize payment",
+                      "Wait for payment confirmation",
+                      "You'll be redirected automatically"
                     ].map((stepText, index) => (
                       <div key={index} className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-8 h-8 bg-white/50 rounded-full flex items-center justify-center">

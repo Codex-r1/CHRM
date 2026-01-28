@@ -17,7 +17,7 @@ import {
   Ticket,
 } from "lucide-react";
 import Link from "next/link";
-import { supabase } from '../lib/supabase/client'  // Changed from supabaseAdmin
+import { supabase } from '../lib/supabase/client'
 
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -79,14 +79,6 @@ export default function EventsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [categories, setCategories] = useState([
-    { id: "all", label: "All Events", count: 0 },
-    { id: "networking", label: "Networking", count: 0 },
-    { id: "workshop", label: "Workshops", count: 0 },
-    { id: "conference", label: "Conferences", count: 0 },
-    { id: "community", label: "Community", count: 0 },
-  ]);
-
   // Fetch events from Supabase
   useEffect(() => {
     const fetchEvents = async () => {
@@ -96,7 +88,7 @@ export default function EventsPage() {
         
         console.log("Fetching events from Supabase...");
         
-        // Use Supabase client directly (more reliable than API route)
+        // Use Supabase client directly
         const { data, error: fetchError } = await supabase
           .from('events')
           .select('*')
@@ -132,7 +124,7 @@ export default function EventsPage() {
     };
   }, []);
 
-  // Filter events based on active tab, filter, and search
+  // Filter events based on active tab, filter, and search - FIXED VERSION
   const filteredEvents = events.filter((event) => {
     // Filter by active tab (upcoming/past)
     const eventDate = new Date(event.event_date);
@@ -148,6 +140,8 @@ export default function EventsPage() {
       event.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.description.toLowerCase().includes(searchTerm.toLowerCase());
 
+    // Return the result
+    return matchesSearch;
   });
 
   const openEventModal = (event: EventType) => {
@@ -233,7 +227,7 @@ export default function EventsPage() {
             className="text-center"
           >
             <h1 className="text-3xl md:text-4xl font-bold font-poppins text-gray-900 mb-4">
-              CHRMAA <span className="text-blue-600">Events</span>
+              CHRMAA <span className="text-black-600">Events</span>
             </h1>
             
             <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-8">
@@ -249,7 +243,7 @@ export default function EventsPage() {
                     : "bg-white border border-gray-300 text-gray-700 hover:border-blue-500"
                 }`}
               >
-                Upcoming Events
+                Upcoming Events ({events.filter(e => new Date(e.event_date) >= new Date()).length})
               </button>
               <button
                 onClick={() => setActiveTab("past")}
@@ -259,7 +253,7 @@ export default function EventsPage() {
                     : "bg-white border border-gray-300 text-gray-700 hover:border-blue-500"
                 }`}
               >
-                Past Events
+                Past Events ({events.filter(e => new Date(e.event_date) < new Date()).length})
               </button>
             </div>
           </motion.div>
@@ -316,6 +310,7 @@ export default function EventsPage() {
 
               {filteredEvents.length === 0 ? (
                 <div className="text-center py-12">
+                  <Calendar className="mx-auto mb-4 text-gray-400" size={48} />
                   <p className="text-gray-500">No upcoming events found.</p>
                 </div>
               ) : (
@@ -339,8 +334,6 @@ export default function EventsPage() {
                             <ImageIcon className="text-blue-300" size={48} />
                           </div>
                         )}
-                        <div className="absolute top-3 right-3">
-                        </div>
                       </div>
 
                       {/* Event Content */}
@@ -396,6 +389,7 @@ export default function EventsPage() {
               
               {filteredEvents.length === 0 ? (
                 <div className="text-center py-12">
+                  <Clock className="mx-auto mb-4 text-gray-400" size={48} />
                   <p className="text-gray-500">No past events found.</p>
                 </div>
               ) : (

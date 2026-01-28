@@ -7,14 +7,16 @@ export async function GET(
 ) {
   try {
     const { eventId } = params
-
+    
+    console.log('API: Fetching event with ID:', eventId)
+    
     const { data: event, error } = await supabase
       .from('events')
       .select('*')
       .eq('id', eventId)
       .eq('is_active', true)
       .single()
-
+    
     if (error) {
       console.error('Event fetch error:', error)
       return NextResponse.json(
@@ -22,7 +24,7 @@ export async function GET(
         { status: 404 }
       )
     }
-
+    
     return NextResponse.json(event)
   } catch (err) {
     console.error('Unexpected error:', err)
