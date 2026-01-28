@@ -2,7 +2,8 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import Header from "../components/Header"; 
+import { supabase } from "../lib/supabase/client"; // ← FIXED: should be supabase, not supabaseAdmin
+import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { Lock, Mail, Eye, EyeOff, ArrowRight, Shield, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
@@ -16,32 +17,20 @@ type FormData = {
 
 // Animation Variants
 const fadeUp: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 24,
-  },
+  hidden: { opacity: 0, y: 24 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: {
-      duration: 0.6,
-      ease: [0.16, 1, 0.3, 1],
-    },
+    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
   },
 };
 
 const scaleIn: Variants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.9,
-  },
+  hidden: { opacity: 0, scale: 0.9 },
   visible: {
     opacity: 1,
     scale: 1,
-    transition: {
-      duration: 0.6,
-      ease: [0.16, 1, 0.3, 1],
-    },
+    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
   },
 };
 
@@ -53,6 +42,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const router = useRouter();
 
   const handleSubmit = async (e: FormEvent) => {
@@ -60,34 +50,41 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
+    const { email, password } = formData;
+
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Login failed");
+      if (error || !data.session) {
+        throw new Error(error?.message || "Invalid email or password");
       }
 
-      const user = await response.json();
+      console.log("Login successful! Session created.");
+      const user = data.user;
+const { data: profile, error: profileError } = await supabase
+  .from("profiles")
+  .select("role")
+  .eq("id", user.id)
+  .single();
 
-      // Store user data
-      if (typeof window !== "undefined") {
-        localStorage.setItem("user", JSON.stringify(user));
-      }
+if (profileError) {
+  console.error("Profile fetch error:", profileError);
+  router.push("/member/dashboard");
+  return;
+}
 
-      // Redirect based on role
-      if (user.role === "admin") {
-        router.push("/admin/dashboard");
-      } else {
-        router.push("/member/dashboard");
-      }
+if (profile.role === "admin") {
+  router.push("/admin/dashboard");
+} else {
+  router.push("/member/dashboard");
+}
+router.refresh(); 
     } catch (err) {
       console.error("Login error:", err);
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setLoading(false);
     }
@@ -177,8 +174,10 @@ export default function LoginPage() {
                     </label>
                     <div className="relative">
                       <input
+                        name="email"
                         type="email"
                         required
+                        autoComplete="email"
                         value={formData.email}
                         onChange={(e) =>
                           setFormData({ ...formData, email: e.target.value })
@@ -201,14 +200,16 @@ export default function LoginPage() {
                       Password
                     </label>
                     <div className="relative">
-                      <input
+                      <input 
+                        name="password"
                         type={showPassword ? "text" : "password"}
                         required
+                        autoComplete="current-password"
                         value={formData.password}
                         onChange={(e) =>
                           setFormData({ ...formData, password: e.target.value })
                         }
-                        className="w-full px-4 py-3 pl-12 pr-12 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                        className="w-full px-4 py-3 pl-12 pr-12 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200" 
                         placeholder="Enter your password"
                       />
                       <Lock size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -262,8 +263,7 @@ export default function LoginPage() {
                 <p className="text-gray-600">
                   Don't have an account?{" "}
                   <Link
-                    href="/payments
-"
+                    href="/payments"
                     className="group inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors"
                   >
                     Register here

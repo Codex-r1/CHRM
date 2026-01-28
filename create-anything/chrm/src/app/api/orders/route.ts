@@ -1,52 +1,59 @@
-import sql from '@/app/api/utils/sql';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '../../lib/supabase/admin'
 
-// GET all orders
-export async function GET(request: NextRequest) {
-  try {
-    const orders = await sql`
-      SELECT o.*, u.full_name, u.email, u.membership_number
-      FROM orders o
-      LEFT JOIN users u ON o.user_id = u.id
-      ORDER BY o.created_at DESC
-    `;
-
-    return NextResponse.json(orders);
-  } catch (error) {
-    console.error("Get orders error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch orders" }, 
-      { status: 500 }
-    );
-  }
-}
-
-// POST create order
 export async function POST(request: NextRequest) {
   try {
-    const { user_id, items, total } = await request.json();
+    const body = await request.json()
+    const {
+      user_id,
+      items,
+      total,
+      customer_name,
+      customer_phone,
+      customer_email,
+      payment_id,
+      shipping_address
+    } = body
 
-    if (!items || items.length === 0 || !total) {
+    if (!user_id || !items || !total) {
       return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 },
-      );
+        { error: 'User ID, items, and total are required' },
+        { status: 400 }
+      )
     }
 
-    const itemsJson = JSON.stringify(items);
-    
-    const newOrders = await sql`
-      INSERT INTO orders (user_id, items, total, status)
-      VALUES (${user_id || null}, ${itemsJson}, ${total}, 'pending')
-      RETURNING *
-    `;
+    const { data: order, error } = await supabaseAdmin
+      .from('orders')
+      .insert({
+        user_id,
+        items,
+        total,
+        status: 'pending',
+        customer_name,
+        customer_phone,
+        customer_email,
+        payment_id,
+        shipping_address: shipping_address || 'To be provided'
+      })
+      .select()
+      .single()
 
-    return NextResponse.json(newOrders[0], { status: 201 });
-  } catch (error) {
-    console.error("Create order error:", error);
+    if (error) throw error
+
+    return NextResponse.json({
+      success: true,
+      order,
+      message: 'Order created successfully'
+    })
+
+  } catch (error: any) {
+    console.error('Order creation error:', error)
     return NextResponse.json(
-      { error: "Failed to create order" }, 
+      { 
+        success: false,
+        error: error.message || 'Failed to create order'
+      },
       { status: 500 }
-    );
+    )
   }
 }

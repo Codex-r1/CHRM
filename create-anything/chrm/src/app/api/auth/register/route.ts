@@ -1,96 +1,155 @@
-import { NextRequest, NextResponse } from 'next/server';
-import sql from "../../utils/sql";
-import bcrypt from "bcryptjs";
-
-// Define types
-type RegisterRequest = {
-  email: string;
-  password: string;
-  full_name: string;
-  phone?: string;
-  graduation_year: string;
-};
-
-type RegisterResponse = {
-  user: {
-    id: number;
-    email: string;
-    role: string;
-    full_name: string;
-    membership_number: string;
-  };
-  registration_fee: number;
-  paybill_number: string;
-  account_number: string;
-};
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from '../../../lib/supabase/client'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, full_name, phone, graduation_year }: RegisterRequest = await request.json();
+    const body = await request.json()
+    const {
+      email,
+      password,
+      full_name,
+      phone,
+      graduation_year,
+      course,
+      county,
+      membership_number
+    } = body
 
     // Validate required fields
-    if (!email || !password || !full_name || !graduation_year) {
+    if (!email || !password || !full_name || !phone) {
       return NextResponse.json(
-        { error: "All fields are required" },
-        { status: 400 },
-      );
+        { error: 'Email, password, full name, and phone are required' },
+        { status: 400 }
+      )
     }
 
-    // Check if user already exists
-    const existingUsers = await sql`
-      SELECT id FROM users WHERE email = ${email}
-    `;
-
-    if (existingUsers.length > 0) {
+    // Validate phone
+    const phoneRegex = /^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$/
+    if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
       return NextResponse.json(
-        { error: "Email already registered" },
-        { status: 400 },
-      );
+        { error: 'Please enter a valid Kenyan phone number' },
+        { status: 400 }
+      )
     }
 
-    // Calculate registration fee
-    const registration_fee = parseInt(graduation_year) >= 2025 ? 1000 : 1500;
+    // Check if email already exists
+    const { data: existingUser, error: checkError } = await supabaseAdmin
+      .from('profiles')
+      .select('email')
+      .eq('email', email.toLowerCase())
+      .maybeSingle()
 
-    // Hash password with bcrypt
-    const password_hash = await bcrypt.hash(password, 10);
+    if (checkError) {
+      console.error('Check existing user error:', checkError)
+    }
 
-    // Generate membership number
-    const membershipNumber = `M-${Date.now()}`;
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'Email already registered. Please login instead.' },
+        { status: 400 }
+      )
+    }
 
-    // Create user
-    const newUsers = await sql<{id: number, email: string, role: string, full_name: string, membership_number: string, registration_fee: number}[]>`
-      INSERT INTO users (email, password_hash, full_name, phone, graduation_year, registration_fee, membership_number, role)
-      VALUES (${email}, ${password_hash}, ${full_name}, ${phone || null}, ${graduation_year}, ${registration_fee}, ${membershipNumber}, 'member')
-      RETURNING id, email, role, full_name, membership_number, registration_fee
-    `;
+    // Create user in Supabase Auth
+    const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+      email: email.toLowerCase(),
+      password,
+      options: {
+        data: {
+          full_name,
+          phone,
+          graduation_year,
+          course,
+          county,
+          membership_number,
+          role: 'member'
+        }
+      }
+    })
 
-    const user = newUsers[0];
+    if (authError) {
+      console.error('Auth signup error:', authError)
+      throw new Error(authError.message || 'Registration failed')
+    }
 
-    // Create pending payment record
-    await sql`
-      INSERT INTO payments (user_id, amount, payment_type, reference_code, status, details)
-      VALUES (${user.id}, ${registration_fee}, 'registration', ${"R-" + full_name}, 'pending', ${JSON.stringify({ graduation_year })})
-    `;
+    if (!authData.user) {
+      throw new Error('User creation failed')
+    }
 
-    const response: RegisterResponse = {
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        full_name: user.full_name,
-        membership_number: user.membership_number,
-      },
-      registration_fee,
-      paybill_number: "263532",
-      account_number: `R-${full_name}`,
-    };
+    // Create profile in profiles table
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        email: email.toLowerCase(),
+        full_name,
+        phone_number: phone,
+        graduation_year: graduation_year ? parseInt(graduation_year) : null,
+        course: course || null,
+        county: county || null,
+        membership_number: membership_number || null,
+        role: 'member',
+        status: 'pending', // Will be activated after payment
+        registration_source: 'online'
+      })
+      .select()
+      .single()
 
-    return NextResponse.json(response);
-  } catch (error) {
-    console.error("Registration error:", error);
+    if (profileError) {
+      console.error('Profile creation error:', profileError)
+      
+      // Try to delete the auth user if profile creation failed
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+      } catch (deleteError) {
+        console.error('Failed to cleanup auth user:', deleteError)
+      }
+      
+      throw new Error(profileError.message || 'Profile creation failed')
+    }
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Fetch the updated profile to get the generated membership number
+    const { data: updatedProfile, error: fetchError } = await supabaseAdmin
+      .from('profiles')
+      .select('membership_number, status')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (fetchError) {
+      console.warn('Failed to fetch membership number:', fetchError);
+      // Don't throw - just log warning
+    }
+await new Promise(resolve => setTimeout(resolve, 100));
+
+// Fetch the profile with membership number
+const { data: profileWithNumber } = await supabaseAdmin
+  .from('profiles')
+  .select('membership_number, status')
+  .eq('id', authData.user.id)
+  .single();
+
+return NextResponse.json({
+  success: true,
+  message: 'Registration successful! Complete payment to activate your account.',
+  user: {
+    id: authData.user.id,
+    email: authData.user.email,
+    full_name,
+    phone,
+    status: 'pending',
+    membership_number: profileWithNumber?.membership_number || null // ← CRITICAL!
+  }
+});
+
+  } catch (error: any) {
+    console.error('Registration error:', error)
     return NextResponse.json(
-      { error: "Registration failed" }, 
+      { 
+        success: false,
+        error: error.message || 'Registration failed'
+      },
       { status: 500 }
-    );
+    )
   }
 }

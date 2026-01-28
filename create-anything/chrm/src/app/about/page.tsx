@@ -10,11 +10,16 @@ import {
   Award,
   Target,
   Network,
+  Building,
+  DollarSign,
+  TrendingUp,
+  Handshake,
+  Image as ImageIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 
-// Animation Variants following your established pattern
+// Animation Variants - MOVED TO TOP
 const fadeUp: Variants = {
   hidden: {
     opacity: 0,
@@ -150,6 +155,7 @@ const statAnimation: Variants = {
   },
 };
 
+// Component function
 export default function AboutPage() {
   const navigateHome = () => {
     if (typeof window !== "undefined") {
@@ -157,7 +163,7 @@ export default function AboutPage() {
     }
   };
 
-  // Updated officials data based on the provided information
+  // Updated officials data 
   const officials = [
     {
       name: "Rev. Canon Stephine Opiyo Obong'o",
@@ -194,7 +200,17 @@ export default function AboutPage() {
     position: "CHRMAA Administrator",
     email: "alumni@chrm.or.ke",
     phone: ["0700773322", "0733883322"],
+    address: "Hazina Trade Centre - 13th Floor, Between Monrovia Street and Utaili Ln",
+    poBox: "P.O. Box 4322-00200 Nairobi, Kenya"
   };
+  const csrActivities = [
+    { id: 1, title: "Community Outreach ", description: "Alumni giving back to the community" ,image:"/CSR2.jpeg"},
+    { id: 2, title: "Mentorship", description: "Career sessions", image:"/CSR again.jpeg" },
+    { id: 3, title: "Environmental Conservation", description: "Tree planting initiative,", image:"/MercyCSR.jpeg" },
+    { id: 4, title: "Skills Development", description: "Workshop for young professionals" },
+    { id: 5, title: "Healthcare Support", description: "Medical camp for local community" },
+    { id: 6, title: "Education Support", description: "Donating books and supplies" },
+  ];
 
   return (
     <motion.div 
@@ -233,11 +249,8 @@ export default function AboutPage() {
               transition={{ delay: 0.1 }}
               className="font-poppins text-lg text-[#000] dark:text-[#000] leading-relaxed max-w-4xl mx-auto transition-colors duration-200"
             >
-              CHRMAA was established to provide its Alumni with a platform for
-              networking, mentorship, and to promote the growth of the college
-              through marketing, advising management on areas of improvement,
-              linking students to the job market, mentoring students,
-              facilitating networking, and supporting community service.
+              CHRMAA was established to provide the Alumni/graduates a platform for 
+              networking and mentorship as well as promote the growth of the college.
             </motion.p>
           </motion.div>
 
@@ -281,9 +294,8 @@ export default function AboutPage() {
                 transition={{ delay: 0.1 }}
                 className="font-poppins text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
               >
-                To establish and enhance mutually beneficial and enduring
-                relationships between the alumni, students, and the college
-                fraternity.
+                "To establish and enhance mutually beneficial and enduring 
+                relationship between the alumni, students and college fraternity."
               </motion.p>
             </motion.div>
 
@@ -320,7 +332,7 @@ export default function AboutPage() {
                 transition={{ delay: 0.1 }}
                 className="font-poppins text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
               >
-                Be the model alumni association in the region.
+                "Be the model alumni association in the region."
               </motion.p>
             </motion.div>
 
@@ -362,6 +374,114 @@ export default function AboutPage() {
                 community service.
               </motion.p>
             </motion.div>
+          </motion.div>
+        </motion.section>
+
+        {/* Strategic Goals Section - NEW */}
+        <motion.section 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.3 }}
+          variants={fadeIn}
+          className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
+        >
+          <motion.div 
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <motion.h2
+              variants={fadeUp}
+              className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200"
+            >
+              Our Strategic Goals
+            </motion.h2>
+            <motion.p
+              variants={fadeUp}
+              transition={{ delay: 0.1 }}
+              className="font-poppins text-lg text-[#000] dark:text-[#000] max-w-4xl mx-auto transition-colors duration-200"
+            >
+              Four key pillars that guide our association's growth and impact
+            </motion.p>
+          </motion.div>
+
+          <motion.div 
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="grid md:grid-cols-2 lg:grid-cols-4 gap-8"
+          >
+            {[
+              {
+                icon: Users,
+                title: "Grow Membership",
+                description: "Active & engaged paid up members",
+                bgColor: "bg-[#E8F4FD] dark:bg-[#1A2F42]",
+                iconColor: "bg-[#2B4C73]"
+              },
+              {
+                icon: DollarSign,
+                title: "Generate Revenue",
+                description: "Financial Stability & Sustainability",
+                bgColor: "bg-[#FFF4E6] dark:bg-[#3D2B1A]",
+                iconColor: "bg-[#FF7A00]"
+              },
+              {
+                icon: TrendingUp,
+                title: "Leadership Development",
+                description: "Strong Alumni Leadership",
+                bgColor: "bg-[#FFF0F0] dark:bg-[#3D1A1A]",
+                iconColor: "bg-[#E53E3E]"
+              },
+              {
+                icon: Handshake,
+                title: "Engage & Build Relationships",
+                description: "Strong Partnerships & Collaborations with Stakeholders",
+                bgColor: "bg-[#E8F4FD] dark:bg-[#1A2F42]",
+                iconColor: "bg-[#2B4C73]"
+              }
+            ].map((goal, index) => (
+              <motion.div 
+                key={index}
+                variants={scaleIn}
+                whileHover="hover"
+                custom={index}
+                className={`text-center p-6 ${goal.bgColor} rounded-lg transition-colors duration-200`}
+              >
+                <motion.div 
+                  variants={iconAnimation}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  whileHover="hover"
+                  className={`w-16 h-16 ${goal.iconColor} text-white rounded-full flex items-center justify-center mx-auto mb-4`}
+                >
+                  <goal.icon size={24} />
+                </motion.div>
+                <motion.h3
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="font-poppins font-bold text-lg text-[#0B0F1A] dark:text-[#E5E7EB] mb-3 transition-colors duration-200"
+                >
+                  {goal.title}
+                </motion.h3>
+                <motion.p
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.1 }}
+                  className="font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
+                >
+                  {goal.description}
+                </motion.p>
+              </motion.div>
+            ))}
           </motion.div>
         </motion.section>
 
@@ -553,7 +673,7 @@ export default function AboutPage() {
           </motion.div>
         </motion.section>
 
-        {/* Administrator Section */}
+        {/* Administrator Section - UPDATED with address */}
         <motion.section 
           initial="hidden"
           whileInView="visible"
@@ -572,7 +692,7 @@ export default function AboutPage() {
               variants={fadeUp}
               className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200"
             >
-              Administrator
+              Administrator & Contact Information
             </motion.h2>
           </motion.div>
 
@@ -625,6 +745,38 @@ export default function AboutPage() {
                   whileInView="visible"
                   viewport={{ once: true }}
                   transition={{ delay: 0.2 }}
+                  className="flex flex-col items-center md:items-start"
+                >
+                  <div className="flex items-center mb-2">
+                    <Building size={20} className="text-[#2B4C73] dark:text-[#4A6B8A] mr-3" />
+                    <span className="font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF]">
+                      Address:
+                    </span>
+                  </div>
+                  <p className="font-poppins text-lg text-[#2B4C73] dark:text-[#4A6B8A]">
+                    {administrator.address}
+                  </p>
+                </motion.div>
+
+                <motion.div 
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3 }}
+                  className="flex flex-col items-center md:items-start"
+                >
+                  <p className="font-poppins text-lg text-[#2B4C73] dark:text-[#4A6B8A]">
+                    {administrator.poBox}
+                  </p>
+                </motion.div>
+
+                <motion.div 
+                  variants={fadeUp}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.4 }}
                   className="flex items-center justify-center md:justify-start"
                 >
                   <Mail size={20} className="text-[#2B4C73] dark:text-[#4A6B8A] mr-3" />
@@ -641,13 +793,13 @@ export default function AboutPage() {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  transition={{ delay: 0.3 }}
+                  transition={{ delay: 0.5 }}
                   className="flex flex-col sm:flex-row items-center sm:items-start gap-4"
                 >
                   <div className="flex items-center">
                     <Phone size={20} className="text-[#2B4C73] dark:text-[#4A6B8A] mr-3" />
-                    <span className="font-poppins text-lg text-[#6D7A8B] dark:text-[#9CA3AF]">
-                      Phone Numbers:
+                    <span className="font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF]">
+                      Phone:
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-4 justify-center md:justify-start">
@@ -667,6 +819,81 @@ export default function AboutPage() {
                 </motion.div>
               </div>
             </div>
+          </motion.div>
+        </motion.section>
+
+        {/* CSR Activities Gallery Section - NEW */}
+        <motion.section 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.3 }}
+          variants={fadeIn}
+          className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
+        >
+          <motion.div 
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <motion.h2
+              variants={fadeUp}
+              className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200"
+            >
+              CSR Activities Gallery
+            </motion.h2>
+            <motion.p
+              variants={fadeUp}
+              transition={{ delay: 0.1 }}
+              className="font-poppins text-lg text-[#000] dark:text-[#000] max-w-4xl mx-auto transition-colors duration-200"
+            >
+              Our commitment to community service and social responsibility
+            </motion.p>
+          </motion.div>
+
+          <motion.div 
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+          >
+            {csrActivities.map((activity, index) => (
+              <motion.div
+                key={activity.id}
+                variants={scaleIn}
+                whileHover="hover"
+                custom={index}
+                className="bg-[#F8FAFC] dark:bg-[#2A2A2A] border border-[#E7ECF3] dark:border-[#3A3A3A] rounded-xl overflow-hidden transition-colors duration-200"
+              >
+                {/* Image Placeholder - Replace with your actual images */}
+                <div className="h-48 bg-gradient-to-br from-[#2B4C73]/20 to-[#FF7A00]/20 flex items-center justify-center">
+                  <ImageIcon size={48} className="text-[#2B4C73] dark:text-[#4A6B8A]" />
+                  <span className="ml-2 font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF]">
+                     
+                  </span>
+                </div>
+                <div className="p-6">
+                  <h3 className="font-poppins font-bold text-lg text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
+                    {activity.title}
+                  </h3>
+                  <p className="font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200">
+                    {activity.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          <motion.div 
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="text-center mt-12"
+          >
           </motion.div>
         </motion.section>
 
@@ -775,14 +1002,6 @@ export default function AboutPage() {
       {/* Global styles */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-        
-        .font-poppins {
-          font-family: 'Inter', sans-serif;
-        }
-        
-        .font-poppins {
-          font-family: 'Montserrat', sans-serif;
-        }
         
         .font-poppins {
           font-family: 'Poppins', sans-serif;

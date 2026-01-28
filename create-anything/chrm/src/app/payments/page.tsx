@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { CheckCircle, Users, User, CreditCard, Shield, ArrowRight, Lock, Mail, Phone, Calendar, BookOpen, Gift } from "lucide-react";
+import { CheckCircle, Users, User, CreditCard, Shield, ArrowRight, Lock, Mail, Phone, Calendar, BookOpen, Gift, Smartphone, Loader2, AlertCircle, Key } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { Variants, Transition } from "framer-motion";
@@ -16,12 +16,9 @@ type FormData = {
   email: string;
   phone: string;
   renewal_year: string;
-  event_name: string;
-  event_price: string;
   is_alumni_member: string;
   password: string;
   graduation_year: string;
-  // Add these new fields
   course: string;
   county: string;
 };
@@ -29,112 +26,70 @@ type FormData = {
 type PaybillInfo = {
   amount: number;
   account_number: string;
-  payment_type: "renewal" | "event" | "registration";
+  payment_type: "renewal" | "registration";
   description: string;
 };
 
-// Animation Variants
-const fadeUp: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 24,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.6,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
+// STK Push types
+type STKPushStatus = 'idle' | 'initiating' | 'pending' | 'success' | 'failed' | 'cancelled';
+type PaymentResponse = {
+  success: boolean;
+  message: string;
+  checkoutRequestID?: string;
+  merchantRequestID?: string;
+  paymentId?: string;
+  data?: any;
 };
 
-const fadeIn: Variants = {
-  hidden: {
-    opacity: 0,
-  },
-  visible: {
-    opacity: 1,
-    transition: {
-      duration: 0.5,
-    },
-  },
+// Animation Variants (keeping your exact animations)
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
 };
 
 const scaleIn: Variants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.9,
-  },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: {
-      duration: 0.6,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
 };
 
 const staggerContainer: Variants = {
   hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
+  visible: { transition: { staggerChildren: 0.1 } },
 };
 
 const buttonHover = {
   scale: 1.02,
   y: -2,
   boxShadow: "0 10px 25px rgba(43, 76, 115, 0.3)",
-  transition: {
-    type: "spring" as const,
-    stiffness: 400,
-    damping: 15,
-  },
+  transition: { type: "spring" as const, stiffness: 400, damping: 15 },
 };
 
-const buttonTap = {
-  scale: 0.98,
-};
+const buttonTap = { scale: 0.98 };
 
 const inputHover = {
   scale: 1.01,
   borderColor: "#2563eb",
-  transition: {
-    type: "spring" as const,
-    stiffness: 300,
-    damping: 20,
-  },
+  transition: { type: "spring" as const, stiffness: 300, damping: 20 },
 };
 
 const inputFocus = {
   scale: 1.02,
   borderColor: "#2B4C73",
   boxShadow: "0 0 0 3px rgba(43, 76, 115, 0.1)",
-  transition: {
-    type: "spring" as const,
-    stiffness: 400,
-    damping: 15,
-  },
+  transition: { type: "spring" as const, stiffness: 400, damping: 15 },
 };
 
 export default function CombinedPaymentsPage() {
-  const [paymentType, setPaymentType] = useState<"renewal" | "event" | "registration">("registration"); 
+  const [paymentType, setPaymentType] = useState<"renewal" | "registration">("registration");
   const [formData, setFormData] = useState<FormData>({
     membership_number: "",
     full_name: "",
     email: "",
     phone: "",
     renewal_year: new Date().getFullYear().toString(),
-    event_name: "",
-    event_price: "",
     is_alumni_member: "",
     password: "",
     graduation_year: "",
-    // Add these new fields
     course: "",
     county: "",
   });
@@ -147,133 +102,331 @@ export default function CombinedPaymentsPage() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [stkStatus, setStkStatus] = useState<STKPushStatus>('idle');
+  const [checkoutRequestID, setCheckoutRequestID] = useState<string>('');
+  const [paymentId, setPaymentId] = useState<string>('');
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    setError("");
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
+  }, [pollingInterval]);
 
-    if (paymentType === "registration") {
-      // Registration form validation
-      if (!formData.full_name || !formData.email || !formData.password || !formData.graduation_year || !formData.course || !formData.county) {
-        setError("Please fill in all required fields");
-        return;
-      }
-
-      const registrationFee = 1500;
-      const generatedAccountNumber = `R-${formData.full_name.replace(/\s+/g, '').toUpperCase()}`;      
-      setPaybillInfo({
-        amount: registrationFee,
-        account_number: generatedAccountNumber,
-        payment_type: "registration",
-        description: `New Member Registration - ${formData.full_name}`,
-      });
-      setStep(2);
-      return;
-    }
-
-    if (paymentType === "renewal") {
-      if (!formData.membership_number || !formData.full_name || !formData.email || !formData.phone) {
-        setError("Please fill in all required fields");
-        return;
-      }
-
-      setPaybillInfo({
-        amount: 1000,
-        account_number: `RN-${formData.full_name.toUpperCase().replace(/\s+/g, '')}`,
-        payment_type: "renewal",
-        description: `Membership Renewal - ${formData.renewal_year}`,
-      });
-    } else if (paymentType === "event") {
-      const eventPrice = parseFloat(formData.event_price);
-      if (isNaN(eventPrice) || eventPrice <= 0) {
-        setError("Please enter a valid event price");
-        return;
-      }
-
-      if (!formData.is_alumni_member) {
-        setError("Please select whether you are an alumni member");
-        return;
-      }
-
-      if (formData.is_alumni_member === "yes" && !formData.membership_number) {
-        setError("Please enter your membership number");
-        return;
-      }
-      
-      const discount = formData.is_alumni_member === "yes" ? 5 : 0;
-      const finalPrice = eventPrice - (eventPrice * discount) / 100;
-      
-      setPaybillInfo({
-        amount: finalPrice,
-        account_number: `EVT-${formData.membership_number.toUpperCase().replace(/\s+/g, '')}`,
-        payment_type: "event",
-        description: `Event Payment - ${formData.event_name}`,
-      });
-    }
-
-    setStep(2);
+  // Validate phone number format
+  const validatePhoneNumber = (phone: string): boolean => {
+    const phoneRegex = /^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$/;
+    return phoneRegex.test(phone.replace(/\s/g, ''));
   };
 
-  const handleConfirmPayment = async () => {
+  // Format phone for M-PESA (2547...)
+  const formatPhoneForMpesa = (phone: string): string => {
+    const cleaned = phone.replace(/\s/g, '');
+    if (cleaned.startsWith('0')) return `254${cleaned.slice(1)}`;
+    if (cleaned.startsWith('7')) return `254${cleaned}`;
+    if (cleaned.startsWith('+254')) return cleaned.slice(1);
+    return cleaned;
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
     setLoading(true);
-    
+
     try {
-      
-      if (paybillInfo.payment_type === "registration") {
-          // Simulate user registration API call
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+      if (paymentType === "registration") {
+        // Registration form validation
+        if (!formData.full_name || !formData.email || !formData.password || 
+            !formData.graduation_year || !formData.course || !formData.county) {
+          setError("Please fill in all required fields");
+          setLoading(false);
+          return;
+        }
+
+        // Validate phone for STK Push
+        if (!formData.phone || !validatePhoneNumber(formData.phone)) {
+          setError("Please enter a valid Kenyan phone number (e.g., 0712345678)");
+          setLoading(false);
+          return;
+        }
+
+        const registrationFee = 1500;
+        
+        // Set pending account number - will be updated after registration
+        setPaybillInfo({
+          amount: registrationFee,
+          account_number: "PENDING", // Will be updated after registration
+          payment_type: "registration",
+          description: `New Member Registration - ${formData.full_name}`,
+        });
+
+        // Create user first, then initiate STK Push
+        await handleRegistrationAndPayment();
+        return;
       }
-      
-      setStep(3);
+
+      if (paymentType === "renewal") {
+        if (!formData.membership_number || !formData.full_name || !formData.email || !formData.phone) {
+          setError("Please fill in all required fields");
+          setLoading(false);
+          return;
+        }
+
+        if (!validatePhoneNumber(formData.phone)) {
+          setError("Please enter a valid Kenyan phone number (e.g., 0712345678)");
+          setLoading(false);
+          return;
+        }
+
+        // Validate membership number format (100XXX)
+        if (!/^100\d{3}$/.test(formData.membership_number)) {
+          setError("Invalid membership number format. Must be in format 100XXX");
+          setLoading(false);
+          return;
+        }
+
+        try {
+          // Lookup user by membership number
+          const lookupRes = await fetch(`/api/users/lookup?membership_number=${formData.membership_number}`);
+          let userId = null;
+          let userEmail = formData.email;
+          let userName = formData.full_name;
+
+          if (lookupRes.ok) {
+            const lookupData = await lookupRes.json();
+            userId = lookupData.user.id;
+            userEmail = lookupData.user.email;
+            userName = lookupData.user.full_name;
+            
+            // Verify email matches
+            if (lookupData.user.email.toLowerCase() !== formData.email.toLowerCase()) {
+              setError("Email address does not match our records for this membership number");
+              setLoading(false);
+              return;
+            }
+          } else {
+            // User not found - show error
+            setError("Membership number not found. Please check and try again.");
+            setLoading(false);
+            return;
+          }
+
+          setPaybillInfo({
+            amount: 1,
+            account_number: formData.membership_number,
+            payment_type: "renewal",
+            description: `Membership Renewal - ${formData.renewal_year}`,
+          });
+
+          // Initiate STK Push for renewal with user ID
+          await initiateSTKPush(1, 'renewal', userId, {
+            membership_number: formData.membership_number,
+            renewal_year: formData.renewal_year,
+            full_name: formData.full_name,
+            email: formData.email
+          });
+          
+        } catch (lookupError) {
+          console.error('User lookup error:', lookupError);
+          setError("Failed to verify membership. Please try again.");
+          setLoading(false);
+        }
+      }
     } catch (err) {
-      setError("Payment confirmation failed. Please try again.");
+      console.error('Payment initiation error:', err);
+      setError(err instanceof Error ? err.message : "Payment initiation failed");
+      setLoading(false);
+    }
+  };
+
+  // Handle registration and payment
+  const handleRegistrationAndPayment = async () => {
+    try {
+      // First, create the user account
+      const registrationResponse = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          full_name: formData.full_name,
+          phone: formData.phone,
+          graduation_year: formData.graduation_year,
+          course: formData.course,
+          county: formData.county,
+          password: formData.password
+          // Don't send membership_number - it will be generated by database trigger
+        })
+      });
+
+      const registrationData = await registrationResponse.json();
+      
+      if (!registrationResponse.ok) {
+        throw new Error(registrationData.error || 'Registration failed');
+      }
+
+      // Get the generated membership number from response
+      const membershipNumber = registrationData.user?.user_metadata?.membership_number;
+      
+      if (!membershipNumber) {
+        throw new Error('Failed to generate membership number');
+      }
+
+      // Update form with generated membership number
+      setFormData(prev => ({
+        ...prev,
+        membership_number: membershipNumber
+      }));
+
+      // Update paybill info with actual membership number
+      setPaybillInfo(prev => ({
+        ...prev,
+        account_number: membershipNumber
+      }));
+
+      // Then initiate STK Push
+      await initiateSTKPush(1500, 'registration', registrationData.user?.id, {
+        graduation_year: formData.graduation_year,
+        course: formData.course,
+        county: formData.county,
+        membership_number: membershipNumber
+      });
+
+    } catch (err) {
+      console.error('Registration error:', err);
+      setError(err instanceof Error ? err.message : "Registration failed");
+      setLoading(false);
+      throw err;
+    }
+  };
+
+  // Initiate STK Push
+  const initiateSTKPush = async (
+    amount: number, 
+    paymentType: 'registration' | 'renewal', 
+    userId?: string,
+    metadata?: any
+  ) => {
+    try {
+      setStkStatus('initiating');
+      
+      const response = await fetch('/api/payments/stk-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: formData.phone,
+          amount: amount,
+          paymentType: paymentType,
+          userId: userId,
+          userEmail: formData.email,
+          userName: formData.full_name,
+          metadata: metadata || {
+            graduation_year: formData.graduation_year,
+            course: formData.course,
+            county: formData.county,
+            membership_number: formData.membership_number,
+            renewal_year: formData.renewal_year
+          }
+        })
+      });
+
+      const data: PaymentResponse = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to initiate payment');
+      }
+
+      if (data.success && data.checkoutRequestID) {
+        setCheckoutRequestID(data.checkoutRequestID);
+        setPaymentId(data.paymentId || '');
+        setStkStatus('pending');
+        setStep(2); // Move to payment status page
+        
+        // Start polling for payment status
+        startPaymentPolling(data.checkoutRequestID);
+      } else {
+        throw new Error(data.message || 'Payment initiation failed');
+      }
+    } catch (err) {
+      console.error('STK Push error:', err);
+      setStkStatus('failed');
+      setError(err instanceof Error ? err.message : 'Failed to initiate payment');
+      throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateEventPrice = () => {
-    const eventPrice = parseFloat(formData.event_price);
-    if (isNaN(eventPrice) || eventPrice <= 0) return null;
-    
-    const isMember = formData.is_alumni_member === "yes";
-    const discount = isMember ? 5 : 0;
-    const finalPrice = isMember 
-      ? eventPrice - (eventPrice * discount) / 100
-      : eventPrice;
-    
-    return {
-      originalPrice: eventPrice,
-      discount,
-      finalPrice,
-      isMember
-    };
+  // Start polling for payment status
+  const startPaymentPolling = (checkoutID: string) => {
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/payments/status/${checkoutID}`);
+        const data = await response.json();
+        
+        if (data.status === 'confirmed') {
+          setStkStatus('success');
+          clearInterval(interval);
+          setPollingInterval(null);
+          
+          // Auto-redirect to success after 2 seconds
+          setTimeout(() => {
+            setStep(3);
+          }, 2000);
+          
+        } else if (data.status === 'failed' || data.status === 'cancelled') {
+          setStkStatus(data.status);
+          clearInterval(interval);
+          setPollingInterval(null);
+        }
+        // If still pending, continue polling
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    setPollingInterval(interval);
+  };
+
+  // Cancel payment polling
+  const cancelPayment = () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+    setStkStatus('cancelled');
+    setStep(1);
   };
 
   const paymentSteps = [
-    "Go to M-PESA on your phone",
-    "Select Lipa na M-PESA",
-    "Select Pay Bill",
-    `Enter Business Number: 263532`,
-    `Enter Account Number: ${paybillInfo.account_number}`,
-    `Enter Amount: Ksh ${paybillInfo.amount.toLocaleString()}`,
-    "Enter your M-PESA PIN and confirm"
+    "Enter your M-PESA phone number in the form",
+    "Click 'Pay via M-PESA' button",
+    "Check your phone for STK Push prompt",
+    "Enter your M-PESA PIN when prompted",
+    "Wait for payment confirmation"
   ];
+
+  // Fixed TypeScript error: Added 'idle' to the object
+  const stkStatusMessages: Record<STKPushStatus, string> = {
+    idle: "Ready to initiate payment",
+    initiating: "Initiating payment request...",
+    pending: "Awaiting payment on your phone. Check for STK Push prompt.",
+    success: "Payment confirmed successfully!",
+    failed: "Payment failed. Please try again.",
+    cancelled: "Payment cancelled."
+  };
 
   // Success messages based on payment type
   const successMessages = {
     registration: {
       title: "Welcome to CHRMAA!",
-      message: "Your account has been created successfully! You can now log in and access your dashboard. Your payment will be verified by our team, and once confirmed, you'll have full access to all member benefits."
+      message: "Your account has been created and payment confirmed successfully! You can now log in and access your dashboard with full member benefits.",
+      membershipNumber: (paymentType === "registration" && formData.membership_number) ? formData.membership_number : ''
     },
     renewal: {
-      title: "Payment Submitted!",
-      message: "Your membership renewal payment will be verified by our team. You'll be notified once it's confirmed and your membership will be activated for the selected year."
-    },
-    event: {
-      title: "Registration Complete!",
-      message: "Your event registration payment will be verified by our team. You'll receive a confirmation email with event details once payment is confirmed."
+      title: "Renewal Successful!",
+      message: "Your membership renewal payment has been confirmed. Your membership is now active for the selected year."
     }
   };
 
@@ -327,6 +480,22 @@ export default function CombinedPaymentsPage() {
                 >
                   {successInfo.message}
                 </motion.p>
+
+                {paymentType === "registration" && formData.membership_number && (
+                  <motion.div
+                    variants={fadeUp}
+                    initial="hidden"
+                    animate="visible"
+                    transition={{ delay: 0.15 }}
+                    className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100"
+                  >
+                    <p className="text-sm text-blue-700 font-semibold mb-2">Your Membership Number:</p>
+                    <p className="text-2xl font-bold text-blue-900 font-mono">{formData.membership_number}</p>
+                    <p className="text-xs text-blue-600 mt-2">
+                      Save this number! You'll need it for future renewals and member services.
+                    </p>
+                  </motion.div>
+                )}
                 
                 <motion.div
                   variants={fadeUp}
@@ -337,10 +506,10 @@ export default function CombinedPaymentsPage() {
                   whileTap={buttonTap}
                 >
                   <Link
-                    href={paybillInfo.payment_type === "registration" ? "/login" : "/"}
+                    href={paybillInfo.payment_type === "registration" ? "/login" : "/member/dashboard"}
                     className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300"
                   >
-                    {paybillInfo.payment_type === "registration" ? "Go to Login" : "Back to Home"}
+                    {paybillInfo.payment_type === "registration" ? "Go to Login" : "Go to Dashboard"}
                     <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
                   </Link>
                 </motion.div>
@@ -383,88 +552,84 @@ export default function CombinedPaymentsPage() {
                   className="flex items-center justify-center gap-3 mb-6"
                 >
                   <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-full flex items-center justify-center">
-                    <CreditCard className="text-white" size={24} />
+                    <Smartphone className="text-white" size={24} />
                   </div>
                   <h1 className="text-3xl font-bold font-poppins text-gray-900">
-                    Complete Your Payment
+                    Complete Payment on Your Phone
                   </h1>
                 </motion.div>
 
+                {/* Payment Status Card */}
                 <motion.div
                   variants={scaleIn}
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  className="bg-gradient-to-r from-amber-50 to-yellow-50 p-6 rounded-2xl mb-8 border border-amber-100"
+                  className={`p-6 rounded-2xl mb-8 border ${
+                    stkStatus === 'success' 
+                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-100'
+                      : stkStatus === 'failed' || stkStatus === 'cancelled'
+                      ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-100'
+                      : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-100'
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h2 className="text-2xl font-bold font-poppins text-amber-900">
+                      <h2 className="text-2xl font-bold font-poppins mb-2">
                         {paybillInfo.payment_type === "registration" 
                           ? "Registration Fee" 
-                          : paybillInfo.payment_type === "renewal"
-                          ? "Renewal Fee"
-                          : "Event Fee"}
+                          : "Renewal Fee"}
                       </h2>
-                      <p className="text-amber-700 text-sm">{paybillInfo.description}</p>
+                      <p className="text-sm opacity-80">{paybillInfo.description}</p>
                     </div>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
-                      className="px-4 py-2 bg-amber-600 text-white rounded-full font-bold text-lg"
-                    >
+                    <div className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full font-bold text-lg">
                       Ksh {paybillInfo.amount.toLocaleString()}
-                    </motion.div>
+                    </div>
                   </div>
                   
-                  <motion.div
-                    variants={staggerContainer}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    className="space-y-4"
-                  >
-                    <div className="flex items-center gap-3">
+                  {/* Status Indicator */}
+                  <div className="flex items-center gap-3 mb-4">
+                    {stkStatus === 'pending' && (
                       <motion.div
-                        whileHover={{ rotate: 5 }}
-                        className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center"
-                      >
-                        <Shield className="text-amber-600" size={20} />
-                      </motion.div>
-                      <div>
-                        <div className="text-sm text-amber-800 font-medium">Paybill Number</div>
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.2 }}
-                          className="text-xl font-bold text-gray-900"
-                        >
-                          263532
-                        </motion.div>
-                      </div>
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full"
+                      />
+                    )}
+                    {stkStatus === 'success' && (
+                      <CheckCircle className="text-green-500" size={32} />
+                    )}
+                    {(stkStatus === 'failed' || stkStatus === 'cancelled') && (
+                      <AlertCircle className="text-red-500" size={32} />
+                    )}
+                    <div>
+                      <p className="font-semibold">
+                        {stkStatus === 'initiating' && 'Initiating Payment...'}
+                        {stkStatus === 'pending' && 'Awaiting Payment on Phone'}
+                        {stkStatus === 'success' && 'Payment Confirmed!'}
+                        {stkStatus === 'failed' && 'Payment Failed'}
+                        {stkStatus === 'cancelled' && 'Payment Cancelled'}
+                      </p>
+                      <p className="text-sm opacity-80">
+                        {stkStatusMessages[stkStatus]}
+                      </p>
                     </div>
-                    
-                    <div className="flex items-center gap-3">
-                      <motion.div
-                        whileHover={{ rotate: -5 }}
-                        className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center"
-                      >
-                        <User className="text-amber-600" size={20} />
-                      </motion.div>
-                      <div>
-                        <div className="text-sm text-amber-800 font-medium">Account Number</div>
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.9 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: 0.3 }}
-                          className="text-xl font-bold text-gray-900 font-mono"
-                        >
-                          {paybillInfo.account_number}
-                        </motion.div>
+                  </div>
+
+                  {/* Payment Instructions */}
+                  <div className="space-y-3">
+                    {paymentSteps.map((stepText, index) => (
+                      <div key={index} className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 bg-white/50 rounded-full flex items-center justify-center">
+                          <span className="font-bold text-sm">{index + 1}</span>
+                        </div>
+                        <p className="text-sm">{stepText}</p>
                       </div>
-                    </div>
-                  </motion.div>
+                    ))}
+                  </div>
                 </motion.div>
 
+                {/* Phone Number Display */}
                 <motion.div
                   variants={scaleIn}
                   initial="hidden"
@@ -472,87 +637,49 @@ export default function CombinedPaymentsPage() {
                   viewport={{ once: true }}
                   className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl mb-8 border border-blue-100"
                 >
-                  <h3 className="text-xl font-bold font-poppins text-gray-900 mb-4">
-                    📱 Payment Instructions
-                  </h3>
+                  <div className="flex items-center gap-3 mb-3">
+                    <Phone className="text-blue-600" size={20} />
+                    <div>
+                      <div className="text-sm text-blue-800 font-medium">Payment will be sent to:</div>
+                      <div className="text-xl font-bold text-gray-900">{formData.phone}</div>
+                    </div>
+                  </div>
+                  <p className="text-sm text-blue-700">
+                    💡 Keep your phone nearby. You should receive a payment prompt shortly.
+                  </p>
+                </motion.div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4">
+                  <button
+                    onClick={cancelPayment}
+                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-200"
+                  >
+                    Cancel Payment
+                  </button>
                   
-                  <motion.div
-                    variants={staggerContainer}
+                  {stkStatus === 'failed' && (
+                    <button
+                      onClick={() => setStep(1)}
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-200"
+                    >
+                      Try Again
+                    </button>
+                  )}
+                </div>
+
+                {stkStatus === 'pending' && (
+                  <motion.p
+                    variants={fadeUp}
                     initial="hidden"
                     whileInView="visible"
                     viewport={{ once: true }}
-                    className="space-y-3"
+                    transition={{ delay: 0.1 }}
+                    className="text-sm text-gray-500 text-center mt-4"
                   >
-                    {paymentSteps.map((stepText, index) => (
-                      <motion.div
-                        key={index}
-                        variants={fadeUp}
-                        whileHover={{ x: 5 }}
-                        className="flex items-start gap-3"
-                      >
-                        <motion.div
-                          whileHover={{ scale: 1.1 }}
-                          className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center"
-                        >
-                          <span className="text-blue-700 font-bold text-sm">{index + 1}</span>
-                        </motion.div>
-                        <p className="text-gray-700 flex-1">
-                          {stepText.includes("263532") || stepText.includes(paybillInfo.account_number) || stepText.includes("Ksh") ? (
-                            <>
-                              {stepText.split(/(263532|Ksh \d+|RN-\w+|EVT-\w+|R-\w+)/).map((part, i) => 
-                                /(263532|Ksh \d+|RN-\w+|EVT-\w+|R-\w+)/.test(part) ? (
-                                  <span key={i} className="font-bold text-blue-700">{part}</span>
-                                ) : (
-                                  part
-                                )
-                              )}
-                            </>
-                          ) : (
-                            stepText
-                          )}
-                        </p>
-                      </motion.div>
-                    ))}
-                  </motion.div>
-                </motion.div>
-
-                <motion.button
-                  whileHover={buttonHover}
-                  whileTap={buttonTap}
-                  onClick={handleConfirmPayment}
-                  disabled={loading}
-                  className="group w-full px-4 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                      />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard size={20} />
-                      I Have Completed Payment
-                      <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
-                    </>
-                  )}
-                </motion.button>
-
-                <motion.p
-                  variants={fadeUp}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.1 }}
-                  className="text-sm text-gray-500 text-center mt-4"
-                >
-                  {paybillInfo.payment_type === "registration" 
-                    ? "💡 Your account will be created immediately. Full member benefits activate after payment verification."
-                    : "💡 Your payment will be verified within 24 hours. You'll receive a confirmation email."}
-                </motion.p>
+                    ⏳ Payment status updates automatically. Please wait...
+                  </motion.p>
+                )}
               </div>
             </div>
           </motion.div>
@@ -601,22 +728,21 @@ export default function CombinedPaymentsPage() {
                   </h1>
                 </div>
                 <p className="text-gray-600">
-                  Register as a new member, renew membership, or pay for events
+                  Register as a new member or renew your membership
                 </p>
               </motion.div>
 
-              {/* Payment Type Selection - Updated order: Registration first */}
+              {/* Payment Type Selection - Updated order: Registration first, Renewal second */}
               <motion.div
                 variants={staggerContainer}
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+                className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"
               >
                 {[
-                  { id: "registration", label: "New Member", icon: BookOpen, color: "from-green-500 to-emerald-600", desc: "Join CHRMAA community" },
-                  { id: "renewal", label: "Membership Renewal", icon: Users, color: "from-amber-500 to-yellow-500", desc: "Renew your annual membership" },
-                  { id: "event", label: "Event Payment", icon: User, color: "from-blue-500 to-indigo-500", desc: "Register for upcoming events" },
+                  { id: "registration" as const, label: "New Member", icon: BookOpen, color: "from-green-500 to-emerald-600", desc: "Join CHRMAA community" },
+                  { id: "renewal" as const, label: "Membership Renewal", icon: Users, color: "from-amber-500 to-yellow-500", desc: "Renew your annual membership" },
                 ].map((type, index) => (
                   <motion.button
                     key={type.id}
@@ -624,7 +750,7 @@ export default function CombinedPaymentsPage() {
                     custom={index}
                     whileHover={{ scale: 1.05, y: -5 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setPaymentType(type.id as any)}
+                    onClick={() => setPaymentType(type.id)}
                     className={`px-6 py-4 rounded-xl font-bold transition-all duration-300 flex flex-col items-center gap-2 relative overflow-hidden ${
                       paymentType === type.id
                         ? `bg-gradient-to-r ${type.color} text-white shadow-lg`
@@ -652,7 +778,7 @@ export default function CombinedPaymentsPage() {
                 </motion.div>
               )}
 
-              {/* Main form container with increased min-height */}
+              {/* Main form container */}
               <motion.div
                 variants={scaleIn}
                 initial="hidden"
@@ -712,19 +838,25 @@ export default function CombinedPaymentsPage() {
                         <motion.div variants={scaleIn}>
                           <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
                             <Phone size={16} className="text-gray-500" />
-                            Phone Number
+                            Phone Number (M-PESA) *
                           </label>
                           <motion.input
                             whileHover={inputHover}
                             whileFocus={inputFocus}
                             type="tel"
+                            required
                             value={formData.phone}
                             onChange={(e) =>
                               setFormData({ ...formData, phone: e.target.value })
                             }
                             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
                             placeholder="0712345678"
+                            pattern="^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$"
+                            title="Enter a valid Kenyan phone number"
                           />
+                          <p className="text-xs text-gray-500 mt-1">
+                            You'll receive STK prompt on this number
+                          </p>
                         </motion.div>
 
                         <motion.div variants={scaleIn}>
@@ -748,7 +880,7 @@ export default function CombinedPaymentsPage() {
                           />
                         </motion.div>
 
-                        {/* Add Course Selection Field */}
+                        {/* Course Selection Field */}
                         <motion.div variants={scaleIn}>
                           <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
                             <BookOpen size={16} className="text-gray-500" />
@@ -773,7 +905,7 @@ export default function CombinedPaymentsPage() {
                           </motion.select>
                         </motion.div>
 
-                        {/* Add County Selection Field */}
+                        {/* County Selection Field */}
                         <motion.div variants={scaleIn}>
                           <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
                             <Users size={16} className="text-gray-500" />
@@ -846,8 +978,16 @@ export default function CombinedPaymentsPage() {
                           </div>
                         </div>
                         <div className="pt-4 border-t border-green-200">
-                          <p className="text-lg font-bold text-green-700">
-                            Registration Fee: Ksh 1,500
+                          <div className="flex items-center justify-between">
+                            <p className="text-lg font-bold text-green-700">
+                              Registration Fee:
+                            </p>
+                            <p className="text-2xl font-bold text-green-700">
+                              Ksh 1,500
+                            </p>
+                          </div>
+                          <p className="text-sm text-green-600 mt-2">
+                            Payment will be requested via STK Push on your phone
                           </p>
                         </div>
                       </motion.div>
@@ -864,13 +1004,29 @@ export default function CombinedPaymentsPage() {
                           Login here
                         </Link>
                       </motion.p>
+                      
+                      <div className="mt-8 border-t pt-8">
+                        <div className="text-center">
+                          <p className="text-gray-600 mb-4">
+                            Already have a CHRMAA membership number?
+                          </p>
+                          <Link
+                            href="/claim-account"
+                            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors"
+                          >
+                            <Key size={16} />
+                            Click here to claim your account
+                          </Link>
+                        </div>
+                      </div>
                     </>
-                  ) : paymentType === "renewal" ? (
+                  ) : (
+                    // Renewal form
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <motion.div variants={scaleIn}>
                           <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                            Membership Number
+                            Membership Number *
                           </label>
                           <motion.input
                             whileHover={inputHover}
@@ -885,13 +1041,18 @@ export default function CombinedPaymentsPage() {
                               })
                             }
                             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
-                            placeholder="M-123456"
+                            placeholder="e.g., 100121"
+                            pattern="^100\d{3}$"
+                            title="Enter your 6-digit membership number (e.g., 100121)"
                           />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Format: 100XXX (e.g., 100121)
+                          </p>
                         </motion.div>
 
                         <motion.div variants={scaleIn}>
                           <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                            Full Name
+                            Full Name *
                           </label>
                           <motion.input
                             whileHover={inputHover}
@@ -909,7 +1070,7 @@ export default function CombinedPaymentsPage() {
 
                         <motion.div variants={scaleIn}>
                           <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                            Email
+                            Email *
                           </label>
                           <motion.input
                             whileHover={inputHover}
@@ -927,7 +1088,7 @@ export default function CombinedPaymentsPage() {
 
                         <motion.div variants={scaleIn}>
                           <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                            Phone
+                            Phone Number (M-PESA) *
                           </label>
                           <motion.input
                             whileHover={inputHover}
@@ -940,12 +1101,17 @@ export default function CombinedPaymentsPage() {
                             }
                             className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
                             placeholder="0712345678"
+                            pattern="^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$"
+                            title="Enter a valid Kenyan phone number"
                           />
+                          <p className="text-xs text-gray-500 mt-1">
+                            You'll receive STK prompt on this number
+                          </p>
                         </motion.div>
 
                         <motion.div variants={scaleIn} className="md:col-span-2">
                           <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                            Renewal Year
+                            Renewal Year *
                           </label>
                           <motion.select
                             whileHover={inputHover}
@@ -976,183 +1142,18 @@ export default function CombinedPaymentsPage() {
                         variants={scaleIn}
                         className="bg-gradient-to-r from-amber-50 to-yellow-50 p-6 rounded-2xl border border-amber-100 mt-6"
                       >
-                        <p className="text-lg font-bold text-amber-700">
-                          Annual Membership Fee: Ksh 1,000
+                        <div className="flex items-center justify-between">
+                          <p className="text-lg font-bold text-amber-700">
+                            Annual Membership Fee:
+                          </p>
+                          <p className="text-2xl font-bold text-amber-700">
+                            Ksh 1,000
+                          </p>
+                        </div>
+                        <p className="text-sm text-amber-600 mt-2">
+                          Payment will be requested via STK Push on your phone
                         </p>
                       </motion.div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <motion.div variants={scaleIn} className="md:col-span-2">
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                            Event Name
-                          </label>
-                          <motion.input
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            type="text"
-                            required
-                            value={formData.event_name}
-                            onChange={(e) =>
-                              setFormData({ ...formData, event_name: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
-                            placeholder="Annual HR Conference 2024"
-                          />
-                        </motion.div>
-
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                            Event Price (Ksh)
-                          </label>
-                          <motion.input
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            type="number"
-                            required
-                            min="1"
-                            step="0.01"
-                            value={formData.event_price}
-                            onChange={(e) =>
-                              setFormData({ ...formData, event_price: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
-                            placeholder="5000"
-                          />
-                        </motion.div>
-
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                            Are you a CHRM Alumni Association member?
-                          </label>
-                          <div className="space-y-3">
-                            <motion.label
-                              whileHover={{ scale: 1.01 }}
-                              className="flex items-center p-3 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-amber-300 transition-all duration-200"
-                            >
-                              <input
-                                type="radio"
-                                name="is_alumni_member"
-                                value="yes"
-                                checked={formData.is_alumni_member === "yes"}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    is_alumni_member: e.target.value,
-                                  })
-                                }
-                                className="mr-3 text-amber-500 focus:ring-amber-200"
-                              />
-                              <div className="flex items-center">
-                                <Users size={18} className="mr-2 text-amber-500" />
-                                <span className="font-semibold text-gray-700">
-                                  Yes, I am a member
-                                </span>
-                              </div>
-                            </motion.label>
-
-                            <motion.label
-                              whileHover={{ scale: 1.01 }}
-                              className="flex items-center p-3 bg-white border-2 border-gray-200 rounded-xl cursor-pointer hover:border-amber-300 transition-all duration-200"
-                            >
-                              <input
-                                type="radio"
-                                name="is_alumni_member"
-                                value="no"
-                                checked={formData.is_alumni_member === "no"}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    is_alumni_member: e.target.value,
-                                  })
-                                }
-                                className="mr-3 text-amber-500 focus:ring-amber-200"
-                              />
-                              <div className="flex items-center">
-                                <User size={18} className="mr-2 text-gray-400" />
-                                <span className="font-semibold text-gray-700">
-                                  No, I am not a member
-                                </span>
-                              </div>
-                            </motion.label>
-                          </div>
-                        </motion.div>
-
-                        {formData.is_alumni_member === "yes" && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: "auto" }}
-                            transition={{ duration: 0.3 }}
-                            className="md:col-span-2"
-                          >
-                            <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                              Membership Number
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              value={formData.membership_number}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  membership_number: e.target.value,
-                                })
-                              }
-                              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
-                              placeholder="Enter your membership number"
-                            />
-                          </motion.div>
-                        )}
-                      </div>
-
-                      {formData.event_price && calculateEventPrice() && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.3 }}
-                          className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100 mt-6"
-                        >
-                          {(() => {
-                            const priceInfo = calculateEventPrice();
-                            if (priceInfo) {
-                              return (
-                                <div className="space-y-3">
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-gray-700">
-                                      <strong className="text-green-700">
-                                        Original Price:
-                                      </strong>
-                                    </p>
-                                    <p className="text-lg font-semibold">Ksh {priceInfo.originalPrice.toLocaleString()}</p>
-                                  </div>
-                                  {priceInfo.isMember && (
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-gray-700">
-                                        <strong className="text-green-700">
-                                          Member Discount:
-                                        </strong>
-                                      </p>
-                                      <p className="text-lg font-semibold text-green-600">{priceInfo.discount}%</p>
-                                    </div>
-                                  )}
-                                  <div className="pt-3 border-t border-green-200">
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-xl font-bold text-green-700">
-                                        Final Amount:
-                                      </p>
-                                      <p className="text-2xl font-bold text-green-700">
-                                        Ksh {priceInfo.finalPrice.toLocaleString()}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            }
-                            return null;
-                          })()}
-                        </motion.div>
-                      )}
                     </>
                   )}
 
@@ -1164,9 +1165,22 @@ export default function CombinedPaymentsPage() {
                     whileTap={buttonTap}
                     className="group w-full px-4 py-4 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 mt-8"
                   >
-                    <CreditCard size={20} />
-                    {paymentType === "registration" ? "Register & Pay" : "Continue to Payment"}
-                    <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                    {loading ? (
+                      <>
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                        />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Smartphone size={20} />
+                        {paymentType === "registration" ? "Register & Pay via M-PESA" : "Pay via M-PESA"}
+                        <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
+                      </>
+                    )}
                   </motion.button>
                 </motion.form>
               </motion.div>
@@ -1224,7 +1238,7 @@ const CHRM_COURSES = [
   "Other Professional Short Courses",
 ];
 
- const COUNTIES_IN_KENYA = [
+const COUNTIES_IN_KENYA = [
   "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita Taveta", "Garissa", 
   "Wajir", "Mandera", "Marsabit", "Isiolo", "Meru", "Tharaka Nithi", "Embu", 
   "Kitui", "Machakos", "Makueni", "Nyandarua", "Nyeri", "Kirinyaga", "Murang'a", 

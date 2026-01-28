@@ -211,7 +211,7 @@ export default function HomePage() {
                 variants={fadeUp}
                 className="text-4xl md:text-6xl font-bold text-[#0f172a] mb-6 font-poppins leading-tight"
               >
-                Welcome to{" "}
+                Welcome to the{" "}
                 <span className="relative inline-block">
                   <span className="relative z-10">CHRM Alumni</span>
                   <motion.span

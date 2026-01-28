@@ -1,70 +1,98 @@
-import { NextRequest, NextResponse } from "next/server";
-import sql from "../../utils/sql";
+import { NextRequest, NextResponse } from 'next/server'
+import { supabaseAdmin } from'../../../lib/supabase/client'
+import { mpesaService } from '../../../lib/mpesa/service'
 
-type Payment = {
-  id: number;
-  user_id: number;
-  amount: number;
-  payment_type: string;
-  reference_code: string | null;
-  status: "pending" | "confirmed" | "rejected";
-  details: any;
-  created_at: string;
-};
-
-export async function PATCH(
+export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { checkoutId: string } }
 ) {
   try {
-    const { id } = await context.params;
-    const { status } = await request.json();
+    const { checkoutId } = params
+    const { data: payment } = await supabaseAdmin
+      .from('payments')
+      .select(`
+        *,
+        profiles (
+          email,
+          full_name,
+          membership_number
+        )
+      `)
+      .eq('checkout_request_id', checkoutId)
+      .single()
 
-    if (!["pending", "confirmed", "rejected"].includes(status)) {
-      return NextResponse.json(
-        { error: "Invalid status" },
-        { status: 400 }
-      );
+    if (!payment) {
+      return NextResponse.json({
+        status: 'not_found',
+        message: 'Payment not found'
+      })
     }
 
-    const updatedPayments = await sql`
-      UPDATE payments
-      SET status = ${status}
-      WHERE id = ${id}
-      RETURNING *
-    ` as Payment[];
-
-    if (!updatedPayments.length) {
-      return NextResponse.json(
-        { error: "Payment not found" },
-        { status: 404 }
-      );
+    // If payment already confirmed, return
+    if (payment.status === 'confirmed') {
+      return NextResponse.json({
+        status: 'confirmed',
+        receipt: payment.mpesa_receipt_number,
+        paid_at: payment.paid_at,
+        user: payment.profiles
+      })
     }
 
-    const payment = updatedPayments[0];
-
-    if (
-      status === "confirmed" &&
-      (payment.payment_type === "registration" ||
-        payment.payment_type === "renewal")
-    ) {
-      const expiryDate = new Date();
-      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
-
-      await sql`
-        UPDATE users
-        SET membership_paid = true,
-            membership_expiry = ${expiryDate.toISOString()}
-        WHERE id = ${payment.user_id}
-      `;
+    // If still pending, check with M-PESA
+    if (payment.status === 'pending' || payment.status === 'processing') {
+      try {
+        const mpesaStatus = await mpesaService.checkTransactionStatus(checkoutId)
+        
+        if (mpesaStatus.ResultCode === '0') {
+          // Payment successful
+          await supabaseAdmin
+            .from('payments')
+            .update({
+              status: 'confirmed',
+              mpesa_receipt_number: mpesaStatus.MpesaReceiptNumber || null,
+              paid_at: new Date().toISOString(),
+              confirmed_at: new Date().toISOString(),
+              callback_data: mpesaStatus
+            })
+            .eq('checkout_request_id', checkoutId)
+          
+          return NextResponse.json({
+            status: 'confirmed',
+            receipt: mpesaStatus.MpesaReceiptNumber,
+            paid_at: new Date().toISOString()
+          })
+        } else if (mpesaStatus.ResultCode !== '1037') { // 1037 = timeout, still pending
+          // Payment failed
+          await supabaseAdmin
+            .from('payments')
+            .update({
+              status: 'failed',
+              error_message: mpesaStatus.ResultDesc,
+              callback_data: mpesaStatus
+            })
+            .eq('checkout_request_id', checkoutId)
+          
+          return NextResponse.json({
+            status: 'failed',
+            message: mpesaStatus.ResultDesc
+          })
+        }
+      } catch (mpesaError) {
+        console.error('M-PESA status check error:', mpesaError)
+      }
     }
 
-    return NextResponse.json(payment);
+    // Return current status
+    return NextResponse.json({
+      status: payment.status,
+      message: payment.error_message || 'Payment in progress'
+    })
+
   } catch (error) {
-    console.error("Update payment error:", error);
-    return NextResponse.json(
-      { error: "Failed to update payment" },
-      { status: 500 }
-    );
+    console.error('Status check error:', error)
+    return NextResponse.json({
+      status: 'error',
+      message: 'Failed to check payment status'
+    })
   }
 }
