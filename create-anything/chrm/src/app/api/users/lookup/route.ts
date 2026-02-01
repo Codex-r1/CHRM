@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../../lib/supabase/client'
+import { supabase } from '../../../lib/supabase/client'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    let query = supabaseAdmin
+    let query = supabase
       .from('profiles')
       .select('*')
 

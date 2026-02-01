@@ -2,14 +2,13 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import React from "react";
 import { AuthProvider } from "./context/auth";
-
-// Initialize Poppins font with specific weights
+import SessionWarning from "./components/SessionWarning";
 const poppins = Poppins({
   weight: ["300", "400", "500", "600", "700"],
   subsets: ["latin"],
   variable: "--font-poppins",
   display: "swap",
-  preload: true, // Ensure it preloads
+  preload: true, 
 });
 
 export const metadata = {
@@ -31,6 +30,7 @@ export default function RootLayout({
       </head>
       <body className={`font-sans antialiased`}>
         <AuthProvider>
+          <SessionWarning />
           <main className="min-h-screen">
             {children}
           </main>

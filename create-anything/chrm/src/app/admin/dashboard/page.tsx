@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/auth";
 import Footer from "@/app/components/Footer";
+import { supabase } from "@/app/lib/supabase/client";
 
 // Type definitions
 type User = {
@@ -113,11 +114,49 @@ type Stats = {
   upcomingEvents: number;
   todayRevenue: number;
 };
+type Product = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  base_price: number;
+  category: 'tshirt' | 'polo' | 'hoodie' | 'accessory' | 'other';
+  is_active: boolean;
+  is_out_of_stock: boolean;
+  featured_image_url?: string;
+  sort_order: number;
+  created_at: string;
+  product_variants?: ProductVariant[];
+  product_images?: ProductImage[];
+};
 
+type ProductVariant = {
+  id: string;
+  product_id: string;
+  color_name: string;
+  color_hex: string;
+  size: string;
+  sku: string;
+  price_adjustment: number;
+  stock_quantity: number;
+  is_available: boolean;
+  image_url?: string;
+};
+
+type ProductImage = {
+  id: string;
+  product_id: string;
+  image_url: string;
+  is_primary: boolean;
+  sort_order: number;
+};
 export default function AdminDashboard() {
   const router = useRouter();
-  const { user, session, loading: authLoading, logout, getSessionToken } = useAuth();
-  
+  const { user, loading: authLoading, logout } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+const [showProductForm, setShowProductForm] = useState(false);
+const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+const [productLoading, setProductLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [users, setUsers] = useState<User[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -153,57 +192,107 @@ export default function AdminDashboard() {
     status: 'upcoming'
   });
   const [creatingEvent, setCreatingEvent] = useState(false);
+const [newProduct, setNewProduct] = useState({
+  name: '',
+  description: '',
+  base_price: '',
+  category: 'tshirt',
+  featured_image_url: '',
+  is_active: true,
+  is_out_of_stock: false,
+  variants: [] as ProductVariant[],
+  images: [] as ProductImage[]
+});
+// Helper function to get session token
+const getSessionToken = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+};
+// New Variant State
+const [newVariant, setNewVariant] = useState({
+  color_name: '',
+  color_hex: '#000000',
+  size: '',
+  sku: '',
+  price_adjustment: '0',
+  stock_quantity: '0',
+  is_available: true,
+  image_url: ''
+});
+  // Fix for admin/dashboard page
 
-  // Redirect if not authenticated or not admin
-  useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push("/login");
-      } else {
-        checkAdminStatus();
-      }
-    }
-  }, [user, authLoading, router]);
+// The issue is that checkAdminStatus might be running before the auth context is fully ready
+// Here's the corrected useEffect and checkAdminStatus:
 
-  const checkAdminStatus = async () => {
+useEffect(() => {
+  console.log("Admin dashboard useEffect triggered:", {
+    authLoading,
+    user,
+    userEmail: user?.email,
+    userId: user?.id
+  });
+
+  // Wait for auth loading to complete
+  if (authLoading) {
+    console.log("Auth still loading...");
+    return;
+  }
+
+  // Auth loading is complete
+  console.log("Auth loading complete");
+  
+  if (!user) {
+    console.log("No user found, redirecting to login");
+    router.push("/login");
+    return;
+  }
+
+  // User exists, check admin status
+  console.log("User found, checking admin status");
+  checkAdminStatus();
+}, [user, authLoading]); // Remove router from dependencies
+
+const checkAdminStatus = async () => {
   try {
     if (!user) {
       router.push("/login");
       return;
     }
-    const token = getSessionToken();
-    if (!token) {
-      console.error("No session token available");
-      router.push("/login");
-      return;
-    }
-
-    // Get user profile directly
-    const response = await fetch('/api/auth/profile', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      // If profile fetch fails, redirect to login
-      router.push("/login");
-      return;
-    }
-
-    const profileData = await response.json();
     
-    // Check if user is admin
-    if (profileData.role !== 'admin') {
-      // Not admin, redirect to member dashboard
+    console.log("Checking admin status for user:", user.id);
+    
+    // Method 1: Use the user object directly if it has role info
+    if (user.user_metadata?.role === 'admin') {
+      console.log('User is admin (from user_metadata), loading admin dashboard');
+      fetchData();
+      return;
+    }
+
+    // Method 2: Query Supabase directly - but DON'T use getSessionToken()
+    // Instead, use the Supabase client which already has the session
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single(); // Use single() instead of maybeSingle() to throw error if not found
+
+    console.log("Profile fetch result:", { profile, profileError });
+
+    if (profileError) {
+      console.error("Profile fetch error:", profileError);
+      // If there's an error fetching profile, redirect to member dashboard
+      router.push("/member/dashboard");
+      return;
+    }
+
+    if (!profile || profile.role !== 'admin') {
       console.log('User is not admin, redirecting to member dashboard');
       router.push("/member/dashboard");
       return;
     }
 
-    // User is admin, fetch data
-    console.log('User is admin, loading admin dashboard');
+    // User is admin
+    console.log('User is confirmed admin, loading dashboard data');
     fetchData();
     
   } catch (error) {
@@ -213,87 +302,204 @@ export default function AdminDashboard() {
   }
 };
 
-  const fetchData = async () => {
-    try {
-      setDataLoading(true);
-      const token = getSessionToken();
-      
-      if (!token) {
-        console.error("No session token available");
+// Also update fetchData to handle the case where token might not be available yet:
+const fetchData = async () => {
+  try {
+    setDataLoading(true);
+    
+    // Wait a bit for the session to be fully established
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const token = await getSessionToken();
+    
+    if (!token) {
+      console.error("No session token available in fetchData");
+      // Try to get session directly from Supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error("No session available");
         return;
       }
+    }
 
-      const headers = {
+    const headers = {
+      'Authorization': `Bearer ${token || (await supabase.auth.getSession()).data.session?.access_token}`,
+      'Content-Type': 'application/json'
+    };
+
+    // ... rest of fetchData code
+  } catch (error) {
+    console.error("Failed to fetch data:", error);
+  } finally {
+    setDataLoading(false);
+  }
+};
+
+ 
+
+const fetchProducts = async () => {
+  try {
+    setProductLoading(true);
+    const token = await getSessionToken();
+    if (!token) return;
+
+    const response = await fetch('/api/admin/merchandise', {
+      headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
-      };
-
-      const [usersRes, paymentsRes, ordersRes, eventsRes] = await Promise.all([
-        fetch("/api/admin/users", { headers }),
-        fetch("/api/admin/payments", { headers }),
-        fetch("/api/admin/orders", { headers }),
-        fetch("/api/events?admin=true", { headers }), // Add admin param to get all events
-      ]);
-
-      if (usersRes.ok) {
-        const usersData: User[] = await usersRes.json();
-        setUsers(usersData);
-        const activeMembers = usersData.filter(u => u.status === 'active').length;
-        setStats(prev => ({ 
-          ...prev, 
-          totalMembers: usersData.length,
-          activeMembers 
-        }));
       }
+    });
 
-      if (paymentsRes.ok) {
-        const paymentsData: Payment[] = await paymentsRes.json();
-        setPayments(paymentsData);
-        const pending = paymentsData.filter(p => p.status === "pending").length;
-        const total = paymentsData
-          .filter(p => p.status === "confirmed")
-          .reduce((sum, p) => sum + p.amount, 0);
-        
-        // Today's revenue
-        const today = new Date().toISOString().split('T')[0];
-        const todayRevenue = paymentsData
-          .filter(p => p.status === "confirmed" && p.created_at.includes(today))
-          .reduce((sum, p) => sum + p.amount, 0);
-        
-        setStats(prev => ({
-          ...prev,
-          pendingPayments: pending,
-          totalRevenue: total,
-          todayRevenue
-        }));
-      }
-
-      if (ordersRes.ok) {
-        const ordersData: Order[] = await ordersRes.json();
-        setOrders(ordersData);
-        const pending = ordersData.filter(o => o.status === "pending").length;
-        setStats(prev => ({ ...prev, pendingOrders: pending }));
-      }
-
-      if (eventsRes.ok) {
-        const eventsData: Event[] = await eventsRes.json();
-        setEvents(eventsData);
-        const upcoming = eventsData.filter(e => 
-          e.status === 'upcoming' && e.is_active
-        ).length;
-        setStats(prev => ({
-          ...prev,
-          totalEvents: eventsData.length,
-          upcomingEvents: upcoming
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-    } finally {
-      setDataLoading(false);
+    if (response.ok) {
+      const data = await response.json();
+      setProducts(data.products || []);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching products:', error);
+  } finally {
+    setProductLoading(false);
+  }
+};
 
+// Create product
+const handleCreateProduct = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setProductLoading(true);
+
+  try {
+    const token = await getSessionToken();
+    if (!token) throw new Error('No session');
+
+    const response = await fetch('/api/admin/merchandise', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        ...newProduct,
+        base_price: parseFloat(newProduct.base_price),
+        variants: newProduct.variants.map(v => ({
+          ...v,
+          price_adjustment: parseFloat(v.price_adjustment.toString()),
+          stock_quantity: parseInt(v.stock_quantity.toString())
+        }))
+      })
+    });
+
+    if (response.ok) {
+      alert('Product created successfully!');
+      setNewProduct({
+        name: '',
+        description: '',
+        base_price: '',
+        category: 'tshirt',
+        featured_image_url: '',
+        is_active: true,
+        is_out_of_stock: false,
+        variants: [],
+        images: []
+      });
+      setShowProductForm(false);
+      fetchProducts();
+    } else {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create product');
+    }
+  } catch (error: any) {
+    alert(error.message || 'Failed to create product');
+  } finally {
+    setProductLoading(false);
+  }
+};
+
+// Update product
+const handleUpdateProduct = async (productId: string, updates: Partial<Product>) => {
+  try {
+    const token = await getSessionToken();
+    if (!token) return;
+
+    const response = await fetch(`/api/admin/merchandise/${productId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(updates)
+    });
+
+    if (response.ok) {
+      alert('Product updated successfully!');
+      fetchProducts();
+    }
+  } catch (error) {
+    alert('Failed to update product');
+  }
+};
+
+// Delete product (soft delete)
+const handleDeleteProduct = async (productId: string) => {
+  if (!confirm('Are you sure you want to deactivate this product?')) return;
+  
+  try {
+    const token = await getSessionToken();
+    if (!token) return;
+
+    const response = await fetch(`/api/admin/merchandise/${productId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (response.ok) {
+      alert('Product deactivated successfully!');
+      fetchProducts();
+    }
+  } catch (error) {
+    alert('Failed to delete product');
+  }
+};
+
+// Add variant to product
+const handleAddVariant = () => {
+  if (!newVariant.color_name || !newVariant.size || !newVariant.sku) {
+    alert('Please fill in all variant fields');
+    return;
+  }
+
+  setNewProduct({
+    ...newProduct,
+    variants: [
+      ...newProduct.variants,
+      {
+        id: Date.now().toString(), // Temporary ID
+        product_id: '',
+        ...newVariant,
+        price_adjustment: parseFloat(newVariant.price_adjustment),
+        stock_quantity: parseInt(newVariant.stock_quantity)
+      }
+    ]
+  });
+
+  setNewVariant({
+    color_name: '',
+    color_hex: '#000000',
+    size: '',
+    sku: '',
+    price_adjustment: '0',
+    stock_quantity: '0',
+    is_available: true,
+    image_url: ''
+  });
+};
+
+// Remove variant
+const handleRemoveVariant = (index: number) => {
+  const updatedVariants = [...newProduct.variants];
+  updatedVariants.splice(index, 1);
+  setNewProduct({ ...newProduct, variants: updatedVariants });
+};
   // Event Handlers
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -349,7 +555,7 @@ export default function AdminDashboard() {
     if (!confirm('Are you sure you want to deactivate this event?')) return;
     
     try {
-      const token = getSessionToken();
+      const token = await getSessionToken();
       if (!token) return;
       
       const response = await fetch(`/api/admin/events/${eventId}`, {
@@ -397,7 +603,7 @@ export default function AdminDashboard() {
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     try {
-      const token = getSessionToken();
+      const token = await getSessionToken();
       if (!token) return;
 
       const response = await fetch(`/api/admin/orders/${orderId}`, {
@@ -422,7 +628,7 @@ export default function AdminDashboard() {
 
   const updateUserStatus = async (userId: string, status: string) => {
     try {
-      const token = getSessionToken();
+      const token = await getSessionToken();
       if (!token) return;
 
       const response = await fetch(`/api/admin/users/${userId}`, {
@@ -581,13 +787,13 @@ export default function AdminDashboard() {
         {/* Tabs Navigation */}
         <div className="flex flex-wrap gap-2 mb-6">
           {[
-            { id: "overview", label: "Overview", icon: Activity },
-            { id: "members", label: "Members", icon: Users },
-            { id: "payments", label: "Payments", icon: DollarSign },
-            { id: "orders", label: "Orders", icon: ShoppingBag },
-            { id: "events", label: "Events", icon: Calendar },
-            { id: "create-event", label: "Create Event", icon: Plus },
-          ].map((tab) => (
+  { id: "overview", label: "Overview", icon: Activity },
+  { id: "members", label: "Members", icon: Users },
+  { id: "payments", label: "Payments", icon: DollarSign },
+  { id: "orders", label: "Orders", icon: ShoppingBag },
+  { id: "events", label: "Events", icon: Calendar },
+  { id: "merchandise", label: "Merchandise", icon: Tag }
+].map((tab) => (
             <button
               key={tab.id}
               onClick={() => {
@@ -1245,20 +1451,390 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Create Event Tab */}
-          {activeTab === "create-event" && !showEventForm && (
-            <div className="text-center py-12">
-              <Plus className="mx-auto text-slate-700 mb-4" size={48} />
-              <h3 className="text-xl font-bold text-white mb-2">Create New Event</h3>
-              <p className="text-slate-400 mb-6">Click the "Create Event" button above to get started</p>
-              <button
-                onClick={() => setShowEventForm(true)}
-                className="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-bold rounded-lg hover:opacity-90 transition"
-              >
-                Start Creating
-              </button>
+        
+          
+
+          {/* Merchandise Tab */}
+{activeTab === "merchandise" && (
+  <div>
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-2xl font-bold text-white font-poppins">
+        Merchandise Management ({products.length})
+      </h2>
+      <div className="flex gap-4">
+        <button
+          onClick={() => {
+            setShowProductForm(true);
+            setEditingProduct(null);
+            setNewProduct({
+              name: '',
+              description: '',
+              base_price: '',
+              category: 'tshirt',
+              featured_image_url: '',
+              is_active: true,
+              is_out_of_stock: false,
+              variants: [],
+              images: []
+            });
+          }}
+          className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:opacity-90 flex items-center gap-2"
+        >
+          <Plus size={16} />
+          Add Product
+        </button>
+      </div>
+    </div>
+
+    {showProductForm && (
+      <div className="bg-slate-900/50 rounded-xl p-6 border border-slate-700 mb-6">
+        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+          <Tag size={24} className="text-green-400" />
+          {editingProduct ? 'Edit Product' : 'Create New Product'}
+        </h3>
+        <form onSubmit={handleCreateProduct} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-white mb-2">Product Name *</label>
+              <input
+                type="text"
+                required
+                value={newProduct.name}
+                onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                placeholder="Premium T-Shirt"
+              />
             </div>
-          )}
+            <div>
+              <label className="block text-white mb-2">Category *</label>
+              <select
+                value={newProduct.category}
+                onChange={(e) => setNewProduct({...newProduct, category: e.target.value as any})}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white"
+              >
+                <option value="tshirt">T-Shirt</option>
+                <option value="polo">Polo Shirt</option>
+                <option value="hoodie">Hoodie</option>
+                <option value="accessory">Accessory</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-white mb-2">Base Price (KES) *</label>
+              <input
+                type="number"
+                required
+                min="0"
+                step="0.01"
+                value={newProduct.base_price}
+                onChange={(e) => setNewProduct({...newProduct, base_price: e.target.value})}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                placeholder="1500"
+              />
+            </div>
+            <div>
+              <label className="block text-white mb-2">Featured Image URL</label>
+              <input
+                type="url"
+                value={newProduct.featured_image_url}
+                onChange={(e) => setNewProduct({...newProduct, featured_image_url: e.target.value})}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white"
+                placeholder="https://example.com/image.jpg"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-white mb-2">Description</label>
+            <textarea
+              rows={3}
+              value={newProduct.description}
+              onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
+              className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white"
+              placeholder="Product description..."
+            />
+          </div>
+
+          {/* Variants Section */}
+          <div className="border-t border-slate-700 pt-6">
+            <h4 className="text-lg font-semibold text-white mb-4">Product Variants</h4>
+            
+            {/* Add Variant Form */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-slate-800/50 rounded-lg">
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Color Name</label>
+                <input
+                  type="text"
+                  value={newVariant.color_name}
+                  onChange={(e) => setNewVariant({...newVariant, color_name: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm"
+                  placeholder="Black"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={newVariant.color_hex}
+                    onChange={(e) => setNewVariant({...newVariant, color_hex: e.target.value})}
+                    className="w-10 h-10 rounded border border-slate-700 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={newVariant.color_hex}
+                    onChange={(e) => setNewVariant({...newVariant, color_hex: e.target.value})}
+                    className="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm"
+                    placeholder="#000000"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Size</label>
+                <input
+                  type="text"
+                  value={newVariant.size}
+                  onChange={(e) => setNewVariant({...newVariant, size: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm"
+                  placeholder="M, L, XL"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">SKU</label>
+                <input
+                  type="text"
+                  value={newVariant.sku}
+                  onChange={(e) => setNewVariant({...newVariant, sku: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm"
+                  placeholder="TSH-BLK-M"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Stock Qty</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={newVariant.stock_quantity}
+                  onChange={(e) => setNewVariant({...newVariant, stock_quantity: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm"
+                  placeholder="50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Price Adjust</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newVariant.price_adjustment}
+                  onChange={(e) => setNewVariant({...newVariant, price_adjustment: e.target.value})}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm"
+                  placeholder="0"
+                />
+              </div>
+              <div className="md:col-span-2 flex items-end">
+                <button
+                  type="button"
+                  onClick={handleAddVariant}
+                  className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded hover:opacity-90 text-sm"
+                >
+                  Add Variant
+                </button>
+              </div>
+            </div>
+
+            {/* Variants List */}
+            {newProduct.variants.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-slate-300 text-sm">Added Variants:</p>
+                {newProduct.variants.map((variant, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-slate-800/30 rounded">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-6 h-6 rounded border border-slate-600"
+                        style={{ backgroundColor: variant.color_hex }}
+                      />
+                      <span className="text-white text-sm">
+                        {variant.color_name} • {variant.size} • SKU: {variant.sku} • 
+                        Stock: {variant.stock_quantity} • +Ksh {variant.price_adjustment}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveVariant(index)}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Product Status */}
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2 text-white">
+              <input
+                type="checkbox"
+                checked={newProduct.is_active}
+                onChange={(e) => setNewProduct({...newProduct, is_active: e.target.checked})}
+                className="w-5 h-5 rounded border-slate-700"
+              />
+              Active (Visible on site)
+            </label>
+            <label className="flex items-center gap-2 text-white">
+              <input
+                type="checkbox"
+                checked={newProduct.is_out_of_stock}
+                onChange={(e) => setNewProduct({...newProduct, is_out_of_stock: e.target.checked})}
+                className="w-5 h-5 rounded border-slate-700"
+              />
+              Mark as Out of Stock
+            </label>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-4">
+            <button
+              type="submit"
+              disabled={productLoading}
+              className="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-bold rounded-lg hover:opacity-90 transition disabled:opacity-50"
+            >
+              {productLoading ? 'Saving...' : (editingProduct ? 'Update Product' : 'Create Product')}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowProductForm(false);
+                setEditingProduct(null);
+                setNewProduct({
+                  name: '',
+                  description: '',
+                  base_price: '',
+                  category: 'tshirt',
+                  featured_image_url: '',
+                  is_active: true,
+                  is_out_of_stock: false,
+                  variants: [],
+                  images: []
+                });
+              }}
+              className="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>)}
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="text-left text-slate-400 border-b border-slate-700">
+            <th className="pb-3 px-4">Product</th>
+            <th className="pb-3 px-4">Category</th>
+            <th className="pb-3 px-4">Price</th>
+            <th className="pb-3 px-4">Stock Status</th>
+            <th className="pb-3 px-4">Variants</th>
+            <th className="pb-3 px-4">Status</th>
+            <th className="pb-3 px-4">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {products.map((product) => (
+            <tr key={product.id} className="border-b border-slate-700/50 hover:bg-slate-800/30">
+              <td className="py-4 px-4">
+                <div>
+                  <p className="text-white font-medium">{product.name}</p>
+                  <p className="text-sm text-slate-400 truncate max-w-xs">
+                    {product.description}
+                  </p>
+                </div>
+              </td>
+              <td className="py-4 px-4">
+                <span className="capitalize text-white">{product.category}</span>
+              </td>
+              <td className="py-4 px-4">
+                <span className="text-white font-bold">Ksh {product.base_price.toLocaleString()}</span>
+              </td>
+              <td className="py-4 px-4">
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
+                  product.is_out_of_stock 
+                    ? 'bg-red-500/20 text-red-400' 
+                    : 'bg-green-500/20 text-green-400'
+                }`}>
+                  {product.is_out_of_stock ? 'Out of Stock' : 'In Stock'}
+                </span>
+              </td>
+              <td className="py-4 px-4">
+                <span className="text-white">
+                  {product.product_variants?.length || 0} variants
+                </span>
+              </td>
+              <td className="py-4 px-4">
+                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
+                  product.is_active 
+                    ? 'bg-green-500/20 text-green-400' 
+                    : 'bg-slate-500/20 text-slate-400'
+                }`}>
+                  {product.is_active ? 'Active' : 'Inactive'}
+                </span>
+              </td>
+              <td className="py-4 px-4">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setEditingProduct(product);
+                      setShowProductForm(true);
+                      setNewProduct({
+                        name: product.name,
+                        description: product.description || '',
+                        base_price: product.base_price.toString(),
+                        category: product.category,
+                        featured_image_url: product.featured_image_url || '',
+                        is_active: product.is_active,
+                        is_out_of_stock: product.is_out_of_stock,
+                        variants: product.product_variants || [],
+                        images: product.product_images || []
+                      });
+                    }}
+                    className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 flex items-center gap-1"
+                  >
+                    <Edit size={12} /> Edit
+                  </button>
+                  <button
+                    onClick={() => handleUpdateProduct(product.id, { is_active: !product.is_active })}
+                    className="px-3 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-700"
+                  >
+                    {product.is_active ? 'Deactivate' : 'Activate'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteProduct(product.id)}
+                    className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 flex items-center gap-1"
+                  >
+                    <Trash2 size={12} /> Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {products.length === 0 && !productLoading && (
+      <div className="text-center py-12">
+        <Tag className="mx-auto text-slate-700 mb-4" size={48} />
+        <p className="text-slate-400">No products found</p>
+        <button
+          onClick={() => setShowProductForm(true)}
+          className="mt-4 px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:opacity-90"
+        >
+          Add Your First Product
+        </button>
+      </div>
+    )}
+  </div>
+)}
           <Footer />
         </div>
       </div>

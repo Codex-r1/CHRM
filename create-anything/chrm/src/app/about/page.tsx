@@ -203,14 +203,7 @@ export default function AboutPage() {
     address: "Hazina Trade Centre - 13th Floor, Between Monrovia Street and Utaili Ln",
     poBox: "P.O. Box 4322-00200 Nairobi, Kenya"
   };
-  const csrActivities = [
-    { id: 1, title: "Community Outreach ", description: "Alumni giving back to the community" ,image:"/CSR2.jpeg"},
-    { id: 2, title: "Mentorship", description: "Career sessions", image:"/CSR again.jpeg" },
-    { id: 3, title: "Environmental Conservation", description: "Tree planting initiative,", image:"/MercyCSR.jpeg" },
-    { id: 4, title: "Skills Development", description: "Workshop for young professionals" },
-    { id: 5, title: "Healthcare Support", description: "Medical camp for local community" },
-    { id: 6, title: "Education Support", description: "Donating books and supplies" },
-  ];
+  
 
   return (
     <motion.div 
@@ -819,81 +812,6 @@ export default function AboutPage() {
                 </motion.div>
               </div>
             </div>
-          </motion.div>
-        </motion.section>
-
-        {/* CSR Activities Gallery Section - NEW */}
-        <motion.section 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.3 }}
-          variants={fadeIn}
-          className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
-        >
-          <motion.div 
-            variants={fadeUp}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <motion.h2
-              variants={fadeUp}
-              className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200"
-            >
-              CSR Activities Gallery
-            </motion.h2>
-            <motion.p
-              variants={fadeUp}
-              transition={{ delay: 0.1 }}
-              className="font-poppins text-lg text-[#000] dark:text-[#000] max-w-4xl mx-auto transition-colors duration-200"
-            >
-              Our commitment to community service and social responsibility
-            </motion.p>
-          </motion.div>
-
-          <motion.div 
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-50px" }}
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
-          >
-            {csrActivities.map((activity, index) => (
-              <motion.div
-                key={activity.id}
-                variants={scaleIn}
-                whileHover="hover"
-                custom={index}
-                className="bg-[#F8FAFC] dark:bg-[#2A2A2A] border border-[#E7ECF3] dark:border-[#3A3A3A] rounded-xl overflow-hidden transition-colors duration-200"
-              >
-                {/* Image Placeholder - Replace with your actual images */}
-                <div className="h-48 bg-gradient-to-br from-[#2B4C73]/20 to-[#FF7A00]/20 flex items-center justify-center">
-                  <ImageIcon size={48} className="text-[#2B4C73] dark:text-[#4A6B8A]" />
-                  <span className="ml-2 font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF]">
-                     
-                  </span>
-                </div>
-                <div className="p-6">
-                  <h3 className="font-poppins font-bold text-lg text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200">
-                    {activity.title}
-                  </h3>
-                  <p className="font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200">
-                    {activity.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-
-          <motion.div 
-            variants={fadeUp}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            transition={{ delay: 0.3 }}
-            className="text-center mt-12"
-          >
           </motion.div>
         </motion.section>
 

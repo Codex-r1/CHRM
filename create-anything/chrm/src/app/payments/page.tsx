@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { CheckCircle, Users, User, CreditCard, Shield, ArrowRight, Lock, Mail, Phone, Calendar, BookOpen, Gift, Smartphone, Loader2, AlertCircle, Key } from "lucide-react";
+import { 
+  CheckCircle, Users, User, CreditCard, Shield, ArrowRight, Lock, Mail, Phone, 
+  Calendar, BookOpen, Gift, Smartphone, Loader2, AlertCircle, Key, Eye, EyeOff,
+  X, Info
+} from "lucide-react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Variants, Transition } from "framer-motion";
 
 // Define types
@@ -41,7 +45,20 @@ type PaymentResponse = {
   data?: any;
 };
 
-// Animation Variants (keeping your exact animations)
+// Alert modal types
+type AlertType = 'error' | 'success' | 'info' | 'warning';
+type AlertModal = {
+  show: boolean;
+  type: AlertType;
+  title: string;
+  message: string;
+  onConfirm?: () => void;
+  confirmText?: string;
+  onCancel?: () => void;
+  cancelText?: string;
+};
+
+// Animation Variants
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
@@ -106,7 +123,20 @@ export default function CombinedPaymentsPage() {
   const [checkoutRequestID, setCheckoutRequestID] = useState<string>('');
   const [paymentId, setPaymentId] = useState<string>('');
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // New alert modal state
+  const [alertModal, setAlertModal] = useState<AlertModal>({
+    show: false,
+    type: 'error',
+    title: '',
+    message: '',
+    confirmText: 'OK',
+    cancelText: 'Cancel'
+  });
+  
   const router = useRouter();
+  const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clean up polling on unmount
   useEffect(() => {
@@ -114,6 +144,62 @@ export default function CombinedPaymentsPage() {
       if (pollingInterval) clearInterval(pollingInterval);
     };
   }, [pollingInterval]);
+
+  // Cleanup alert timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (alertTimeoutRef.current) {
+        clearTimeout(alertTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Show alert modal
+  const showAlert = (
+    type: AlertType,
+    title: string,
+    message: string,
+    options?: {
+      onConfirm?: () => void;
+      confirmText?: string;
+      onCancel?: () => void;
+      cancelText?: string;
+      autoClose?: number; // Auto close after milliseconds
+    }
+  ) => {
+    // Clear any existing timeout
+    if (alertTimeoutRef.current) {
+      clearTimeout(alertTimeoutRef.current);
+      alertTimeoutRef.current = null;
+    }
+
+    setAlertModal({
+      show: true,
+      type,
+      title,
+      message,
+      onConfirm: options?.onConfirm,
+      confirmText: options?.confirmText || 'OK',
+      onCancel: options?.onCancel,
+      cancelText: options?.cancelText || 'Cancel'
+    });
+
+    // Auto close if specified
+    if (options?.autoClose) {
+      alertTimeoutRef.current = setTimeout(() => {
+        hideAlert();
+      }, options.autoClose);
+    }
+  };
+
+  // Hide alert modal
+  const hideAlert = () => {
+    if (alertTimeoutRef.current) {
+      clearTimeout(alertTimeoutRef.current);
+      alertTimeoutRef.current = null;
+    }
+    setAlertModal(prev => ({ ...prev, show: false }));
+  };
 
   // Validate phone number format
   const validatePhoneNumber = (phone: string): boolean => {
@@ -140,14 +226,14 @@ export default function CombinedPaymentsPage() {
         // Registration form validation
         if (!formData.full_name || !formData.email || !formData.password || 
             !formData.graduation_year || !formData.course || !formData.county) {
-          setError("Please fill in all required fields");
+          showAlert('error', 'Missing Information', 'Please fill in all required fields');
           setLoading(false);
           return;
         }
 
         // Validate phone for STK Push
         if (!formData.phone || !validatePhoneNumber(formData.phone)) {
-          setError("Please enter a valid Kenyan phone number (e.g., 0712345678)");
+          showAlert('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
           setLoading(false);
           return;
         }
@@ -169,20 +255,20 @@ export default function CombinedPaymentsPage() {
 
       if (paymentType === "renewal") {
         if (!formData.membership_number || !formData.full_name || !formData.email || !formData.phone) {
-          setError("Please fill in all required fields");
+          showAlert('error', 'Missing Information', 'Please fill in all required fields');
           setLoading(false);
           return;
         }
 
         if (!validatePhoneNumber(formData.phone)) {
-          setError("Please enter a valid Kenyan phone number (e.g., 0712345678)");
+          showAlert('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
           setLoading(false);
           return;
         }
 
         // Validate membership number format (100XXX)
         if (!/^100\d{3}$/.test(formData.membership_number)) {
-          setError("Invalid membership number format. Must be in format 100XXX");
+          showAlert('error', 'Invalid Membership Number', 'Membership number must be in format 100XXX (e.g., 100121)');
           setLoading(false);
           return;
         }
@@ -202,13 +288,13 @@ export default function CombinedPaymentsPage() {
             
             // Verify email matches
             if (lookupData.user.email.toLowerCase() !== formData.email.toLowerCase()) {
-              setError("Email address does not match our records for this membership number");
+              showAlert('error', 'Email Mismatch', 'Email address does not match our records for this membership number');
               setLoading(false);
               return;
             }
           } else {
             // User not found - show error
-            setError("Membership number not found. Please check and try again.");
+            showAlert('error', 'Member Not Found', 'Membership number not found. Please check and try again.');
             setLoading(false);
             return;
           }
@@ -230,13 +316,13 @@ export default function CombinedPaymentsPage() {
           
         } catch (lookupError) {
           console.error('User lookup error:', lookupError);
-          setError("Failed to verify membership. Please try again.");
+          showAlert('error', 'Verification Failed', 'Failed to verify membership. Please try again.');
           setLoading(false);
         }
       }
     } catch (err) {
       console.error('Payment initiation error:', err);
-      setError(err instanceof Error ? err.message : "Payment initiation failed");
+      showAlert('error', 'Payment Error', err instanceof Error ? err.message : "Payment initiation failed");
       setLoading(false);
     }
   };
@@ -256,7 +342,6 @@ export default function CombinedPaymentsPage() {
           course: formData.course,
           county: formData.county,
           password: formData.password
-          // Don't send membership_number - it will be generated by database trigger
         })
       });
 
@@ -295,7 +380,7 @@ export default function CombinedPaymentsPage() {
 
     } catch (err) {
       console.error('Registration error:', err);
-      setError(err instanceof Error ? err.message : "Registration failed");
+      showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
       setLoading(false);
       throw err;
     }
@@ -338,6 +423,12 @@ export default function CombinedPaymentsPage() {
       }
 
       if (data.success && data.checkoutRequestID) {
+        // Show success alert
+        showAlert('success', 'Payment Request Sent', 
+          'Please check your phone for the M-PESA prompt and enter your PIN to complete the payment.',
+          { autoClose: 5000 }
+        );
+        
         setCheckoutRequestID(data.checkoutRequestID);
         setPaymentId(data.paymentId || '');
         setStkStatus('pending');
@@ -351,7 +442,7 @@ export default function CombinedPaymentsPage() {
     } catch (err) {
       console.error('STK Push error:', err);
       setStkStatus('failed');
-      setError(err instanceof Error ? err.message : 'Failed to initiate payment');
+      showAlert('error', 'Payment Failed', err instanceof Error ? err.message : 'Failed to initiate payment');
       throw err;
     } finally {
       setLoading(false);
@@ -362,7 +453,7 @@ export default function CombinedPaymentsPage() {
   const startPaymentPolling = (checkoutID: string) => {
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/payments/status/${checkoutID}`);
+         const response = await fetch(`/api/payments/${checkoutID}`);
         const data = await response.json();
         
         if (data.status === 'confirmed') {
@@ -370,19 +461,33 @@ export default function CombinedPaymentsPage() {
           clearInterval(interval);
           setPollingInterval(null);
           
+          // Show success alert
+          showAlert('success', 'Payment Confirmed!', 
+            'Your payment has been successfully processed.',
+            { autoClose: 3000 }
+          );
+          
           // Auto-redirect to success after 2 seconds
           setTimeout(() => {
             setStep(3);
           }, 2000);
           
-        } else if (data.status === 'failed' || data.status === 'cancelled') {
-          setStkStatus(data.status);
+        } else if (data.status === 'failed') {
+          setStkStatus('failed');
           clearInterval(interval);
           setPollingInterval(null);
+          showAlert('error', 'Payment Failed', 'The payment was not completed. Please try again.');
+          
+        } else if (data.status === 'cancelled') {
+          setStkStatus('cancelled');
+          clearInterval(interval);
+          setPollingInterval(null);
+          showAlert('warning', 'Payment Cancelled', 'The payment was cancelled.');
         }
         // If still pending, continue polling
       } catch (err) {
         console.error('Polling error:', err);
+        showAlert('error', 'Connection Error', 'Failed to check payment status. Please refresh the page.');
       }
     }, 3000); // Poll every 3 seconds
 
@@ -397,6 +502,10 @@ export default function CombinedPaymentsPage() {
     }
     setStkStatus('cancelled');
     setStep(1);
+    
+    showAlert('info', 'Payment Cancelled', 'You can restart the payment process when ready.',
+      { autoClose: 3000 }
+    );
   };
 
   const paymentSteps = [
@@ -430,6 +539,124 @@ export default function CombinedPaymentsPage() {
     }
   };
 
+  // Alert Modal Component
+  const AlertModalComponent = () => {
+    const getAlertStyles = () => {
+      switch (alertModal.type) {
+        case 'error':
+          return {
+            bg: 'bg-gradient-to-br from-red-50 to-pink-50',
+            border: 'border-red-200',
+            icon: <AlertCircle className="text-red-600" size={32} />,
+            buttonBg: 'bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700',
+            titleColor: 'text-red-900',
+            messageColor: 'text-red-800'
+          };
+        case 'success':
+          return {
+            bg: 'bg-gradient-to-br from-green-50 to-emerald-50',
+            border: 'border-green-200',
+            icon: <CheckCircle className="text-green-600" size={32} />,
+            buttonBg: 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700',
+            titleColor: 'text-green-900',
+            messageColor: 'text-green-800'
+          };
+        case 'warning':
+          return {
+            bg: 'bg-gradient-to-br from-amber-50 to-yellow-50',
+            border: 'border-amber-200',
+            icon: <AlertCircle className="text-amber-600" size={32} />,
+            buttonBg: 'bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600',
+            titleColor: 'text-amber-900',
+            messageColor: 'text-amber-800'
+          };
+        case 'info':
+          return {
+            bg: 'bg-gradient-to-br from-blue-50 to-indigo-50',
+            border: 'border-blue-200',
+            icon: <Info className="text-blue-600" size={32} />,
+            buttonBg: 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700',
+            titleColor: 'text-blue-900',
+            messageColor: 'text-blue-800'
+          };
+      }
+    };
+
+    const styles = getAlertStyles();
+
+    return (
+      <AnimatePresence>
+        {alertModal.show && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={hideAlert}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            />
+            
+            {/* Modal */}
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className={`${styles.bg} border-2 ${styles.border} rounded-2xl shadow-2xl max-w-md w-full overflow-hidden`}
+              >
+                <div className="p-6">
+                  <div className="flex items-start gap-4 mb-6">
+                    <div className="flex-shrink-0">
+                      {styles.icon}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`text-xl font-bold font-poppins mb-2 ${styles.titleColor}`}>
+                        {alertModal.title}
+                      </h3>
+                      <p className={`${styles.messageColor} leading-relaxed`}>
+                        {alertModal.message}
+                      </p>
+                    </div>
+                    <button
+                      onClick={hideAlert}
+                      className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <X size={24} />
+                    </button>
+                  </div>
+
+                  <div className="flex gap-3">
+                    {alertModal.onCancel && (
+                      <button
+                        onClick={alertModal.onCancel}
+                        className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-200"
+                      >
+                        {alertModal.cancelText}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (alertModal.onConfirm) {
+                          alertModal.onConfirm();
+                        }
+                        hideAlert();
+                      }}
+                      className={`flex-1 px-4 py-3 ${styles.buttonBg} text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-200`}
+                    >
+                      {alertModal.confirmText}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+    );
+  };
+
   if (step === 3) {
     const successInfo = successMessages[paybillInfo.payment_type];
     
@@ -440,6 +667,9 @@ export default function CombinedPaymentsPage() {
         transition={{ duration: 0.5 }}
         className="min-h-screen bg-gradient-to-br from-gray-50 to-white"
       >
+        {/* Alert Modal */}
+        <AlertModalComponent />
+        
         <Header />
         <main className="flex-1 flex items-center justify-center py-12 px-4">
           <motion.div
@@ -530,6 +760,9 @@ export default function CombinedPaymentsPage() {
         transition={{ duration: 0.5 }}
         className="min-h-screen bg-gradient-to-br from-gray-50 to-white"
       >
+        {/* Alert Modal */}
+        <AlertModalComponent />
+        
         <Header />
         <main className="flex-1 py-12 px-4">
           <motion.div
@@ -696,6 +929,9 @@ export default function CombinedPaymentsPage() {
       transition={{ duration: 0.5 }}
       className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50"
     >
+      {/* Alert Modal */}
+      <AlertModalComponent />
+      
       <Header />
 
       <main className="flex-1 py-12 px-4">
@@ -732,7 +968,7 @@ export default function CombinedPaymentsPage() {
                 </p>
               </motion.div>
 
-              {/* Payment Type Selection - Updated order: Registration first, Renewal second */}
+              {/* Payment Type Selection */}
               <motion.div
                 variants={staggerContainer}
                 initial="hidden"
@@ -741,7 +977,7 @@ export default function CombinedPaymentsPage() {
                 className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"
               >
                 {[
-                  { id: "registration" as const, label: "New Member", icon: BookOpen, color: "from-green-500 to-emerald-600", desc: "Join CHRMAA community" },
+                  { id: "registration" as const, label: "New Member", icon: BookOpen, color: "from-blue-500 to-cyan-600", desc: "Join CHRMAA community" },
                   { id: "renewal" as const, label: "Membership Renewal", icon: Users, color: "from-amber-500 to-yellow-500", desc: "Renew your annual membership" },
                 ].map((type, index) => (
                   <motion.button
@@ -768,13 +1004,17 @@ export default function CombinedPaymentsPage() {
                 ))}
               </motion.div>
 
+              {/* Old error display (kept as fallback) */}
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6"
+                  className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6 opacity-75"
                 >
-                  {error}
+                  <div className="flex items-center gap-2">
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                  </div>
                 </motion.div>
               )}
 
@@ -840,22 +1080,25 @@ export default function CombinedPaymentsPage() {
                             <Phone size={16} className="text-gray-500" />
                             Phone Number (M-PESA) *
                           </label>
-                          <motion.input
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            type="tel"
-                            required
-                            value={formData.phone}
-                            onChange={(e) =>
-                              setFormData({ ...formData, phone: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
-                            placeholder="0712345678"
-                            pattern="^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$"
-                            title="Enter a valid Kenyan phone number"
-                          />
+                          <div className="relative">
+                            <motion.input
+                              whileHover={inputHover}
+                              whileFocus={inputFocus}
+                              type="tel"
+                              required
+                              value={formData.phone}
+                              onChange={(e) =>
+                                setFormData({ ...formData, phone: e.target.value })
+                              }
+                              className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                              placeholder="0712345678"
+                              pattern="^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$"
+                              title="Enter a valid Kenyan phone number"
+                            />
+                            <Phone size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          </div>
                           <p className="text-xs text-gray-500 mt-1">
-                            You'll receive STK prompt on this number
+                            You'll receive a prompt on this number
                           </p>
                         </motion.div>
 
@@ -931,7 +1174,7 @@ export default function CombinedPaymentsPage() {
                         </motion.div>
                       </div>
 
-                      <motion.div variants={scaleIn}>
+                      <motion.div variants={scaleIn} className="relative">
                         <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
                           <Lock size={16} className="text-gray-500" />
                           Password *
@@ -939,54 +1182,61 @@ export default function CombinedPaymentsPage() {
                         <motion.input
                           whileHover={inputHover}
                           whileFocus={inputFocus}
-                          type="password"
+                          type={showPassword ? "text" : "password"}
                           required
                           minLength={6}
                           value={formData.password}
                           onChange={(e) =>
                             setFormData({ ...formData, password: e.target.value })
                           }
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                          className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
                           placeholder="Minimum 6 characters"
                         />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
+                        </button>
                       </motion.div>
 
                       <motion.div
                         variants={scaleIn}
-                        className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100 mt-6"
+                        className="bg-gradient-to-r from-blue-50 to-blue-50 p-6 rounded-2xl border border-blue-100 mt-6"
                       >
                         <div className="flex items-center gap-3 mb-4">
-                          <Gift className="text-green-600" size={24} />
-                          <p className="text-green-700 font-semibold text-lg">Registration Benefits:</p>
+                          <Gift className="text-blue-600" size={24} />
+                          <p className="text-blue-700 font-semibold text-lg">Registration Benefits:</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                           <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-green-500 mt-0.5 flex-shrink-0" />
+                            <CheckCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
                             <span className="text-gray-700">Lifetime membership access</span>
                           </div>
                           <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-green-500 mt-0.5 flex-shrink-0" />
+                            <CheckCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
                             <span className="text-gray-700">Networking opportunities</span>
                           </div>
                           <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-green-500 mt-0.5 flex-shrink-0" />
+                            <CheckCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
                             <span className="text-gray-700">Exclusive events & workshops</span>
                           </div>
                           <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-green-500 mt-0.5 flex-shrink-0" />
+                            <CheckCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
                             <span className="text-gray-700">Member resources & discounts</span>
                           </div>
                         </div>
-                        <div className="pt-4 border-t border-green-200">
+                        <div className="pt-4 border-t border-blue-200">
                           <div className="flex items-center justify-between">
-                            <p className="text-lg font-bold text-green-700">
+                            <p className="text-lg font-bold text-blue-700">
                               Registration Fee:
                             </p>
-                            <p className="text-2xl font-bold text-green-700">
+                            <p className="text-2xl font-bold text-blue-700">
                               Ksh 1,500
                             </p>
                           </div>
-                          <p className="text-sm text-green-600 mt-2">
+                          <p className="text-sm text-blue-600 mt-2">
                             Payment will be requested via STK Push on your phone
                           </p>
                         </div>
@@ -1090,22 +1340,25 @@ export default function CombinedPaymentsPage() {
                           <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
                             Phone Number (M-PESA) *
                           </label>
-                          <motion.input
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            type="tel"
-                            required
-                            value={formData.phone}
-                            onChange={(e) =>
-                              setFormData({ ...formData, phone: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
-                            placeholder="0712345678"
-                            pattern="^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$"
-                            title="Enter a valid Kenyan phone number"
-                          />
+                          <div className="relative">
+                            <motion.input
+                              whileHover={inputHover}
+                              whileFocus={inputFocus}
+                              type="tel"
+                              required
+                              value={formData.phone}
+                              onChange={(e) =>
+                                setFormData({ ...formData, phone: e.target.value })
+                              }
+                              className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                              placeholder="0712345678"
+                              pattern="^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$"
+                              title="Enter a valid Kenyan phone number"
+                            />
+                            <Phone size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          </div>
                           <p className="text-xs text-gray-500 mt-1">
-                            You'll receive STK prompt on this number
+                            You'll receive a prompt on this number
                           </p>
                         </motion.div>
 

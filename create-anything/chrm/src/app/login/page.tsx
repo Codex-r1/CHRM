@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "../lib/supabase/client"; // ← FIXED: should be supabase, not supabaseAdmin
+import { useState, FormEvent, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { supabase } from "../lib/supabase/client";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { Lock, Mail, Eye, EyeOff, ArrowRight, Shield, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
+import { Lock, Mail, Eye, EyeOff, ArrowRight, Shield, AlertCircle, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
 import Link from "next/link";
 
@@ -34,6 +34,20 @@ const scaleIn: Variants = {
   },
 };
 
+const slideDown: Variants = {
+  hidden: { opacity: 0, y: -20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4, ease: "easeOut" },
+  },
+  exit: {
+    opacity: 0,
+    y: -20,
+    transition: { duration: 0.3 },
+  },
+};
+
 export default function LoginPage() {
   const [formData, setFormData] = useState<FormData>({
     email: "",
@@ -42,8 +56,18 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+ if (searchParams.get('reason') === 'session_expired') {
+  setSessionExpired(true);
+
+  setTimeout(() => {
+    window.history.replaceState({}, '', '/login');
+  }, 100);
+}
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -63,31 +87,33 @@ export default function LoginPage() {
       }
 
       console.log("Login successful! Session created.");
+      
+      // Initialize activity tracking
+      localStorage.setItem('lastActivity', Date.now().toString());
+      
       const user = data.user;
-const { data: profile, error: profileError } = await supabase
+     const { data: profile, error: profileError } = await supabase
   .from("profiles")
   .select("role")
   .eq("id", user.id)
-  .single();
+  .maybeSingle();
 
-if (profileError) {
-  console.error("Profile fetch error:", profileError);
-  router.push("/member/dashboard");
+if (profileError || !profile) {
+  console.error("Profile missing", profileError);
+  setError("Your account is not fully set up. Please contact support.");
   return;
 }
 
 if (profile.role === "admin") {
-  router.push("/admin/dashboard");
+  router.replace("/admin/dashboard");
 } else {
-  router.push("/member/dashboard");
+  router.replace("/member/dashboard");
 }
-router.refresh(); 
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login error:", err);
-      setError(err instanceof Error ? err.message : "Login failed");
-    } finally {
-      setLoading(false);
+      setError(err.message || "An unexpected error occurred. Please try again.");
     }
+    setLoading(false);
   };
 
   return (
@@ -98,6 +124,48 @@ router.refresh();
       className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex flex-col"
     >
       <Header />
+
+      {/* Session Expired Alert */}
+      <AnimatePresence>
+        {sessionExpired && (
+          <motion.div
+            variants={slideDown}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4"
+          >
+            <div className="bg-red-50 border-2 border-red-300 rounded-xl shadow-2xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
+                    className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center"
+                  >
+                    <AlertCircle className="text-red-600" size={24} />
+                  </motion.div>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-red-900 mb-1">
+                    Session Expired
+                  </h3>
+                  <p className="text-sm text-red-800">
+                    You were logged out due to 20 minutes of inactivity. Please log in again to continue.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSessionExpired(false)}
+                  className="flex-shrink-0 text-red-600 hover:text-red-800 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <main className="flex-1 flex items-center justify-center py-12 px-4">
         <motion.div
@@ -114,9 +182,6 @@ router.refresh();
             {/* Floating Icons */}
             <div className="absolute top-6 right-6">
               <Shield size={24} className="text-blue-500/30" />
-            </div>
-            <div className="absolute bottom-6 left-6">
-              <Sparkles size={20} className="text-amber-500/30" />
             </div>
             
             <div className="relative z-10">
@@ -218,7 +283,7 @@ router.refresh();
                         onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                       >
-                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                        {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                       </button>
                     </div>
                     <div className="mt-2 text-right">
@@ -270,25 +335,6 @@ router.refresh();
                     <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </p>
-              </motion.div>
-
-              <motion.div
-                variants={fadeUp}
-                initial="hidden"
-                animate="visible"
-                transition={{ delay: 0.7 }}
-                className="mt-6 bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-xl border border-gray-200"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <Shield size={16} className="text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">
-                      <span className="font-semibold text-green-600">Secure login:</span> Your credentials are encrypted and protected.
-                    </p>
-                  </div>
-                </div>
               </motion.div>
             </div>
           </div>

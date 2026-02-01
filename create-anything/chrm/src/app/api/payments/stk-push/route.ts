@@ -1,81 +1,157 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../../lib/supabase/admin'
-import { mpesaService } from '../../../lib/mpesa/service'
+import { NextRequest, NextResponse } from 'next/server';
+import { mpesaService } from '../../../lib/mpesa/service';
+import { supabaseAdmin } from '../../../lib/supabase/admin';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json();
     const {
       phoneNumber,
       amount,
       paymentType,
       userId,
-      description,
+      userEmail,
+      userName,
       metadata = {}
-    } = body
+    } = body;
 
+    // Validate required fields
     if (!phoneNumber || !amount || !paymentType) {
       return NextResponse.json(
-        { error: 'Phone number, amount, and payment type are required' },
+        { 
+          success: false,
+          error: 'Missing required fields',
+          message: 'Phone number, amount, and payment type are required'
+        },
         { status: 400 }
-      )
+      );
     }
 
-    // Format phone number
-    const formattedPhone = phoneNumber.startsWith('0')
-      ? `254${phoneNumber.slice(1)}`
-      : phoneNumber
+    // Format phone number (ensure 254 format)
+    const formattedPhone = phoneNumber.startsWith('0') 
+      ? `254${phoneNumber.substring(1)}`
+      : phoneNumber.startsWith('7')
+      ? `254${phoneNumber}`
+      : phoneNumber.startsWith('+254')
+      ? phoneNumber.substring(1)
+      : phoneNumber;
 
-    const accountReference = `CHRMAA-${paymentType.toUpperCase()}-${Date.now()}`
-
-    // 1️⃣ Initiate STK Push (FAST)
-    const stkResponse = await mpesaService.initiateSTKPush({
-      phoneNumber: formattedPhone,
-      amount: Number(amount),
-      accountReference,
-      transactionDesc: description || `CHRMAA ${paymentType} Payment`
-    })
-
-    if (stkResponse.ResponseCode !== '0') {
-      return NextResponse.json(
-        { error: stkResponse.ResponseDescription || 'STK Push failed' },
-        { status: 400 }
-      )
+    // Generate account reference based on payment type
+    let accountReference = '';
+    let description = '';
+    
+    switch (paymentType) {
+      case 'registration':
+        accountReference = 'REGISTRATION';
+        description = `New Member Registration - ${userName || 'User'}`;
+        break;
+      case 'renewal':
+        accountReference = 'RENEWAL';
+        if (metadata.membership_number) {
+          accountReference = `RENEWAL-${metadata.membership_number}`;
+        }
+        description = `Membership Renewal - ${metadata.renewal_year || new Date().getFullYear()}`;
+        break;
+      case 'event':
+        accountReference = `EVENT-${metadata.event_id || 'REG'}`;
+        description = `Event Registration - ${metadata.event_name || 'Event'}`;
+        break;
+      case 'merchandise':
+        accountReference = `MERCH-${Date.now()}`;
+        description = `Merchandise Purchase`;
+        break;
+      default:
+        accountReference = `PAYMENT-${Date.now()}`;
+        description = `${paymentType} payment`;
     }
 
-    // 2️⃣ Create PENDING payment record ONLY
-    const { data: payment, error } = await supabaseAdmin
+    // Create payment record first
+    const { data: payment, error: paymentError } = await supabaseAdmin
       .from('payments')
       .insert({
         user_id: userId || null,
-        amount: Number(amount),
-        method: 'mpesa_stk',
+        amount: parseFloat(amount),
         payment_type: paymentType,
         phone_number: formattedPhone,
-        checkout_request_id: stkResponse.CheckoutRequestID,
-        merchant_request_id: stkResponse.MerchantRequestID,
         account_reference: accountReference,
+        description: description,
         status: 'pending',
-        description,
-        metadata
+        metadata: {
+          ...metadata,
+          userEmail,
+          userName,
+          paymentType
+        }
       })
       .select()
-      .single()
+      .single();
 
-    if (error) throw error
-return NextResponse.json({
-  success: true,
-  message: stkResponse.CustomerMessage,
-  checkoutRequestID: stkResponse.CheckoutRequestID, 
-  merchantRequestID: stkResponse.MerchantRequestID, 
-  paymentId: payment.id
-})
+    if (paymentError) {
+      console.error('Error creating payment record:', paymentError);
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Failed to create payment record',
+          message: paymentError.message
+        },
+        { status: 500 }
+      );
+    }
+
+    // Initiate STK Push
+    const stkResponse = await mpesaService.initiateSTKPush({
+      phoneNumber: formattedPhone,
+      amount: parseInt(amount),
+      accountReference,
+      transactionDesc: description
+    });
+
+    // Update payment with M-PESA response
+    await supabaseAdmin
+      .from('payments')
+      .update({
+        checkout_request_id: stkResponse.CheckoutRequestID,
+        merchant_request_id: stkResponse.MerchantRequestID,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', payment.id);
+
+    return NextResponse.json({
+      success: true,
+      message: 'STK Push initiated successfully',
+      checkoutRequestID: stkResponse.CheckoutRequestID,
+      merchantRequestID: stkResponse.MerchantRequestID,
+      customerMessage: stkResponse.CustomerMessage,
+      paymentId: payment.id,
+      data: {
+        checkoutRequestID: stkResponse.CheckoutRequestID,
+        merchantRequestID: stkResponse.MerchantRequestID,
+        customerMessage: stkResponse.CustomerMessage,
+        paymentId: payment.id
+      }
+    }, { status: 200 });
 
   } catch (error: any) {
-    console.error('STK Push error:', error)
+    console.error('STK Push error:', error);
+    
+    // Try to extract meaningful error message
+    let errorMessage = 'Failed to initiate payment';
+    let customerMessage = 'Please try again later';
+    
+    if (error.response?.data) {
+      errorMessage = error.response.data.errorMessage || error.response.data.errorMessage || errorMessage;
+      customerMessage = error.response.data.CustomerMessage || customerMessage;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
     return NextResponse.json(
-      { error: error.message || 'Failed to initiate payment' },
+      { 
+        success: false,
+        error: errorMessage,
+        message: customerMessage
+      },
       { status: 500 }
-    )
+    );
   }
 }

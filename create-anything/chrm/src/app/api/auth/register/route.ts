@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../../lib/supabase/client'
+import { supabase} from '../../../lib/supabase/client'
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
-    const { data: existingUser, error: checkError } = await supabaseAdmin
+    const { data: existingUser, error: checkError } = await supabase
       .from('profiles')
       .select('email')
       .eq('email', email.toLowerCase())
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabaseAdmin.auth.signUp({
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email: email.toLowerCase(),
       password,
       options: {
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create profile in profiles table
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .insert({
         id: authData.user.id,
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       
       // Try to delete the auth user if profile creation failed
       try {
-        await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
+        await supabase.auth.admin.deleteUser(authData.user.id)
       } catch (deleteError) {
         console.error('Failed to cleanup auth user:', deleteError)
       }
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     // Fetch the updated profile to get the generated membership number
-    const { data: updatedProfile, error: fetchError } = await supabaseAdmin
+    const { data: updatedProfile, error: fetchError } = await supabase
       .from('profiles')
       .select('membership_number, status')
       .eq('id', authData.user.id)
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 await new Promise(resolve => setTimeout(resolve, 100));
 
 // Fetch the profile with membership number
-const { data: profileWithNumber } = await supabaseAdmin
+const { data: profileWithNumber } = await supabase
   .from('profiles')
   .select('membership_number, status')
   .eq('id', authData.user.id)
