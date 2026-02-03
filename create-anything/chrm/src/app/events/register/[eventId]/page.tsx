@@ -5,9 +5,9 @@ import { useRouter, useParams } from "next/navigation";
 import Header from "../../../components/Header";
 import Footer from "../../../components/Footer";
 import { 
-  Calendar, MapPin, Users, Clock, CheckCircle, 
+  Calendar, MapPin, Users, CheckCircle, 
   AlertCircle, Smartphone, ArrowRight, Loader2,
-  User, Mail, Phone, Ticket, ArrowLeft
+  Ticket, ArrowLeft
 } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -59,9 +59,7 @@ type STKPushStatus = 'idle' | 'initiating' | 'pending' | 'success' | 'failed' | 
 export default function EventRegistrationPage() {
   const router = useRouter();
   const params = useParams();
-  
-  // FIX: Properly extract the eventId from params
-  const eventId = params?.eventsId as string | undefined;
+  const eventId = params?.eventId as string | undefined;
   
   const { user: authUser, loading: authLoading } = useAuth();
   

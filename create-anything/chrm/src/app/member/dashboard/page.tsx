@@ -7,23 +7,26 @@ import {
   User,
   Phone,
   Mail,
-  PinIcon,
+  MapPin,
   CreditCard,
   Calendar,
   ShoppingBag,
   CheckCircle,
   Clock,
   XCircle,
-  ChevronRight,
   ArrowRight,
-  Sparkles,
+  Activity,
   TrendingUp,
+  Package,
+  DollarSign,
+  Award,
+  Settings,
+  LogOut,
+  Home,
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "../../lib/supabase/client";
 import { useAuth } from "../../context/auth";
-import { motion, AnimatePresence } from "framer-motion";
-import type { Variants } from "framer-motion"; // Add this import
 
 type MemberDetailsType = {
   id: string;
@@ -94,74 +97,6 @@ type MembershipType = {
   created_at: string;
 };
 
-// Animation variants - Properly typed
-const fadeIn: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.4, ease: "easeOut" as const }
-  }
-};
-
-const staggerContainer: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-};
-
-const scaleIn: Variants = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
-    scale: 1,
-    transition: { duration: 0.3, ease: "easeOut" as const }
-  }
-};
-
-const slideIn: Variants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: { 
-    opacity: 1, 
-    x: 0,
-    transition: { duration: 0.3, ease: "easeOut" as const }
-  }
-};
-
-const cardHover = {
-  hover: { 
-    y: -4,
-    scale: 1.02,
-    transition: { 
-      duration: 0.2,
-      ease: "easeInOut" as const
-    }
-  }
-};
-
-const tabHover = {
-  hover: { 
-    scale: 1.05,
-    transition: { duration: 0.1 }
-  }
-};
-
-const pulseAnimation = {
-  initial: { scale: 1 },
-  pulse: {
-    scale: [1, 1.05, 1],
-    transition: {
-      duration: 1.5,
-      repeat: Infinity,
-      repeatType: "reverse" as const
-    }
-  }
-};
-
 export default function MemberDashboard() {
   const { user, loading: authLoading, logout } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -171,7 +106,6 @@ export default function MemberDashboard() {
   const [payments, setPayments] = useState<PaymentType[]>([]);
   const [orders, setOrders] = useState<OrderType[]>([]);
   const [events, setEvents] = useState<EventType[]>([]);
-  const [hoveredTab, setHoveredTab] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -296,21 +230,6 @@ export default function MemberDashboard() {
           setEvents(eventsData || []);
         } else {
           console.log('Events error:', eventsError.message);
-          setEvents([
-            {
-              id: "fallback-1",
-              name: "Grill and Chill",
-              description: "A day of networking, awards, and celebration of our alumni achievements.",
-              event_date: new Date().toISOString().split('T')[0],
-              price: 1000,
-              member_discount: 0,
-              location: "TBD",
-              max_attendees: 100,
-              current_attendees: 0,
-              status: "upcoming" as const,
-              is_active: true
-            }
-          ]);
         }
       } catch (eventsError) {
         console.log('Events fetch failed:', eventsError);
@@ -335,28 +254,11 @@ export default function MemberDashboard() {
     return user?.email?.split('@')[0] || "Member";
   };
 
-  console.log('Render check:', {
-    authLoading,
-    loading,
-    hasUser: !!user,
-    userRole: user?.role,
-    hasMemberDetails: !!memberDetails,
-    memberDetailsRole: memberDetails?.role
-  });
-
   if (authLoading || loading) {
     return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center"
-      >
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full"
-        />
-      </motion.div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-900 text-xl">Loading Dashboard...</div>
+      </div>
     );
   }
 
@@ -373,558 +275,580 @@ export default function MemberDashboard() {
     ? new Date(membership.expiry_date).toLocaleDateString()
     : "N/A";
 
-  const memberSince = memberDetails?.created_at
-    ? new Date(memberDetails.created_at).toLocaleDateString()
-    : "N/A";
+  const confirmedPayments = payments.filter(p => p.status === "confirmed");
+  const totalSpent = confirmedPayments.reduce((sum, p) => sum + p.amount, 0);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-b from-blue-50 to-white"
-    >
+    <div className="min-h-screen bg-gray-50 font-inter flex flex-col">
       {/* Header */}
-      <motion.header 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.4 }}
-        className="bg-white shadow-sm border-b"
-      >
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <motion.h1 
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-2xl font-bold text-gray-900 font-poppins"
-            >
-              Member Dashboard
-            </motion.h1>
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-gray-600"
-            >
-              Welcome, {getUserDisplayName()}
-            </motion.p>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+              <User className="text-white" size={24} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 font-poppins">
+                Member Dashboard
+              </h1>
+              <p className="text-gray-600 text-sm">Welcome back, {getUserDisplayName()}</p>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Link
-                href="/"
-                className="px-3 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-all duration-200 shadow-sm hover:shadow"
-              >
-                View Site
-              </Link>
-            </motion.div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 shadow-sm hover:shadow"
+          <div className="flex gap-3">
+            <Link
+              href="/"
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
             >
+              <Home size={16} />
+              Home
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-lg hover:opacity-90 transition flex items-center gap-2"
+            >
+              <LogOut size={16} />
               Logout
-            </motion.button>
+            </button>
           </div>
         </div>
-      </motion.header>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Membership Status Card */}
-        <motion.div
-          variants={fadeIn}
-          initial="hidden"
-          animate="visible"
-          whileHover={{ scale: 1.01 }}
-          transition={{ duration: 0.2 }}
-          className={`bg-gradient-to-br p-8 rounded-xl mb-8 shadow-lg transition-all duration-300 ${
-            membershipActive 
-              ? "from-emerald-100 to-emerald-50 border border-emerald-200" 
-              : "from-amber-100 to-amber-50 border border-amber-200"
-          }`}
-        >
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="space-y-3">
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="flex items-center gap-3"
-              >
-                {membershipActive ? (
-                  <>
-                    <motion.div
-                      animate={{ rotate: [0, 10, -10, 0] }}
-                      transition={{ duration: 0.5, delay: 0.5 }}
-                    >
-                      <CheckCircle className="text-emerald-600" size={28} />
-                    </motion.div>
-                    <div>
-                      <h2 className="text-3xl font-bold text-gray-900 mb-1 font-poppins">
-                        Membership Active
-                      </h2>
-                      <p className="text-gray-700">
-                        Expires: <span className="font-semibold">{membershipExpiry}</span>
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 2 }}
-                    >
-                      <XCircle className="text-amber-600" size={28} />
-                    </motion.div>
-                    <div>
-                      <h2 className="text-3xl font-bold text-gray-900 mb-1 font-poppins">
-                        {memberDetails?.status === "pending" ? "Pending Payment" : "Membership Inactive"}
-                      </h2>
-                      <p className="text-gray-700">
-                        {memberDetails?.status === "pending" 
-                          ? "Complete registration to activate membership"
-                          : "Renew your membership to continue enjoying benefits"}
-                      </p>
-                    </div>
-                  </>
-                )}
-              </motion.div>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8 flex-1">
+        {/* Membership Status Banner */}
+        <div className={`p-6 rounded-xl mb-8 border shadow-sm ${
+          membershipActive 
+            ? "bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200" 
+            : "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200"
+        }`}>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              {membershipActive ? (
+                <div className="p-3 bg-emerald-100 rounded-lg">
+                  <CheckCircle className="text-emerald-600" size={32} />
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-100 rounded-lg">
+                  <XCircle className="text-amber-600" size={32} />
+                </div>
+              )}
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 font-poppins">
+                  {membershipActive ? "Active Membership" : memberDetails?.status === "pending" ? "Pending Activation" : "Inactive Membership"}
+                </h2>
+                <p className="text-gray-700 mt-1">
+                  {membershipActive 
+                    ? `Valid until ${membershipExpiry}`
+                    : memberDetails?.status === "pending"
+                    ? "Complete your payment to activate"
+                    : "Renew to continue enjoying benefits"
+                  }
+                </p>
+              </div>
             </div>
             
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4 }}
-              className="bg-white/80 backdrop-blur-sm p-6 rounded-lg border shadow-sm"
-            >
-              <p className="text-gray-600 font-medium mb-2">
-                Membership Number
-              </p>
-              <div className="flex items-center gap-3">
-                <p className="text-2xl font-bold text-gray-900">
+            <div className="flex items-center gap-4">
+              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <p className="text-sm text-gray-600 mb-1">Membership Number</p>
+                <p className="text-xl font-bold text-gray-900">
                   {memberDetails?.membership_number || "Pending"}
                 </p>
-                {membershipActive && (
-                  <motion.div
-                    variants={pulseAnimation}
-                    initial="initial"
-                    animate="pulse"
-                  >
-                  </motion.div>
-                )}
               </div>
-            </motion.div>
+              
+              {!membershipActive && (
+                <Link
+                  href={memberDetails?.status === "pending" ? "/register/payment" : "/payments"}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:opacity-90 transition shadow-md flex items-center gap-2 whitespace-nowrap"
+                >
+                  {memberDetails?.status === "pending" ? "Complete Payment" : "Renew Now"}
+                  <ArrowRight size={18} />
+                </Link>
+              )}
+            </div>
           </div>
-          
-          {!membershipActive && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-              className="mt-6"
-            >
-              <Link
-                href={memberDetails?.status === "pending" ? "/register/payment" : "/payments"}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl"
-              >
-                {memberDetails?.status === "pending" ? "Complete Registration" : "Renew Membership"}
-                <ArrowRight className="ml-1" size={18} />
-              </Link>
-            </motion.div>
-          )}
-        </motion.div>
+        </div>
 
-        {/* Tabs */}
-        <motion.div 
-          variants={slideIn}
-          initial="hidden"
-          animate="visible"
-          className="flex gap-2 mb-8 border-b"
-        >
-          {["overview", "payments", "orders", "events", "profile"].map(
-            (tab) => (
-              <motion.button
-                key={tab}
-                whileHover={{ scale: 1.05 }}
-                onMouseEnter={() => setHoveredTab(tab)}
-                onMouseLeave={() => setHoveredTab(null)}
-                onClick={() => setActiveTab(tab)}
-                className={`px-6 py-3 font-semibold capitalize transition-all duration-200 relative whitespace-nowrap ${
-                  activeTab === tab
-                    ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                {tab}
-                {hoveredTab === tab && activeTab !== tab && (
-                  <motion.div
-                    layoutId="tabHover"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-300"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                  />
-                )}
-              </motion.button>
-            ),
-          )}
-        </motion.div>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <CreditCard className="text-blue-500" size={28} />
+              <DollarSign className="text-green-500" size={20} />
+            </div>
+            <div>
+              <p className="text-gray-600 text-sm mb-1">Total Spent</p>
+              <p className="text-3xl font-bold text-gray-900">Ksh {totalSpent.toLocaleString()}</p>
+              <p className="text-sm text-gray-500 mt-1">{confirmedPayments.length} payments</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <ShoppingBag className="text-emerald-500" size={28} />
+              <Package className="text-blue-500" size={20} />
+            </div>
+            <div>
+              <p className="text-gray-600 text-sm mb-1">Orders</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-bold text-gray-900">{orders.length}</p>
+                <span className="text-sm text-gray-500">
+                  ({orders.filter(o => o.status === 'delivered').length} delivered)
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <Calendar className="text-purple-500" size={28} />
+              <Activity className="text-pink-500" size={20} />
+            </div>
+            <div>
+              <p className="text-gray-600 text-sm mb-1">Upcoming Events</p>
+              <p className="text-3xl font-bold text-gray-900">
+                {events.filter(e => e.status === 'upcoming').length}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">Available to attend</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <Award className="text-amber-500" size={28} />
+              <TrendingUp className="text-cyan-500" size={20} />
+            </div>
+            <div>
+              <p className="text-gray-600 text-sm mb-1">Member Since</p>
+              <p className="text-xl font-bold text-gray-900">
+                {memberDetails?.created_at
+                  ? new Date(memberDetails.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+                  : "N/A"}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {membershipActive ? "Active member" : "Status: " + (memberDetails?.status || "Unknown")}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs Navigation */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {[
+            { id: "overview", label: "Overview", icon: Activity },
+            { id: "payments", label: "Payments", icon: CreditCard },
+            { id: "orders", label: "Orders", icon: ShoppingBag },
+            { id: "events", label: "Events", icon: Calendar },
+            { id: "profile", label: "Profile", icon: User }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-3 font-medium rounded-lg transition flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md"
+                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+              }`}
+            >
+              <tab.icon size={18} />
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="min-h-[400px]"
-          >
-            {activeTab === "overview" && (
-              <motion.div
-                variants={staggerContainer}
-                initial="hidden"
-                animate="visible"
-                className="space-y-6"
-              >
-                <motion.div variants={fadeIn} className="bg-white p-8 rounded-xl border shadow-sm">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6 font-poppins">
-                    Quick Stats
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {[
-                      { 
-                        icon: CreditCard, 
-                        value: payments.filter(p => p.status === "confirmed").length,
-                        label: "Confirmed Payments",
-                        color: "text-blue-600",
-                        bg: "bg-blue-50"
-                      },
-                      { 
-                        icon: ShoppingBag, 
-                        value: orders.length,
-                        label: "Orders",
-                        color: "text-emerald-600",
-                        bg: "bg-emerald-50"
-                      },
-                      { 
-                        icon: Calendar, 
-                        value: events.filter(e => e.status === "upcoming").length,
-                        label: "Upcoming Events",
-                        color: "text-amber-600",
-                        bg: "bg-amber-50"
-                      }
-                    ].map((stat, index) => (
-                      <motion.div
-                        key={index}
-                        variants={scaleIn}
-                        whileHover={{ y: -4, scale: 1.02 }}
-                        className={`${stat.bg} p-6 rounded-lg border transition-all duration-300 hover:shadow-lg`}
-                      >
-                        <div className="flex items-center gap-4">
-                          <motion.div 
-                            whileHover={{ rotate: 10 }}
-                            className={`p-3 rounded-lg ${stat.bg.replace('50', '100')}`}
-                          >
-                            <stat.icon className={stat.color} size={24} />
-                          </motion.div>
-                          <div>
-                            <motion.p 
-                              initial={{ scale: 0.5 }}
-                              animate={{ scale: 1 }}
-                              transition={{ type: "spring", stiffness: 200 }}
-                              className="text-3xl font-bold text-gray-900"
-                            >
-                              {stat.value}
-                            </motion.p>
-                            <p className="text-gray-600">{stat.label}</p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-
-                <motion.div variants={staggerContainer} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {[
-                    {
-                      href: "/payments",
-                      title: "Make a Payment",
-                      description: "Renew membership or pay for events",
-                      icon: CreditCard,
-                      color: "from-blue-500 to-blue-600"
-                    },
-                    {
-                      href: "/merchandise",
-                      title: "Shop Merchandise",
-                      description: "Browse CHRMAA branded items",
-                      icon: ShoppingBag,
-                      color: "from-emerald-500 to-emerald-600"
-                    }
-                  ].map((action, index) => (
-                    <motion.div
-                      key={index}
-                      variants={scaleIn}
-                      whileHover={{ y: -4, scale: 1.02 }}
-                    >
-                      <Link
-                        href={action.href}
-                        className="block bg-white p-6 rounded-xl border shadow-sm hover:shadow-lg transition-all duration-300 group"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2 font-poppins">
-                              {action.title}
-                            </h3>
-                            <p className="text-gray-600">
-                              {action.description}
-                            </p>
-                          </div>
-                          <motion.div
-                            animate={{ x: [0, 5, 0] }}
-                            transition={{ duration: 1.5, repeat: Infinity }}
-                            className={`p-3 rounded-lg bg-gradient-to-br ${action.color} text-white`}
-                          >
-                            <action.icon size={24} />
-                          </motion.div>
-                        </div>
-                        <motion.div
-                          className="mt-4 flex items-center text-blue-600 font-medium "
-                          whileHover={{ x: 5 }}
-                        ><Link href={"/merchandise"}>
-                          Get started</Link>
-                          <ChevronRight size={18} className="ml-1" />
-                        </motion.div>
-                      </Link>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </motion.div>
-            )}
-
-            {activeTab === "payments" && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="bg-white p-8 rounded-xl border shadow-sm"
-              >
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 font-poppins">
-                  Payment History
-                </h2>
-                {payments.length > 0 ? (
-                  <div className="overflow-hidden rounded-lg border">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-gray-50 text-left text-gray-600 border-b">
-                          <th className="pb-3 pl-6 pt-4">Date</th>
-                          <th className="pb-3 pt-4">Type</th>
-                          <th className="pb-3 pt-4">Amount</th>
-                          <th className="pb-3 pr-6 pt-4 text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {payments.map((payment, index) => (
-                          <motion.tr
-                            key={payment.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            className="text-gray-700 border-b hover:bg-gray-50 transition-colors"
-                          >
-                            <td className="py-4 pl-6">
-                              {new Date(payment.created_at).toLocaleDateString()}
-                            </td>
-                            <td className="py-4 capitalize">
-                              {payment.payment_type}
-                            </td>
-                            <td className="py-4 font-semibold">
-                              Ksh {payment.amount.toLocaleString()}
-                            </td>
-                            <td className="py-4 pr-6 text-right">
-                              <motion.span
-                                whileHover={{ scale: 1.05 }}
-                                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-                                  payment.status === "confirmed" 
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : payment.status === "pending"
-                                    ? "bg-amber-100 text-amber-800"
-                                    : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {payment.status === "confirmed" && <CheckCircle size={14} />}
-                                {payment.status}
-                              </motion.span>
-                            </td>
-                          </motion.tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center py-12"
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+          {/* Overview Tab */}
+          {activeTab === "overview" && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 font-poppins">Quick Actions</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Link
+                    href="/payments"
+                    className="group bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 hover:shadow-lg transition"
                   >
-                    <Clock className="mx-auto mb-4 text-gray-400" size={48} />
-                    <p className="text-gray-600 mb-2">No payment history yet</p>
-                    <p className="text-gray-500 text-sm mb-6">Make your first payment to see it here</p>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Link
-                        href="/payments"
-                        className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow"
-                      >
-                        Make a Payment
-                        <ArrowRight size={16} />
-                      </Link>
-                    </motion.div>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-3 bg-blue-500 rounded-lg">
+                        <CreditCard className="text-white" size={24} />
+                      </div>
+                      <ArrowRight className="text-blue-600 group-hover:translate-x-1 transition" size={20} />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 font-poppins">Make a Payment</h3>
+                    <p className="text-gray-700">Renew membership, pay for events, or settle invoices</p>
+                  </Link>
 
-            {activeTab === "orders" && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="bg-white p-8 rounded-xl border shadow-sm"
-              >
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 font-poppins">
-                  Merchandise Orders
-                </h2>
-                {orders.length > 0 ? (
-                  <div className="space-y-4">
-                    {orders.map((order, index) => (
-                      <motion.div
-                        key={order.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        whileHover={{ x: 4 }}
-                        className="bg-white p-5 rounded-lg border hover:shadow-md transition-all duration-300"
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <Link
+                    href="/merchandise"
+                    className="group bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-xl border border-emerald-200 hover:shadow-lg transition"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-3 bg-emerald-500 rounded-lg">
+                        <ShoppingBag className="text-white" size={24} />
+                      </div>
+                      <ArrowRight className="text-emerald-600 group-hover:translate-x-1 transition" size={20} />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 font-poppins">Shop Merchandise</h3>
+                    <p className="text-gray-700">Browse and purchase CHRMAA branded items</p>
+                  </Link>
+
+                  <Link
+                    href="/events"
+                    className="group bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 hover:shadow-lg transition"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-3 bg-purple-500 rounded-lg">
+                        <Calendar className="text-white" size={24} />
+                      </div>
+                      <ArrowRight className="text-purple-600 group-hover:translate-x-1 transition" size={20} />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 font-poppins">Browse Events</h3>
+                    <p className="text-gray-700">View and register for upcoming alumni events</p>
+                  </Link>
+
+                  <Link
+                    href="/member/profile/edit"
+                    className="group bg-gradient-to-br from-amber-50 to-amber-100 p-6 rounded-xl border border-amber-200 hover:shadow-lg transition"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-3 bg-amber-500 rounded-lg">
+                        <Settings className="text-white" size={24} />
+                      </div>
+                      <ArrowRight className="text-amber-600 group-hover:translate-x-1 transition" size={20} />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 font-poppins">Update Profile</h3>
+                    <p className="text-gray-700">Edit your personal information and preferences</p>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4 font-poppins">Recent Activity</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Recent Payments */}
+                  <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <DollarSign size={20} className="text-emerald-500" />
+                      Recent Payments
+                    </h3>
+                    <div className="space-y-3">
+                      {payments.slice(0, 3).map((payment) => (
+                        <div key={payment.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
                           <div>
-                            <div className="flex items-center gap-3 mb-2">
-                              <p className="font-semibold text-gray-900">
-                                Order #{order.id.slice(0, 8)}...
-                              </p>
-                              <motion.span
-                                whileHover={{ scale: 1.05 }}
-                                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                  order.status === "delivered" 
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : order.status === "shipped"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                {order.status}
-                              </motion.span>
-                            </div>
-                            <p className="text-sm text-gray-500">
-                              {new Date(order.created_at).toLocaleDateString()}
-                            </p>
+                            <p className="text-gray-900 font-medium capitalize">{payment.payment_type}</p>
+                            <p className="text-sm text-gray-600">{new Date(payment.created_at).toLocaleDateString()}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-gray-900">
-                              Ksh {order.total.toLocaleString()}
-                            </p>
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium"
-                            >
-                              View Details →
-                            </motion.button>
+                            <p className="text-gray-900 font-bold">Ksh {payment.amount.toLocaleString()}</p>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              payment.status === "confirmed" ? "bg-emerald-100 text-emerald-700" :
+                              payment.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                              "bg-red-100 text-red-700"
+                            }`}>
+                              {payment.status}
+                            </span>
                           </div>
                         </div>
-                      </motion.div>
-                    ))}
+                      ))}
+                      {payments.length === 0 && (
+                        <p className="text-center text-gray-500 py-4">No payments yet</p>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="text-center py-12"
-                  >
-                    <ShoppingBag className="mx-auto mb-4 text-gray-400" size={48} />
-                    <p className="text-gray-600 mb-2">No orders yet</p>
-                    <p className="text-gray-500 text-sm mb-6">Browse our merchandise collection</p>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Link
-                        href="/merchandise"
-                        className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-medium rounded-lg hover:from-emerald-700 hover:to-emerald-800 transition-all duration-300 shadow"
-                      >
-                        Shop Merchandise
-                        <ArrowRight size={16} />
-                      </Link>
-                    </motion.div>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
 
-            {activeTab === "profile" && memberDetails && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="bg-white p-8 rounded-xl border shadow-sm"
-              >
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 font-poppins">
-                  Profile Information
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {[
-                    { label: "Full Name", value: memberDetails.full_name, icon: User },
-                    { label: "Email", value: memberDetails.email, icon: Mail },
-                    { label: "Phone", value: memberDetails.phone_number || "N/A", icon: Phone },
-                    { label: "Graduation Year", value: memberDetails.graduation_year || "N/A", icon: Calendar },
-                    { label: "Course", value: memberDetails.course || "N/A", icon: User },
-                    { label: "County", value: memberDetails.county || "N/A", icon: PinIcon },
-                  ].map((field, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      whileHover={{ scale: 1.01 }}
-                      className="bg-gray-50 p-4 rounded-lg border"
-                    >
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-white rounded-lg border">
-                          <field.icon className="text-gray-600" size={18} />
+                  {/* Recent Orders */}
+                  <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Package size={20} className="text-blue-500" />
+                      Recent Orders
+                    </h3>
+                    <div className="space-y-3">
+                      {orders.slice(0, 3).map((order) => (
+                        <div key={order.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
+                          <div>
+                            <p className="text-gray-900 font-medium">Order #{order.id.slice(0, 8)}</p>
+                            <p className="text-sm text-gray-600">{new Date(order.created_at).toLocaleDateString()}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-gray-900 font-bold">Ksh {order.total.toLocaleString()}</p>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              order.status === "delivered" ? "bg-emerald-100 text-emerald-700" :
+                              order.status === "shipped" ? "bg-blue-100 text-blue-700" :
+                              "bg-gray-100 text-gray-700"
+                            }`}>
+                              {order.status}
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-gray-600 text-sm">{field.label}</p>
+                      ))}
+                      {orders.length === 0 && (
+                        <p className="text-center text-gray-500 py-4">No orders yet</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Payments Tab */}
+          {activeTab === "payments" && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 font-poppins">
+                  Payment History ({payments.length})
+                </h2>
+                <Link
+                  href="/payments"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:opacity-90 transition"
+                >
+                  Make Payment
+                </Link>
+              </div>
+              {payments.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left text-gray-600 border-b border-gray-200">
+                        <th className="pb-3 px-4 font-semibold">Date</th>
+                        <th className="pb-3 px-4 font-semibold">Type</th>
+                        <th className="pb-3 px-4 font-semibold">Amount</th>
+                        <th className="pb-3 px-4 font-semibold">Status</th>
+                        <th className="pb-3 px-4 font-semibold">Receipt</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((payment) => (
+                        <tr key={payment.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-4 px-4 text-gray-900">
+                            {new Date(payment.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="py-4 px-4 text-gray-900 capitalize">
+                            {payment.payment_type}
+                          </td>
+                          <td className="py-4 px-4 text-gray-900 font-bold">
+                            Ksh {payment.amount.toLocaleString()}
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
+                              payment.status === "confirmed" ? "bg-emerald-100 text-emerald-700" :
+                              payment.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                              payment.status === "processing" ? "bg-blue-100 text-blue-700" :
+                              "bg-red-100 text-red-700"
+                            }`}>
+                              {payment.status === "confirmed" && <CheckCircle size={14} />}
+                              {payment.status === "pending" && <Clock size={14} />}
+                              {payment.status}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            {payment.mpesa_receipt_number && (
+                              <span className="text-sm text-gray-600 font-mono">
+                                {payment.mpesa_receipt_number}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Clock className="mx-auto text-gray-300 mb-4" size={48} />
+                  <p className="text-gray-600 mb-4">No payment history yet</p>
+                  <Link
+                    href="/payments"
+                    className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:opacity-90 transition"
+                  >
+                    Make Your First Payment
+                    <ArrowRight size={16} />
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Orders Tab */}
+          {activeTab === "orders" && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 font-poppins">
+                  My Orders ({orders.length})
+                </h2>
+                <Link
+                  href="/merchandise"
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:opacity-90 transition"
+                >
+                  Shop Now
+                </Link>
+              </div>
+              {orders.length > 0 ? (
+                <div className="space-y-4">
+                  {orders.map((order) => (
+                    <div key={order.id} className="bg-gray-50 p-5 rounded-lg border border-gray-200 hover:shadow-md transition">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-3 mb-2">
+                            <p className="font-semibold text-gray-900">Order #{order.id.slice(0, 8)}</p>
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              order.status === "delivered" ? "bg-emerald-100 text-emerald-700" :
+                              order.status === "shipped" ? "bg-blue-100 text-blue-700" :
+                              order.status === "processing" ? "bg-yellow-100 text-yellow-700" :
+                              "bg-gray-100 text-gray-700"
+                            }`}>
+                              {order.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600">{new Date(order.created_at).toLocaleDateString()}</p>
+                          <p className="text-sm text-gray-600 mt-1">{order.items?.length || 0} items</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-gray-900">Ksh {order.total.toLocaleString()}</p>
+                          <button className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
+                            View Details →
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-gray-900 font-medium">{field.value}</p>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
-                
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="mt-8 pt-6 border-t"
+              ) : (
+                <div className="text-center py-12">
+                  <ShoppingBag className="mx-auto text-gray-300 mb-4" size={48} />
+                  <p className="text-gray-600 mb-4">No orders yet</p>
+                  <Link
+                    href="/merchandise"
+                    className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:opacity-90 transition"
+                  >
+                    Start Shopping
+                    <ArrowRight size={16} />
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Events Tab */}
+          {activeTab === "events" && (
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 font-poppins">
+                Upcoming Events ({events.filter(e => e.status === 'upcoming').length})
+              </h2>
+              {events.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {events.map((event) => (
+                    <div key={event.id} className="bg-gray-50 p-6 rounded-lg border border-gray-200 hover:shadow-md transition">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="p-3 bg-purple-100 rounded-lg">
+                          <Calendar className="text-purple-600" size={24} />
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          event.status === "upcoming" ? "bg-blue-100 text-blue-700" :
+                          event.status === "ongoing" ? "bg-green-100 text-green-700" :
+                          "bg-gray-100 text-gray-700"
+                        }`}>
+                          {event.status}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-bold text-gray-900 mb-2">{event.name}</h3>
+                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">{event.description}</p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">
+                            {event.event_date ? new Date(event.event_date).toLocaleDateString() : "TBA"}
+                          </p>
+                          <p className="text-sm text-gray-600">{event.location || "Location TBA"}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-gray-900">Ksh {event.price.toLocaleString()}</p>
+                          {membershipActive && event.member_discount > 0 && (
+                            <p className="text-xs text-emerald-600">
+                              {event.member_discount}% member discount
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <Link
+                        href={`/events/register/${event.id}`}
+                        className="mt-4 block w-full text-center px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:opacity-90 transition"
+                      >
+                        Register Now
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Calendar className="mx-auto text-gray-300 mb-4" size={48} />
+                  <p className="text-gray-600">No upcoming events at the moment</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Profile Tab */}
+          {activeTab === "profile" && memberDetails && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 font-poppins">
+                  Profile Information
+                </h2>
+                <Link
+                  href="/member/profile/edit"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:opacity-90 transition flex items-center gap-2"
                 >
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Link
-                      href="/member/profile/edit"
-                      className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow"
-                    >
-                      Edit Profile
-                      <ArrowRight size={16} />
-                    </Link>
-                  </motion.div>
-                </motion.div>
-              </motion.div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+                  <Settings size={16} />
+                  Edit Profile
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[
+                  { label: "Full Name", value: memberDetails.full_name, icon: User },
+                  { label: "Email", value: memberDetails.email, icon: Mail },
+                  { label: "Phone Number", value: memberDetails.phone_number || "Not provided", icon: Phone },
+                  { label: "County", value: memberDetails.county || "Not provided", icon: MapPin },
+                  { label: "Graduation Year", value: memberDetails.graduation_year || "Not provided", icon: Calendar },
+                  { label: "Course", value: memberDetails.course || "Not provided", icon: Award },
+                ].map((field, index) => (
+                  <div key={index} className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-white rounded-lg border border-gray-200">
+                        <field.icon className="text-gray-600" size={18} />
+                      </div>
+                      <p className="text-sm text-gray-600 font-medium">{field.label}</p>
+                    </div>
+                    <p className="text-gray-900 font-semibold ml-11">{field.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Account Status</p>
+                    <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
+                      memberDetails.status === "active" ? "bg-emerald-100 text-emerald-700" :
+                      memberDetails.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                      "bg-gray-100 text-gray-700"
+                    }`}>
+                      {memberDetails.status}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">Member Since</p>
+                    <p className="text-gray-900 font-medium">
+                      {new Date(memberDetails.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
       <Footer />
-    </motion.div>
+    </div>
   );
 }

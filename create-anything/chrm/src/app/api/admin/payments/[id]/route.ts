@@ -1,4 +1,4 @@
-// app/api/admin/orders/[id]/route.ts
+// app/api/admin/payments/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -62,42 +62,56 @@ export async function PATCH(
     const body = await request.json();
     const { status } = body;
 
-    if (!status || !['pending', 'processing', 'shipped', 'delivered', 'cancelled'].includes(status)) {
+    if (!status || !['pending', 'processing', 'confirmed', 'failed'].includes(status)) {
       return NextResponse.json(
-        { error: 'Invalid status. Must be: pending, processing, shipped, delivered, or cancelled' },
+        { error: 'Invalid status. Must be: pending, processing, confirmed, or failed' },
         { status: 400 }
       );
     }
 
-    // Get the current order
-    const { data: order, error: fetchError } = await supabase
-      .from('orders')
+    // Get the current payment
+    const { data: payment, error: fetchError } = await supabase
+      .from('payments')
       .select('*')
       .eq('id', id)
       .single();
 
-    if (fetchError || !order) {
+    if (fetchError || !payment) {
+      console.error('Payment fetch error:', fetchError);
       return NextResponse.json(
-        { error: 'Order not found' },
+        { error: 'Payment not found' },
         { status: 404 }
       );
     }
 
-    // Update order status
-    const { data: updatedOrder, error: updateError } = await supabase
-      .from('orders')
-      .update({
-        status,
-        updated_at: new Date().toISOString()
-      })
+    // Prepare update data
+    const updateData: any = {
+      status,
+    };
+
+    // Add updated_at only if column exists (temporary workaround)
+    // Remove this line after adding the column
+    // updateData.updated_at = new Date().toISOString();
+
+    // If confirming payment, set confirmation timestamps
+    if (status === 'confirmed' && payment.status !== 'confirmed') {
+      updateData.confirmed_at = new Date().toISOString();
+      updateData.paid_at = updateData.paid_at || new Date().toISOString();
+    }
+
+    console.log('Updating payment with data:', updateData);
+
+    const { data: updatedPayment, error: updateError } = await supabase
+      .from('payments')
+      .update(updateData)
       .eq('id', id)
       .select()
       .single();
 
     if (updateError) {
-      console.error('Order update error:', updateError);
+      console.error('Payment update error:', updateError);
       return NextResponse.json(
-        { error: 'Failed to update order status' },
+        { error: `Failed to update payment status: ${updateError.message}` },
         { status: 500 }
       );
     }
@@ -105,24 +119,24 @@ export async function PATCH(
     // Log admin action
     await supabase.from('admin_logs').insert({
       admin_id: admin.id,
-      action: 'update_order_status',
+      action: 'update_payment_status',
       details: {
-        order_id: id,
-        old_status: order.status,
+        payment_id: id,
+        old_status: payment.status,
         new_status: status,
-        customer_name: order.customer_name,
-        total: order.total
+        payment_type: payment.payment_type,
+        amount: payment.amount
       }
     });
 
     return NextResponse.json({
       success: true,
-      message: `Order status updated to ${status}`,
-      order: updatedOrder
+      message: `Payment ${status} successfully`,
+      payment: updatedPayment
     });
 
   } catch (error: any) {
-    console.error('Update order error:', error);
+    console.error('Update payment error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error.message },
       { status: 500 }

@@ -135,15 +135,7 @@ export async function PATCH(
       updated_at: new Date().toISOString()
     };
 
-    // Optional fields
-    if (body.name !== undefined) {
-      updateData.name = body.name;
-      // Update slug if name changes
-      updateData.slug = body.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-    }
+   
     if (body.description !== undefined) updateData.description = body.description;
     if (body.event_date !== undefined) updateData.event_date = body.event_date;
     if (body.location !== undefined) updateData.location = body.location;
@@ -151,7 +143,6 @@ export async function PATCH(
     if (body.member_discount !== undefined) updateData.member_discount = parseInt(body.member_discount);
     if (body.max_attendees !== undefined) updateData.max_attendees = body.max_attendees ? parseInt(body.max_attendees) : null;
     if (body.image_url !== undefined) updateData.image_url = body.image_url;
-    if (body.category !== undefined) updateData.category = body.category;
     if (body.is_active !== undefined) updateData.is_active = body.is_active;
     if (body.status !== undefined) updateData.status = body.status;
 

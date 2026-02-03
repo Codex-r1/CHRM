@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../context/auth"; // IMPORTANT: Use the auth context!
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import {
@@ -20,17 +21,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
-import type { Variants } from "framer-motion";
 
 // Define types
-type UserType = {
-  id: string;
-  email: string;
-  name: string;
-  role: "admin" | "member";
-};
-
 type ProductVariant = {
   id: string;
   color_name: string;
@@ -71,46 +63,6 @@ type CustomerInfo = {
   full_name: string;
   phone: string;
   email: string;
-};
-
-// Animation Variants
-const fadeUp: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 24,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.6,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-};
-
-const scaleIn: Variants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.9,
-  },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: {
-      duration: 0.6,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-};
-
-const staggerContainer: Variants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.5,
-    },
-  },
 };
 
 const benefits = [
@@ -265,7 +217,7 @@ function PaymentSummary({ cart, customerInfo, total }: PaymentSummaryProps) {
               <span className="font-mono font-bold text-blue-900">263532</span>
               <button
                 onClick={() => copyToClipboard("263532")}
-                className="p-1 hover:bg-blue-50 rounded transition-colors"
+                className="p-1 hover:bg-blue-100 rounded transition-colors"
               >
                 <Copy className="w-4 h-4 text-blue-600" />
               </button>
@@ -278,7 +230,7 @@ function PaymentSummary({ cart, customerInfo, total }: PaymentSummaryProps) {
               <span className="font-mono font-bold text-blue-900 text-xs">{accountNumber}</span>
               <button
                 onClick={() => copyToClipboard(accountNumber)}
-                className="p-1 hover:bg-blue-50 rounded transition-colors"
+                className="p-1 hover:bg-blue-100 rounded transition-colors"
               >
                 <Copy className="w-4 h-4 text-blue-600" />
               </button>
@@ -291,7 +243,7 @@ function PaymentSummary({ cart, customerInfo, total }: PaymentSummaryProps) {
               <span className="font-mono font-bold text-blue-900">KSH {total.toLocaleString()}</span>
               <button
                 onClick={() => copyToClipboard(total.toString())}
-                className="p-1 hover:bg-blue-50 rounded transition-colors"
+                className="p-1 hover:bg-blue-100 rounded transition-colors"
               >
                 <Copy className="w-4 h-4 text-blue-600" />
               </button>
@@ -412,8 +364,9 @@ const validatePhoneNumber = (phone: string): boolean => {
 };
 
 export default function MerchandisePage() {
-  const [user, setUser] = useState<UserType | null>(null);
-  const [loading, setLoading] = useState(true);
+  // USE THE AUTH CONTEXT INSTEAD OF LOCAL STATE!
+  const { user, loading } = useAuth();
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [step, setStep] = useState(1);
@@ -428,6 +381,17 @@ export default function MerchandisePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+
+  // Update customer info when user changes
+  useEffect(() => {
+    if (user) {
+      setCustomerInfo(prev => ({
+        ...prev,
+        full_name: (user as any).name || (user as any).user_metadata?.name || "",
+        email: user.email || "",
+      }));
+    }
+  }, [user]);
 
   // Fetch products from database
   useEffect(() => {
@@ -446,33 +410,13 @@ export default function MerchandisePage() {
     fetchProducts();
   }, []);
 
-  // Check authentication on component mount
-  useEffect(() => {
-    const checkAuth = () => {
-      if (typeof window !== "undefined") {
-        const userData = localStorage.getItem("user");
-        if (userData) {
-          const parsedUser: UserType = JSON.parse(userData);
-          setUser(parsedUser);
-          setCustomerInfo(prev => ({
-            ...prev,
-            full_name: parsedUser.name || "",
-            email: parsedUser.email || ""
-          }));
-        }
-      }
-      setLoading(false);
-    };
-
-    checkAuth();
-  }, [router]);
-
   // Redirect to login if trying to checkout without being logged in
   useEffect(() => {
-    if ((step === 2 || step === 3) && !user) {
+    if ((step === 2 || step === 3) && !user && !loading) {
+      console.log("Redirecting to login, step:", step, "user:", user);
       router.push("/login?redirect=/merchandise&checkout=true");
     }
-  }, [step, user, router]);
+  }, [step, user, loading, router]);
 
   const getAvailableColors = (product: Product) => {
     const uniqueColors = new Map<string, { name: string; hex: string; value: string }>();
@@ -537,7 +481,6 @@ export default function MerchandisePage() {
     const variant = product.variants.find(v => v.id === selection.variant_id);
     if (!variant) return;
 
-    // Check stock availability
     if (variant.stock_quantity <= 0) {
       alert("This item is out of stock!");
       return;
@@ -548,7 +491,6 @@ export default function MerchandisePage() {
     );
 
     if (existingItem) {
-      // Check if adding one more would exceed stock
       if (existingItem.quantity >= variant.stock_quantity) {
         alert(`Only ${variant.stock_quantity} items available in stock!`);
         return;
@@ -585,7 +527,6 @@ export default function MerchandisePage() {
           if (index === itemIndex) {
             const newQuantity = item.quantity + delta;
             
-            // Check stock limit
             if (newQuantity > item.stock_available) {
               alert(`Only ${item.stock_available} items available in stock!`);
               return item;
@@ -608,38 +549,21 @@ export default function MerchandisePage() {
   };
 
   const handleCheckout = () => {
+    console.log("Checkout clicked, user:", user, "cart length:", cart.length);
+    
     if (cart.length === 0) {
       alert("Your cart is empty!");
       return;
     }
+    
     if (!user) {
+      console.log("No user, redirecting to login");
       router.push("/login?redirect=/merchandise&checkout=true");
       return;
     }
+    
+    console.log("User exists, proceeding to step 2");
     setStep(2);
-  };
-
-  const validateCustomerInfo = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!customerInfo.full_name.trim()) {
-      newErrors.fullName = "Full name is required";
-    }
-
-    if (!customerInfo.phone.trim()) {
-      newErrors.phone = "Phone number is required";
-    } else if (!/^[0-9]{10}$/.test(customerInfo.phone)) {
-      newErrors.phone = "Please enter a valid 10-digit phone number";
-    }
-
-    if (!customerInfo.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(customerInfo.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const handleCompleteOrder = async () => {
@@ -665,7 +589,6 @@ export default function MerchandisePage() {
 
       const total = calculateTotal();
 
-      // Create order first
       const orderResponse = await fetch('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -687,7 +610,6 @@ export default function MerchandisePage() {
         throw new Error(orderData.error || 'Failed to create order');
       }
 
-      // Initiate STK Push
       const paymentResponse = await fetch('/api/payments/stk-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -731,7 +653,11 @@ export default function MerchandisePage() {
     setCart([]);
     setSelectedProducts({});
     setStep(1);
-    setCustomerInfo({ full_name: "", phone: "", email: "" });
+    setCustomerInfo({ 
+      full_name: (user as any)?.name || "",
+      phone: "", 
+      email: user?.email || "" 
+    });
     setErrors({});
   };
 
@@ -764,7 +690,7 @@ export default function MerchandisePage() {
               You can view your orders in your dashboard.
             </p>
             <div className="flex gap-4 justify-center">
-              <Link href="/member-dashboard">
+              <Link href="/member/dashboard">
                 <button className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all">
                   View Orders
                 </button>
@@ -809,7 +735,7 @@ export default function MerchandisePage() {
 
           {user && (
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-              <p className="text-blue-900 font-semibold">{user.name}</p>
+              <p className="text-blue-900 font-semibold">{(user as any).name || user.email}</p>
               <p className="text-blue-700 text-sm">{user.email}</p>
             </div>
           )}
@@ -867,6 +793,7 @@ export default function MerchandisePage() {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Phone Number
                   </label>
+                  <p>You'll receive an Mpesa Prompt on this number</p>
                   <input
                     type="tel"
                     value={customerInfo.phone}
@@ -933,11 +860,11 @@ export default function MerchandisePage() {
                 <User className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Welcome back, {user.name}!</h2>
+                <h2 className="text-xl font-bold">Welcome back, {(user as any).name || user.email}!</h2>
                 <p className="text-blue-100">Ready to shop CHRMAA merchandise</p>
               </div>
             </div>
-            <Link href="/member-dashboard">
+            <Link href="/member/dashboard">
               <button className="px-6 py-3 bg-white text-blue-600 font-semibold rounded-xl hover:shadow-lg transition-all duration-200">
                 View My Orders
               </button>

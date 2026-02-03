@@ -12,7 +12,8 @@ export async function POST(request: NextRequest) {
       userId,
       userEmail,
       userName,
-      metadata = {}
+      metadata = {},
+      payment_id 
     } = body;
 
     // Validate required fields
@@ -65,37 +66,64 @@ export async function POST(request: NextRequest) {
         description = `${paymentType} payment`;
     }
 
-    // Create payment record first
-    const { data: payment, error: paymentError } = await supabaseAdmin
-      .from('payments')
-      .insert({
-        user_id: userId || null,
-        amount: parseFloat(amount),
-        payment_type: paymentType,
-        phone_number: formattedPhone,
-        account_reference: accountReference,
-        description: description,
-        status: 'pending',
-        metadata: {
-          ...metadata,
-          userEmail,
-          userName,
-          paymentType
-        }
-      })
-      .select()
-      .single();
+    let paymentRecord;
 
-    if (paymentError) {
-      console.error('Error creating payment record:', paymentError);
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Failed to create payment record',
-          message: paymentError.message
-        },
-        { status: 500 }
-      );
+    // For registration, update existing payment record
+    if (paymentType === 'registration' && payment_id) {
+      // Get the existing payment record
+      const { data: existingPayment, error: fetchError } = await supabaseAdmin
+        .from('payments')
+        .select('*')
+        .eq('id', payment_id)
+        .single();
+
+      if (fetchError || !existingPayment) {
+        return NextResponse.json(
+          { 
+            success: false,
+            error: 'Payment record not found',
+            message: 'Invalid payment ID'
+          },
+          { status: 404 }
+        );
+      }
+
+      paymentRecord = existingPayment;
+    } else {
+      // For other payment types, create new payment record
+      const { data: payment, error: paymentError } = await supabaseAdmin
+        .from('payments')
+        .insert({
+          user_id: userId || null,
+          amount: parseFloat(amount),
+          payment_type: paymentType,
+          phone_number: formattedPhone,
+          account_reference: accountReference,
+          description: description,
+          status: 'pending',
+          metadata: {
+            ...metadata,
+            userEmail,
+            userName,
+            paymentType
+          }
+        })
+        .select()
+        .single();
+
+      if (paymentError) {
+        console.error('Error creating payment record:', paymentError);
+        return NextResponse.json(
+          { 
+            success: false,
+            error: 'Failed to create payment record',
+            message: paymentError.message
+          },
+          { status: 500 }
+        );
+      }
+
+      paymentRecord = payment;
     }
 
     // Initiate STK Push
@@ -114,7 +142,7 @@ export async function POST(request: NextRequest) {
         merchant_request_id: stkResponse.MerchantRequestID,
         updated_at: new Date().toISOString()
       })
-      .eq('id', payment.id);
+      .eq('id', paymentRecord.id);
 
     return NextResponse.json({
       success: true,
@@ -122,12 +150,12 @@ export async function POST(request: NextRequest) {
       checkoutRequestID: stkResponse.CheckoutRequestID,
       merchantRequestID: stkResponse.MerchantRequestID,
       customerMessage: stkResponse.CustomerMessage,
-      paymentId: payment.id,
+      paymentId: paymentRecord.id,
       data: {
         checkoutRequestID: stkResponse.CheckoutRequestID,
         merchantRequestID: stkResponse.MerchantRequestID,
         customerMessage: stkResponse.CustomerMessage,
-        paymentId: payment.id
+        paymentId: paymentRecord.id
       }
     }, { status: 200 });
 

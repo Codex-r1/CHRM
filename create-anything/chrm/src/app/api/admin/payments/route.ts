@@ -1,34 +1,62 @@
+// app/api/admin/payments/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../../lib/supabase/admin'
+import { createClient } from '@supabase/supabase-js'
 
-export async function GET(request: NextRequest) {
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
+
+async function verifyAdminAuth(request: NextRequest) {
   try {
-    // Check admin auth
-    const authHeader = request.headers.get('Authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return { error: 'Missing or invalid authorization header', admin: null };
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    const token = authHeader.replace('Bearer ', '');
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      return { error: 'Invalid or expired token', admin: null };
     }
 
-    // Check if user is admin
-    const { data: profile } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .single();
 
-    if (profile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    if (profileError || !profile || profile.role !== 'admin') {
+      return { error: 'Unauthorized: Admin access required', admin: null };
+    }
+
+    return { error: null, admin: user };
+  } catch (error) {
+    console.error('Auth verification error:', error);
+    return { error: 'Authentication failed', admin: null };
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const { error: authError, admin } = await verifyAdminAuth(request);
+    if (authError || !admin) {
+      return NextResponse.json(
+        { error: authError || 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
     // Get all payments with user info
-    const { data: payments, error } = await supabaseAdmin
+    const { data: payments, error } = await supabase
       .from('payments')
       .select(`
         *,
@@ -40,9 +68,19 @@ export async function GET(request: NextRequest) {
       `)
       .order('created_at', { ascending: false })
 
-    if (error) throw error
+    if (error) {
+      console.error('Fetch payments error:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch payments' },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json(payments || [])
+    return NextResponse.json({
+      success: true,
+      payments: payments || [],
+      count: payments?.length || 0
+    });
 
   } catch (error: any) {
     console.error('Admin payments fetch error:', error)

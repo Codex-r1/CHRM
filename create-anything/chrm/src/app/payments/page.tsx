@@ -238,9 +238,7 @@ export default function CombinedPaymentsPage() {
           return;
         }
 
-        const registrationFee = 1500;
-        
-        // Set pending account number - will be updated after registration
+        const registrationFee = 1;
         setPaybillInfo({
           amount: registrationFee,
           account_number: "PENDING", // Will be updated after registration
@@ -327,174 +325,279 @@ export default function CombinedPaymentsPage() {
     }
   };
 
-  // Handle registration and payment
-  const handleRegistrationAndPayment = async () => {
+// Replace your handleRegistrationAndPayment function with this:
+
+const handleRegistrationAndPayment = async () => {
+  try {
+    setLoading(true);
+    
+    // Step 1: Call /api/auth/register - this creates a PENDING payment record, NOT a user
+    const registrationResponse = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: formData.email,
+        full_name: formData.full_name,
+        phone: formData.phone,
+        graduation_year: formData.graduation_year,
+        course: formData.course,
+        county: formData.county,
+        password: formData.password
+      })
+    });
+
+    const registrationData = await registrationResponse.json();
+    
+    if (!registrationResponse.ok) {
+      throw new Error(registrationData.error || 'Registration failed');
+    }
+
+    // We now have a payment_id - the registration data is stored in the payment metadata
+    // NO user account has been created yet
+    
+    const payment_id = registrationData.payment_id;
+    const phoneNumber = registrationData.phone_number;
+    const amount = registrationData.amount;
+
+    // Step 2: Initiate STK Push with the payment_id
+    await initiateSTKPush(amount, 'registration', undefined, {
+      graduation_year: formData.graduation_year,
+      course: formData.course,
+      county: formData.county,
+    }, payment_id); 
+
+  } catch (err) {
+    console.error('Registration error:', err);
+    showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
+    setLoading(false);
+    throw err;
+  }
+};
+
+  // Update your initiateSTKPush function signature to accept payment_id:
+
+const initiateSTKPush = async (
+  amount: number, 
+  paymentType: 'registration' | 'renewal', 
+  userId?: string,
+  metadata?: any,
+  payment_id?: string  
+) => {
+  try {
+    setStkStatus('initiating');
+    
+    const response = await fetch('/api/payments/stk-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phoneNumber: formData.phone,
+        amount: amount,
+        paymentType: paymentType,
+        userId: userId,
+        userEmail: formData.email,
+        userName: formData.full_name,
+        metadata: metadata || {
+          graduation_year: formData.graduation_year,
+          course: formData.course,
+          county: formData.county,
+          membership_number: formData.membership_number,
+          renewal_year: formData.renewal_year
+        },
+        payment_id: payment_id  // Pass payment_id for registration
+      })
+    });
+
+    const data: PaymentResponse = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to initiate payment');
+    }
+
+    if (data.success && data.checkoutRequestID) {
+      showAlert('success', 'Payment Request Sent', 
+        'Please check your phone for the M-PESA prompt and enter your PIN to complete the payment.',
+        { autoClose: 5000 }
+      );
+      
+      setCheckoutRequestID(data.checkoutRequestID);
+      setPaymentId(data.paymentId || '');
+      setStkStatus('pending');
+      setStep(2);
+      
+      // Start polling for payment status
+      startPaymentPolling(data.checkoutRequestID);
+    } else {
+      throw new Error(data.message || 'Payment initiation failed');
+    }
+  } catch (err) {
+    console.error('STK Push error:', err);
+    setStkStatus('failed');
+    showAlert('error', 'Payment Failed', err instanceof Error ? err.message : 'Failed to initiate payment');
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
+const startPaymentPolling = async (checkoutID: string) => {
+  const interval = setInterval(async () => {
     try {
-      // First, create the user account
-      const registrationResponse = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
+      // Check payment status
+      const response = await fetch(`/api/payments/${checkoutID}?verify_user=true`);
+      const data = await response.json();
+      
+      console.log('Polling response:', data);
+      
+      if (data.status === 'confirmed') {
+        // Payment confirmed - now we need to activate/create the user
+        
+        if (paymentType === 'registration') {
+          // For registration: check if user was already created
+          if (data.user_created === true && data.user_id) {
+            // User already exists - redirect to login
+            setStkStatus('success');
+            clearInterval(interval);
+            setPollingInterval(null);
+            
+            showAlert('success', 'Account Ready!', 
+              'Your account has been created successfully. Redirecting to login...',
+              { autoClose: 2000 }
+            );
+            
+            setTimeout(() => {
+              router.push('/login');
+            }, 2000);
+            
+          } else {
+            // User not created yet - call activation endpoint
+            console.log('Payment confirmed, activating membership...');
+            
+            try {
+              const activationResult = await activateMembershipAfterPayment(
+                checkoutID, 
+                'registration'
+              );
+              
+              if (activationResult?.success) {
+                // Activation successful
+                setStkStatus('success');
+                clearInterval(interval);
+                setPollingInterval(null);
+                
+                if (activationResult.membership_number) {
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    membership_number: activationResult.membership_number 
+                  }));
+                }
+                
+                showAlert('success', 'Account Created!', 
+                  `Your account has been created! Membership: ${activationResult.membership_number}. Redirecting to login...`,
+                  { autoClose: 3000 }
+                );
+                
+                setTimeout(() => {
+                  router.push('/login');
+                }, 3000);
+              }
+            } catch (activationError) {
+              console.error('Activation failed:', activationError);
+              clearInterval(interval);
+              setPollingInterval(null);
+              
+              showAlert('warning', 'Payment Confirmed - Activation Pending', 
+                'Payment received but account activation is processing. Please contact support if not activated within 1 hour.',
+                { autoClose: 5000 }
+              );
+            }
+          }
+          
+        } else if (paymentType === 'renewal') {
+          // For renewal: just activate and redirect
+          try {
+            await activateMembershipAfterPayment(checkoutID, 'renewal');
+            
+            setStkStatus('success');
+            clearInterval(interval);
+            setPollingInterval(null);
+            
+            showAlert('success', 'Renewal Complete!', 
+              'Your membership has been renewed. Redirecting to dashboard...',
+              { autoClose: 2000 }
+            );
+            
+            setTimeout(() => {
+              router.push('/member/dashboard');
+            }, 2000);
+            
+          } catch (renewalError) {
+            console.error('Renewal activation failed:', renewalError);
+            clearInterval(interval);
+            setPollingInterval(null);
+            
+            showAlert('warning', 'Payment Confirmed - Activation Pending', 
+              'Payment received. Renewal will be activated shortly.',
+              { autoClose: 4000 }
+            );
+          }
+        }
+        
+      } else if (data.status === 'failed') {
+        setStkStatus('failed');
+        clearInterval(interval);
+        setPollingInterval(null);
+        showAlert('error', 'Payment Failed', 'The payment was not completed. Please try again.');
+        
+      } else if (data.status === 'cancelled') {
+        setStkStatus('cancelled');
+        clearInterval(interval);
+        setPollingInterval(null);
+        showAlert('warning', 'Payment Cancelled', 'The payment was cancelled.');
+      }
+      
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  }, 5000); // Poll every 3 seconds
+
+  setPollingInterval(interval);
+};
+const activateMembershipAfterPayment = async (
+  checkoutId: string, 
+  type: 'registration' | 'renewal'
+) => {
+  try {
+    const response = await fetch('/api/payments/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        checkoutRequestID: checkoutId,
+        paymentType: type,
+        phone: formData.phone,
+        email: formData.email,
+        ...(type === 'registration' && {
           full_name: formData.full_name,
-          phone: formData.phone,
           graduation_year: formData.graduation_year,
           course: formData.course,
           county: formData.county,
           password: formData.password
         })
-      });
+      })
+    });
 
-      const registrationData = await registrationResponse.json();
-      
-      if (!registrationResponse.ok) {
-        throw new Error(registrationData.error || 'Registration failed');
-      }
-
-      // Get the generated membership number from response
-      const membershipNumber = registrationData.user?.user_metadata?.membership_number;
-      
-      if (!membershipNumber) {
-        throw new Error('Failed to generate membership number');
-      }
-
-      // Update form with generated membership number
-      setFormData(prev => ({
-        ...prev,
-        membership_number: membershipNumber
-      }));
-
-      // Update paybill info with actual membership number
-      setPaybillInfo(prev => ({
-        ...prev,
-        account_number: membershipNumber
-      }));
-
-      // Then initiate STK Push
-      await initiateSTKPush(1500, 'registration', registrationData.user?.id, {
-        graduation_year: formData.graduation_year,
-        course: formData.course,
-        county: formData.county,
-        membership_number: membershipNumber
-      });
-
-    } catch (err) {
-      console.error('Registration error:', err);
-      showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
-      setLoading(false);
-      throw err;
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to activate membership');
     }
-  };
 
-  // Initiate STK Push
-  const initiateSTKPush = async (
-    amount: number, 
-    paymentType: 'registration' | 'renewal', 
-    userId?: string,
-    metadata?: any
-  ) => {
-    try {
-      setStkStatus('initiating');
-      
-      const response = await fetch('/api/payments/stk-push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: formData.phone,
-          amount: amount,
-          paymentType: paymentType,
-          userId: userId,
-          userEmail: formData.email,
-          userName: formData.full_name,
-          metadata: metadata || {
-            graduation_year: formData.graduation_year,
-            course: formData.course,
-            county: formData.county,
-            membership_number: formData.membership_number,
-            renewal_year: formData.renewal_year
-          }
-        })
-      });
+    return result; 
+    
+  } catch (error) {
+    console.error('Activation error:', error);
+    throw error; 
+  }
+};
 
-      const data: PaymentResponse = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to initiate payment');
-      }
-
-      if (data.success && data.checkoutRequestID) {
-        // Show success alert
-        showAlert('success', 'Payment Request Sent', 
-          'Please check your phone for the M-PESA prompt and enter your PIN to complete the payment.',
-          { autoClose: 5000 }
-        );
-        
-        setCheckoutRequestID(data.checkoutRequestID);
-        setPaymentId(data.paymentId || '');
-        setStkStatus('pending');
-        setStep(2); // Move to payment status page
-        
-        // Start polling for payment status
-        startPaymentPolling(data.checkoutRequestID);
-      } else {
-        throw new Error(data.message || 'Payment initiation failed');
-      }
-    } catch (err) {
-      console.error('STK Push error:', err);
-      setStkStatus('failed');
-      showAlert('error', 'Payment Failed', err instanceof Error ? err.message : 'Failed to initiate payment');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Start polling for payment status
-  const startPaymentPolling = (checkoutID: string) => {
-    const interval = setInterval(async () => {
-      try {
-         const response = await fetch(`/api/payments/${checkoutID}`);
-        const data = await response.json();
-        
-        if (data.status === 'confirmed') {
-          setStkStatus('success');
-          clearInterval(interval);
-          setPollingInterval(null);
-          
-          // Show success alert
-          showAlert('success', 'Payment Confirmed!', 
-            'Your payment has been successfully processed.',
-            { autoClose: 3000 }
-          );
-          
-          // Auto-redirect to success after 2 seconds
-          setTimeout(() => {
-            setStep(3);
-          }, 2000);
-          
-        } else if (data.status === 'failed') {
-          setStkStatus('failed');
-          clearInterval(interval);
-          setPollingInterval(null);
-          showAlert('error', 'Payment Failed', 'The payment was not completed. Please try again.');
-          
-        } else if (data.status === 'cancelled') {
-          setStkStatus('cancelled');
-          clearInterval(interval);
-          setPollingInterval(null);
-          showAlert('warning', 'Payment Cancelled', 'The payment was cancelled.');
-        }
-        // If still pending, continue polling
-      } catch (err) {
-        console.error('Polling error:', err);
-        showAlert('error', 'Connection Error', 'Failed to check payment status. Please refresh the page.');
-      }
-    }, 3000); // Poll every 3 seconds
-
-    setPollingInterval(interval);
-  };
-
-  // Cancel payment polling
   const cancelPayment = () => {
     if (pollingInterval) {
       clearInterval(pollingInterval);
@@ -509,10 +612,8 @@ export default function CombinedPaymentsPage() {
   };
 
   const paymentSteps = [
-    "Enter your M-PESA phone number in the form",
-    "Click 'Pay via M-PESA' button",
-    "Check your phone for STK Push prompt",
-    "Enter your M-PESA PIN when prompted",
+    "Check your phone for a prompt",
+    "Enter your M-PESA PIN",
     "Wait for payment confirmation"
   ];
 
@@ -878,7 +979,7 @@ export default function CombinedPaymentsPage() {
                     </div>
                   </div>
                   <p className="text-sm text-blue-700">
-                    💡 Keep your phone nearby. You should receive a payment prompt shortly.
+                   Keep your phone nearby. You should receive a payment prompt shortly.
                   </p>
                 </motion.div>
 
@@ -910,7 +1011,7 @@ export default function CombinedPaymentsPage() {
                     transition={{ delay: 0.1 }}
                     className="text-sm text-gray-500 text-center mt-4"
                   >
-                    ⏳ Payment status updates automatically. Please wait...
+                   Payment status updates automatically. Please wait...
                   </motion.p>
                 )}
               </div>

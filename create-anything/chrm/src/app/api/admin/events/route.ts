@@ -73,7 +73,6 @@ export async function POST(request: NextRequest) {
       member_discount,
       max_attendees,
       image_url,
-      category,
       is_active,
       status
     } = body;
@@ -93,16 +92,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate slug from name
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-
     // Prepare event data
     const eventData = {
       name,
-      slug,
       description,
       event_date: event_date || null,
       location: location || null,
@@ -111,7 +103,6 @@ export async function POST(request: NextRequest) {
       max_attendees: max_attendees ? parseInt(max_attendees) : null,
       current_attendees: 0,
       image_url: image_url || null,
-      category: category || null,
       is_active: is_active !== undefined ? is_active : true,
       status: status || 'upcoming',
       created_at: new Date().toISOString(),
@@ -175,7 +166,6 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
-    const category = searchParams.get('category');
     const isActive = searchParams.get('is_active');
 
     // Build query
@@ -187,9 +177,6 @@ export async function GET(request: NextRequest) {
     // Apply filters
     if (status) {
       query = query.eq('status', status);
-    }
-    if (category) {
-      query = query.eq('category', category);
     }
     if (isActive !== null) {
       query = query.eq('is_active', isActive === 'true');
