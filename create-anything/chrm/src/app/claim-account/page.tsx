@@ -13,7 +13,7 @@ export default function ClaimAccountPage() {
     membership_number: "",
     email: "",
   });
-  const [step, setStep] = useState(1); // 1: Form, 2: Success
+  const [step, setStep] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -46,43 +46,43 @@ export default function ClaimAccountPage() {
 
   if (step === 2) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+      <div className="min-h-screen bg-[#F7F9FC]">
         <Header />
         <main className="flex-1 flex items-center justify-center py-12 px-4">
           <div className="w-full max-w-md text-center">
-            <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
-              <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-green-100 to-emerald-50 rounded-full -translate-x-16 -translate-y-16" />
-              <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-100 to-indigo-50 rounded-full translate-x-20 translate-y-20" />
+            <div className="relative bg-white rounded-2xl p-8 shadow-lg border border-[#E7ECF3] overflow-hidden">
+              <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-[#E8F4FD] to-[#d4e9fa] rounded-full -translate-x-16 -translate-y-16" />
+              <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-[#FFF4E6] to-[#ffe9cc] rounded-full translate-x-20 translate-y-20" />
               
               <div className="relative z-10">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                  className="w-24 h-24 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg"
+                  className="w-24 h-24 bg-gradient-to-br from-[#2B4C73] to-[#1E3A5F] rounded-full flex items-center justify-center mx-auto mb-8 shadow-md"
                 >
                   <CheckCircle className="text-white" size={48} />
                 </motion.div>
                 
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                <h1 className="text-3xl font-bold text-[#0B0F1A] mb-4 font-poppins">
                   Check Your Email!
                 </h1>
                 
-                <p className="text-gray-600 mb-8 leading-relaxed">
-                  We've sent a password setup link to <strong>{formData.email}</strong>.
+                <p className="text-[#6D7A8B] mb-8 leading-relaxed">
+                  We've sent a password setup link to <strong className="text-[#2B4C73]">{formData.email}</strong>.
                   Click the link in your email to set your password and access your account.
                 </p>
                 
                 <div className="space-y-4">
                   <button
                     onClick={() => setStep(1)}
-                    className="px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+                    className="w-full px-6 py-3 bg-[#E7ECF3] text-[#6D7A8B] font-semibold rounded-xl hover:bg-[#d4dae3] transition-colors"
                   >
                     Back to Claim Form
                   </button>
                   <Link
                     href="/login"
-                    className="block px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all"
+                    className="block w-full px-6 py-3 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white font-semibold rounded-xl hover:opacity-90 transition-all hover:shadow-md"
                   >
                     Go to Login
                   </Link>
@@ -97,39 +97,39 @@ export default function ClaimAccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen bg-[#F7F9FC]">
       <Header />
       
       <main className="flex-1 flex items-center justify-center py-12 px-4">
         <div className="w-full max-w-md">
-          <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
-            <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full -translate-x-16 -translate-y-16" />
-            <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-full translate-x-20 translate-y-20" />
+          <div className="relative bg-white rounded-2xl p-8 shadow-lg border border-[#E7ECF3] overflow-hidden">
+            <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-[#E8F4FD] to-[#d4e9fa] rounded-full -translate-x-16 -translate-y-16" />
+            <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-[#FFF4E6] to-[#ffe9cc] rounded-full translate-x-20 translate-y-20" />
             
             <div className="relative z-10">
               <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#FF7A00] to-[#FF9500] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
                   <Key className="text-white" size={28} />
                 </div>
                 
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                <h1 className="text-3xl font-bold text-[#0B0F1A] mb-2 font-poppins">
                   Claim Your Account
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-[#6D7A8B]">
                   Already have a CHRMAA membership? Claim your online access.
                 </p>
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6">
+                <div className="bg-[#FFF0F0] border border-[#E53E3E]/30 text-[#E53E3E] px-4 py-3 rounded-xl mb-6">
                   {error}
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label className="block font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                    <User size={16} className="text-gray-500" />
+                  <label className="block font-poppins font-semibold text-sm text-[#6D7A8B] mb-2 flex items-center gap-2">
+                    <User size={16} className="text-[#6D7A8B]" />
                     Membership Number
                   </label>
                   <input
@@ -139,18 +139,17 @@ export default function ClaimAccountPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, membership_number: e.target.value.toUpperCase() })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
-                   
+                    className="w-full px-4 py-3 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] focus:ring-2 focus:ring-[#E8F4FD] transition-all duration-200"
                     style={{ textTransform: 'uppercase' }}
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-[#6D7A8B] mt-1">
                     Enter your CHRMAA membership number 
                   </p>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                    <Mail size={16} className="text-gray-500" />
+                  <label className="block font-poppins font-semibold text-sm text-[#6D7A8B] mb-2 flex items-center gap-2">
+                    <Mail size={16} className="text-[#6D7A8B]" />
                     Email Address
                   </label>
                   <input
@@ -160,10 +159,10 @@ export default function ClaimAccountPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                    className="w-full px-4 py-3 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] focus:ring-2 focus:ring-[#E8F4FD] transition-all duration-200"
                     placeholder="your.email@example.com"
                   />
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-[#6D7A8B] mt-1">
                     We'll send a password setup link to this email
                   </p>
                 </div>
@@ -171,7 +170,7 @@ export default function ClaimAccountPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="group w-full px-4 py-4 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="group w-full px-4 py-4 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white font-semibold rounded-xl hover:opacity-90 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 hover:shadow-md"
                 >
                   {loading ? (
                     <>
@@ -188,34 +187,31 @@ export default function ClaimAccountPage() {
                 </button>
               </form>
 
-              <div className="mt-8 pt-6 border-t border-gray-100 text-center">
-                <p className="text-gray-600">
+              <div className="mt-8 pt-6 border-t border-[#E7ECF3] text-center">
+                <p className="text-[#6D7A8B]">
                   New to CHRMAA?{" "}
                   <Link
                     href="/payments"
-                    className="text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors"
+                    className="text-[#2B4C73] hover:text-[#1E3A5F] font-semibold hover:underline transition-colors"
                   >
                     Register as a new member
                   </Link>
                 </p>
-                <p className="text-gray-600 mt-2">
+                <p className="text-[#6D7A8B] mt-2">
                   Already have an account?{" "}
                   <Link
                     href="/login"
-                    className="text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors"
+                    className="text-[#2B4C73] hover:text-[#1E3A5F] font-semibold hover:underline transition-colors"
                   >
                     Login here
                   </Link>
                 </p>
               </div>
 
-              <div className="mt-6 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-xl border border-blue-100">
+              <div className="mt-6 bg-[#E8F4FD] p-4 rounded-xl border border-[#2B4C73]/20">
                 <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Shield size={16} className="text-blue-600" />
-                  </div>
                   <div>
-                    <p className="text-sm text-blue-600">
+                    <p className="text-sm text-[#2B4C73]">
                       <span className="font-semibold">Note:</span> This is for alumni who registered and have a membership number. New members should register through the payments page.
                     </p>
                   </div>
@@ -225,6 +221,14 @@ export default function ClaimAccountPage() {
           </div>
         </div>
       </main>
+
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+        
+        .font-poppins {
+          font-family: 'Poppins', sans-serif;
+        }
+      `}</style>
 
       <Footer />
     </div>

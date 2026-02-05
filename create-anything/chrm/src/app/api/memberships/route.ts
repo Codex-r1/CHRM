@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../lib/supabase/client'
-
+import { supabase } from '../../lib/supabase/client'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -14,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user exists
-    const { data: user, error: userError } = await supabaseAdmin
+    const { data: user, error: userError } = await supabase
       .from('profiles')
       .select('id, status')
       .eq('id', user_id)
@@ -25,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current membership or create new one
-    const { data: existingMembership, error: membershipError } = await supabaseAdmin
+    const { data: existingMembership, error: membershipError } = await supabase
       .from('memberships')
       .select('*')
       .eq('user_id', user_id)
@@ -39,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     if (existingMembership) {
       // Update existing membership
-      const { data: updated, error: updateError } = await supabaseAdmin
+      const { data: updated, error: updateError } = await supabase
         .from('memberships')
         .update({
           expiry_date: expiryDate.toISOString().split('T')[0],
@@ -55,7 +54,7 @@ export async function POST(request: NextRequest) {
       membershipData = updated
     } else {
       // Create new membership
-      const { data: created, error: createError } = await supabaseAdmin
+      const { data: created, error: createError } = await supabase
         .from('memberships')
         .insert({
           user_id: user_id,
@@ -72,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update user status to active
-    await supabaseAdmin
+    await supabase
       .from('profiles')
       .update({ 
         status: 'active',

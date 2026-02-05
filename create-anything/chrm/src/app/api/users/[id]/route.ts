@@ -1,27 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import sql from "../../utils/sql";
+import { supabase } from "../../../lib/supabase/client"; // Update path as needed
 
-// Define User type
+// Define User type (update based on your profiles table)
 type User = {
-  id: number;
+  id: string; // Changed from number to string (UUID)
   email: string;
   role: string;
   full_name: string;
-  phone: string | null;
+  phone_number: string | null; // Changed from 'phone'
   membership_number: string;
-  graduation_year: string;
-  registration_fee: number;
-  membership_paid: boolean;
-  membership_expiry: string | null;
+  graduation_year: number | null; // Changed from string
+  status: string; // Added from profiles
+  county?: string;
+  course?: string;
   created_at: string;
-};
-
-// Define update fields type
-type UpdateFields = {
-  full_name?: string;
-  phone?: string;
-  membership_paid?: boolean;
-  membership_expiry?: string;
 };
 
 /* =========================
@@ -34,23 +26,20 @@ export async function GET(
   try {
     const { id } = await context.params;
 
-    const users = await sql`
-      SELECT id, email, role, full_name, phone,
-             membership_number, graduation_year,
-             registration_fee, membership_paid,
-             membership_expiry, created_at
-      FROM users
-      WHERE id = ${id}
-    ` as User[];
+    const { data: user, error } = await supabase
+      .from('profiles') // Changed from 'users' to 'profiles'
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!users.length) {
+    if (error || !user) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(users[0]);
+    return NextResponse.json(user as User);
   } catch (error) {
     console.error("Get user error:", error);
     return NextResponse.json(
@@ -69,55 +58,51 @@ export async function PATCH(
 ) {
   try {
     const { id } = await context.params;
-    const updates: UpdateFields = await request.json();
+    const updates = await request.json();
 
     const allowedFields = [
       "full_name",
-      "phone",
-      "membership_paid",
-      "membership_expiry",
+      "phone_number", // Changed from 'phone'
+      "graduation_year",
+      "course",
+      "county",
+      "status"
     ];
 
-    const setClauses: string[] = [];
-    const values: any[] = [];
-
-    let index = 1;
+    // Filter updates to only allowed fields
+    const filteredUpdates: any = {};
     for (const [key, value] of Object.entries(updates)) {
       if (allowedFields.includes(key)) {
-        setClauses.push(`${key} = $${index}`);
-        values.push(value);
-        index++;
+        filteredUpdates[key] = value;
       }
     }
 
-    if (!setClauses.length) {
+    if (Object.keys(filteredUpdates).length === 0) {
       return NextResponse.json(
         { error: "No valid fields to update" },
         { status: 400 }
       );
     }
 
-    values.push(id);
+    // Add updated_at timestamp
+    filteredUpdates.updated_at = new Date().toISOString();
 
-    const query = `
-      UPDATE users
-      SET ${setClauses.join(", ")}
-      WHERE id = $${index}
-      RETURNING id, email, role, full_name, phone,
-                membership_number, membership_paid,
-                membership_expiry
-    `;
+    const { data: updatedUser, error } = await supabase
+      .from('profiles') // Changed from 'users' to 'profiles'
+      .update(filteredUpdates)
+      .eq('id', id)
+      .select()
+      .single();
 
-    const updatedUsers = await sql(query, ...values) as User[];
-
-    if (!updatedUsers.length) {
+    if (error || !updatedUser) {
+      console.error("Update error:", error);
       return NextResponse.json(
-        { error: "User not found" },
+        { error: error?.message || "User not found" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(updatedUsers[0]);
+    return NextResponse.json(updatedUser as User);
   } catch (error) {
     console.error("Update user error:", error);
     return NextResponse.json(

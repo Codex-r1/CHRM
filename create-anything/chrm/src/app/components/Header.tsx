@@ -148,7 +148,7 @@ export default function Header() {
                 </Link>
                 <Link
                   href="/login"
-                  className="px-4 py-2 bg-[#2563eb] text-white font-semibold rounded hover:bg-[#1d4ed8] transition font-inter"
+                  className="px-4 py-2 bg-[#2B4C73] text-white font-semibold rounded hover:bg-[#1d4ed8] transition font-inter"
                 >
                   Login
                 </Link>
@@ -248,7 +248,7 @@ export default function Header() {
                   </Link>
                   <Link
                     href="/login"
-                    className="px-4 py-2 bg-[#2563eb] text-white font-semibold rounded text-center font-inter"
+                    className="px-4 py-2 bg-[#2B4C73] text-white font-semibold rounded text-center font-inter"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Login

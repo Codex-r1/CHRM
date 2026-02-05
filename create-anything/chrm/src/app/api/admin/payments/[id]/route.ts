@@ -88,12 +88,6 @@ export async function PATCH(
     const updateData: any = {
       status,
     };
-
-    // Add updated_at only if column exists (temporary workaround)
-    // Remove this line after adding the column
-    // updateData.updated_at = new Date().toISOString();
-
-    // If confirming payment, set confirmation timestamps
     if (status === 'confirmed' && payment.status !== 'confirmed') {
       updateData.confirmed_at = new Date().toISOString();
       updateData.paid_at = updateData.paid_at || new Date().toISOString();

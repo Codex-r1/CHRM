@@ -1,3 +1,4 @@
+//app/events/register[eventId]/page.tsx
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
@@ -76,8 +77,6 @@ export default function EventRegistrationPage() {
     full_name: "",
     email: "",
     phone: "",
-    membership_number: "",
-    is_alumni_member: "yes"
   });
 
   // Clean up polling on unmount
@@ -90,33 +89,42 @@ export default function EventRegistrationPage() {
   // Fetch event data
   useEffect(() => {
     const fetchEvent = async () => {
-      // Check if eventId exists
       if (!eventId) {
-        console.error('No event ID in URL params:', params);
-        setError("No event ID provided");
+        console.error('❌ No event ID in URL params:', params);
+        setError("No event ID provided in URL");
         setLoading(false);
         return;
       }
 
       try {
         setLoading(true);
-        console.log('Fetching event with ID:', eventId);
+        console.log('🔍 Fetching event with ID:', eventId);
         
         const response = await fetch(`/api/events/${eventId}`);
+        console.log('📡 API Response status:', response.status);
         
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('Event fetch failed:', response.status, errorData);
-          throw new Error(errorData.error || `Event not found (${response.status})`);
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('❌ Event fetch failed:', {
+            status: response.status,
+            error: errorData
+          });
+          throw new Error(errorData.error || errorData.details || `Event not found (HTTP ${response.status})`);
         }
         
         const data = await response.json();
-        console.log('Event data received:', data);
+        console.log('✅ Event data received:', {
+          id: data.id,
+          name: data.name,
+          status: data.status,
+          is_active: data.is_active
+        });
+        
         setEvent(data);
         setError("");
       } catch (err: any) {
-        console.error('Event fetch error:', err);
-        setError(err.message || "Event not found or is no longer available");
+        console.error('💥 Event fetch error:', err);
+        setError(err.message || "Failed to load event. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -133,7 +141,6 @@ export default function EventRegistrationPage() {
         full_name: authUser.user_metadata?.full_name || "",
         email: authUser.email || "",
         phone: authUser.user_metadata?.phone || "",
-        membership_number: authUser.user_metadata?.membership_number || ""
       }));
     }
   }, [authUser, authLoading]);
@@ -151,10 +158,11 @@ export default function EventRegistrationPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
-if (!event) {
-    setError("Event information is still loading. Please wait.");
-    return;
-  }
+
+    if (!event) {
+      setError("Event information is still loading. Please wait.");
+      return;
+    }
 
     // Validation
     if (!formData.full_name || !formData.email || !formData.phone) {
@@ -167,35 +175,24 @@ if (!event) {
       return;
     }
 
-    if (formData.is_alumni_member === "yes" && !formData.membership_number) {
-      setError("Please enter your membership number");
-      return;
-    }
-
     try {
       setStkStatus('initiating');
       
-      // Get user ID if logged in or lookup by membership number
-      let userId = authUser?.id;
-      let userEmail = authUser?.email || formData.email;
-      let userName = authUser?.user_metadata?.full_name || formData.full_name;
-
-      // If member but not logged in, try to find user
-      if (formData.is_alumni_member === "yes" && !userId && formData.membership_number) {
-        try {
-          const response = await fetch(`/api/users/lookup?membership_number=${formData.membership_number}`);
-          if (response.ok) {
-            const data = await response.json();
-            userId = data.user.id;
-            userEmail = data.user.email;
-            userName = data.user.full_name;
-          }
-        } catch (lookupError) {
-          console.log("User lookup failed, continuing as guest registration");
-        }
-      }
-
-      const amount = formData.is_alumni_member === "yes" ? calculateMemberPrice() : event!.price;
+      // ✅ SIMPLIFIED: Logged in = member, Not logged in = guest (full price)
+      const isMember = !!authUser;
+      const amount = isMember ? calculateMemberPrice() : event.price;
+      
+      const userId = authUser?.id || null;
+      const userEmail = authUser?.email || formData.email;
+      const userName = authUser?.user_metadata?.full_name || formData.full_name;
+      
+      console.log('💳 Payment Info:', {
+        isMember,
+        isLoggedIn: !!authUser,
+        regularPrice: event.price,
+        discount: event.member_discount,
+        finalAmount: amount
+      });
       
       // Initiate STK Push
       const response = await fetch('/api/payments/stk-push', {
@@ -208,13 +205,16 @@ if (!event) {
           userId: userId,
           userEmail: userEmail,
           userName: userName,
-          description: `Event Registration - ${event!.name}`,
+          description: `Event Registration - ${event.name}`,
           metadata: {
             event_id: eventId,
-            event_name: event!.name,
-            membership_number: formData.membership_number || null,
-            is_alumni_member: formData.is_alumni_member,
-            registration_type: formData.is_alumni_member === "yes" ? "member" : "guest"
+            event_name: event.name,
+            attendee_name: formData.full_name,
+            attendee_email: formData.email,
+            attendee_phone: formData.phone,
+            membership_number: authUser?.user_metadata?.membership_number || null,
+            is_member: isMember,
+            registration_type: isMember ? "member" : "guest"
           }
         })
       });
@@ -286,8 +286,8 @@ if (!event) {
     );
   }
 
-  // Error state - event not found
-  if (!event || error) {
+  // Error state
+  if (error && !event) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col">
         <Header />
@@ -295,12 +295,31 @@ if (!event) {
           <div className="text-center max-w-md">
             <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h1>
-            <p className="text-gray-600 mb-6">{error || "The event you're looking for doesn't exist or is no longer available."}</p>
-            <div className="bg-gray-100 p-4 rounded-lg mb-6">
-              <p className="text-sm text-gray-700 mb-2">Debug Info:</p>
-              <p className="text-xs text-gray-600">Event ID: {eventId || 'Not provided'}</p>
-              <p className="text-xs text-gray-600">Params: {JSON.stringify(params)}</p>
-            </div>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <Link
+              href="/events"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+            >
+              <ArrowLeft size={20} />
+              Back to Events
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // No event found
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center max-w-md">
+            <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Event Unavailable</h1>
+            <p className="text-gray-600 mb-6">Unable to load event details. Please try again.</p>
             <Link
               href="/events"
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
@@ -416,7 +435,8 @@ if (!event) {
 
   // Payment waiting screen (Step 2)
   if (step === 2) {
-    const amount = formData.is_alumni_member === "yes" ? calculateMemberPrice() : event.price;
+    const isMember = !!authUser;
+    const amount = isMember ? calculateMemberPrice() : event.price;
     
     return (
       <motion.div 
@@ -504,6 +524,11 @@ if (!event) {
                         Event Registration Fee
                       </h3>
                       <p className="text-sm opacity-80">{formData.full_name}</p>
+                      {isMember && (
+                        <p className="text-xs text-green-600 font-semibold mt-1">
+                          ✓ Member Discount Applied ({event.member_discount}% off)
+                        </p>
+                      )}
                     </div>
                     <div className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full font-bold text-lg">
                       Ksh {amount.toLocaleString()}
@@ -589,8 +614,8 @@ if (!event) {
   }
 
   // Step 1: Registration Form
+  const isMember = !!authUser;
   const memberPrice = calculateMemberPrice();
-  const isMember = authUser || formData.is_alumni_member === "yes";
 
   return (
     <motion.div 
@@ -685,61 +710,34 @@ if (!event) {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {!authUser && (
-                  <div className="space-y-4">
+              {/* Member Status Banner */}
+              {authUser ? (
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="text-green-600 mt-0.5" size={20} />
                     <div>
-                      <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                        Are you a CHRM Alumni Association member?
-                      </label>
-                      <div className="space-y-2">
-                        <label className="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
-                          <input
-                            type="radio"
-                            name="is_alumni_member"
-                            value="yes"
-                            checked={formData.is_alumni_member === "yes"}
-                            onChange={(e) => setFormData({ ...formData, is_alumni_member: e.target.value })}
-                            className="mr-3 text-blue-600"
-                          />
-                          <span className="font-medium">Yes, I am a member</span>
-                        </label>
-                        <label className="flex items-center p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition">
-                          <input
-                            type="radio"
-                            name="is_alumni_member"
-                            value="no"
-                            checked={formData.is_alumni_member === "no"}
-                            onChange={(e) => setFormData({ ...formData, is_alumni_member: e.target.value })}
-                            className="mr-3 text-blue-600"
-                          />
-                          <span className="font-medium">No, I am not a member</span>
-                        </label>
-                      </div>
+                      <p className="font-semibold text-green-900">Discount Active!</p>
+                      <p className="text-sm text-green-700 mt-1">
+                       Enjoy {event.member_discount}% off the regular price.
+                      </p>
                     </div>
-
-                    {formData.is_alumni_member === "yes" && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
-                          Membership Number *
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={formData.membership_number}
-                          onChange={(e) => setFormData({ ...formData, membership_number: e.target.value })}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 transition-all duration-200"
-                          placeholder="CHRM-2024-0001"
-                        />
-                      </motion.div>
-                    )}
                   </div>
-                )}
+                </div>
+              ) : (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="text-blue-600 mt-0.5" size={20} />
+                    <div>
+                      <p className="font-semibold text-blue-900">Guest Registration</p>
+                      <p className="text-sm text-blue-700 mt-1">
+                        <Link href="/login" className="underline hover:text-blue-900">Log in</Link> or <Link href="/register" className="underline hover:text-blue-900">create an account</Link> to get {event.member_discount}% member discount.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
                     Full Name *
@@ -800,13 +798,24 @@ if (!event) {
                       <>
                         <div className="flex justify-between">
                           <span className="text-gray-700">Member Discount:</span>
-                          <span className="font-semibold text-green-600">{event.member_discount}%</span>
+                          <span className="font-semibold text-green-600">-{event.member_discount}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-700">Discount Amount:</span>
+                          <span className="font-semibold text-green-600">-Ksh {(event.price - memberPrice).toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between font-bold text-lg border-t border-blue-200 pt-3">
                           <span className="text-blue-700">Your Price:</span>
                           <span className="text-blue-700">Ksh {memberPrice.toLocaleString()}</span>
                         </div>
                       </>
+                    )}
+                    
+                    {!isMember && (
+                      <div className="flex justify-between font-bold text-lg border-t border-blue-200 pt-3">
+                        <span className="text-gray-900">Total:</span>
+                        <span className="text-gray-900">Ksh {event.price.toLocaleString()}</span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -824,7 +833,7 @@ if (!event) {
                   ) : (
                     <>
                       <Smartphone size={20} />
-                      Pay via M-PESA
+                      Pay Ksh {isMember ? memberPrice.toLocaleString() : event.price.toLocaleString()} via M-PESA
                       <ArrowRight size={20} />
                     </>
                   )}
@@ -832,7 +841,7 @@ if (!event) {
 
                 {authUser && (
                   <p className="text-sm text-gray-500 text-center">
-                    You are logged in as <span className="font-semibold">{authUser.email}</span>
+                    Logged in as <span className="font-semibold">{authUser.email}</span>
                   </p>
                 )}
               </form>

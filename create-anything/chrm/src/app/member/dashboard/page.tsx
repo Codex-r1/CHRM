@@ -23,6 +23,9 @@ import {
   Settings,
   LogOut,
   Home,
+  ChevronRight,
+  ExternalLink,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "../../lib/supabase/client";
@@ -95,6 +98,21 @@ type MembershipType = {
   expiry_date: string;
   is_active: boolean;
   created_at: string;
+};
+
+// CHRMAA Colors from About Page
+const COLORS = {
+  darkBlue: "#2B4C73",
+  gold: "#FF7A00",
+  maroon: "#E53E3E",
+  lightBlue: "#E8F4FD",
+  lightGold: "#FFF4E6",
+  lightMaroon: "#FFF0F0",
+  white: "#FFFFFF",
+  offWhite: "#F7F9FC",
+  darkText: "#0B0F1A",
+  lightText: "#6D7A8B",
+  borderLight: "#E7ECF3",
 };
 
 export default function MemberDashboard() {
@@ -256,8 +274,8 @@ export default function MemberDashboard() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-900 text-xl">Loading Dashboard...</div>
+      <div className="min-h-screen bg-[#F7F9FC] flex items-center justify-center">
+        <div className="text-[#2B4C73] text-xl font-poppins">Loading Dashboard...</div>
       </div>
     );
   }
@@ -279,32 +297,32 @@ export default function MemberDashboard() {
   const totalSpent = confirmedPayments.reduce((sum, p) => sum + p.amount, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 font-inter flex flex-col">
+    <div className="min-h-screen bg-[#F7F9FC] font-poppins flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <header className="bg-white border-b border-[#E7ECF3] sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-              <User className="text-white" size={24} />
+            <div className="w-12 h-12 bg-gradient-to-br from-[#2B4C73] to-[#FF7A00] rounded-xl flex items-center justify-center shadow-md">
+              <User className="text-white" size={28} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 font-poppins">
+              <h1 className="text-2xl font-bold text-[#0B0F1A]">
                 Member Dashboard
               </h1>
-              <p className="text-gray-600 text-sm">Welcome back, {getUserDisplayName()}</p>
+              <p className="text-[#6D7A8B] text-sm">Welcome back, {getUserDisplayName()}</p>
             </div>
           </div>
           <div className="flex gap-3">
             <Link
               href="/"
-              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center gap-2"
+              className="px-4 py-2 bg-white border border-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#F7F9FC] transition flex items-center gap-2 font-medium"
             >
               <Home size={16} />
               Home
             </Link>
             <button
               onClick={handleLogout}
-              className="px-4 py-2 bg-gradient-to-r from-red-600 to-pink-600 text-white rounded-lg hover:opacity-90 transition flex items-center gap-2"
+              className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg hover:opacity-90 transition flex items-center gap-2 font-medium shadow-sm"
             >
               <LogOut size={16} />
               Logout
@@ -318,25 +336,25 @@ export default function MemberDashboard() {
         {/* Membership Status Banner */}
         <div className={`p-6 rounded-xl mb-8 border shadow-sm ${
           membershipActive 
-            ? "bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200" 
-            : "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200"
+            ? "bg-gradient-to-r from-[#E8F4FD] to-[#d4e9fa] border-[#2B4C73]/20" 
+            : "bg-gradient-to-r from-[#FFF4E6] to-[#ffe9cc] border-[#FF7A00]/20"
         }`}>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               {membershipActive ? (
-                <div className="p-3 bg-emerald-100 rounded-lg">
-                  <CheckCircle className="text-emerald-600" size={32} />
+                <div className="p-3 bg-[#2B4C73] rounded-xl shadow-sm">
+                  <CheckCircle className="text-white" size={32} />
                 </div>
               ) : (
-                <div className="p-3 bg-amber-100 rounded-lg">
-                  <XCircle className="text-amber-600" size={32} />
+                <div className="p-3 bg-[#FF7A00] rounded-xl shadow-sm">
+                  <XCircle className="text-white" size={32} />
                 </div>
               )}
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 font-poppins">
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">
                   {membershipActive ? "Active Membership" : memberDetails?.status === "pending" ? "Pending Activation" : "Inactive Membership"}
                 </h2>
-                <p className="text-gray-700 mt-1">
+                <p className="text-[#6D7A8B] mt-1 font-medium">
                   {membershipActive 
                     ? `Valid until ${membershipExpiry}`
                     : memberDetails?.status === "pending"
@@ -348,9 +366,9 @@ export default function MemberDashboard() {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                <p className="text-sm text-gray-600 mb-1">Membership Number</p>
-                <p className="text-xl font-bold text-gray-900">
+              <div className="bg-white p-4 rounded-lg border border-[#E7ECF3] shadow-sm">
+                <p className="text-sm text-[#6D7A8B] mb-1 font-medium">Membership Number</p>
+                <p className="text-xl font-bold text-[#2B4C73]">
                   {memberDetails?.membership_number || "Pending"}
                 </p>
               </div>
@@ -358,7 +376,7 @@ export default function MemberDashboard() {
               {!membershipActive && (
                 <Link
                   href={memberDetails?.status === "pending" ? "/register/payment" : "/payments"}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:opacity-90 transition shadow-md flex items-center gap-2 whitespace-nowrap"
+                  className="px-6 py-3 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white font-semibold rounded-lg hover:opacity-90 transition shadow-md flex items-center gap-2 whitespace-nowrap hover:shadow-lg"
                 >
                   {memberDetails?.status === "pending" ? "Complete Payment" : "Renew Now"}
                   <ArrowRight size={18} />
@@ -370,61 +388,69 @@ export default function MemberDashboard() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
-              <CreditCard className="text-blue-500" size={28} />
-              <DollarSign className="text-green-500" size={20} />
+              <div className="p-3 bg-[#E8F4FD] rounded-lg">
+                <CreditCard className="text-[#2B4C73]" size={24} />
+              </div>
+              <DollarSign className="text-[#FF7A00]" size={20} />
             </div>
             <div>
-              <p className="text-gray-600 text-sm mb-1">Total Spent</p>
-              <p className="text-3xl font-bold text-gray-900">Ksh {totalSpent.toLocaleString()}</p>
-              <p className="text-sm text-gray-500 mt-1">{confirmedPayments.length} payments</p>
+              <p className="text-[#6D7A8B] text-sm mb-1 font-medium">Total Spent</p>
+              <p className="text-2xl font-bold text-[#0B0F1A]">Ksh {totalSpent.toLocaleString()}</p>
+              <p className="text-sm text-[#6D7A8B] mt-1">{confirmedPayments.length} payments</p>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
-              <ShoppingBag className="text-emerald-500" size={28} />
-              <Package className="text-blue-500" size={20} />
+              <div className="p-3 bg-[#FFF0F0] rounded-lg">
+                <ShoppingBag className="text-[#E53E3E]" size={24} />
+              </div>
+              <Package className="text-[#FF7A00]" size={20} />
             </div>
             <div>
-              <p className="text-gray-600 text-sm mb-1">Orders</p>
+              <p className="text-[#6D7A8B] text-sm mb-1 font-medium">Orders</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-gray-900">{orders.length}</p>
-                <span className="text-sm text-gray-500">
+                <p className="text-2xl font-bold text-[#0B0F1A]">{orders.length}</p>
+                <span className="text-sm text-[#6D7A8B]">
                   ({orders.filter(o => o.status === 'delivered').length} delivered)
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
-              <Calendar className="text-purple-500" size={28} />
-              <Activity className="text-pink-500" size={20} />
+              <div className="p-3 bg-[#FFF4E6] rounded-lg">
+                <Calendar className="text-[#FF7A00]" size={24} />
+              </div>
+              <Activity className="text-[#2B4C73]" size={20} />
             </div>
             <div>
-              <p className="text-gray-600 text-sm mb-1">Upcoming Events</p>
-              <p className="text-3xl font-bold text-gray-900">
+              <p className="text-[#6D7A8B] text-sm mb-1 font-medium">Upcoming Events</p>
+              <p className="text-2xl font-bold text-[#0B0F1A]">
                 {events.filter(e => e.status === 'upcoming').length}
               </p>
-              <p className="text-sm text-gray-500 mt-1">Available to attend</p>
+              <p className="text-sm text-[#6D7A8B] mt-1">Available to attend</p>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-4">
-              <Award className="text-amber-500" size={28} />
-              <TrendingUp className="text-cyan-500" size={20} />
+              <div className="p-3 bg-[#E8F4FD] rounded-lg">
+                <Award className="text-[#2B4C73]" size={24} />
+              </div>
+              <TrendingUp className="text-[#E53E3E]" size={20} />
             </div>
             <div>
-              <p className="text-gray-600 text-sm mb-1">Member Since</p>
-              <p className="text-xl font-bold text-gray-900">
+              <p className="text-[#6D7A8B] text-sm mb-1 font-medium">Member Since</p>
+              <p className="text-xl font-bold text-[#0B0F1A]">
                 {memberDetails?.created_at
                   ? new Date(memberDetails.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
                   : "N/A"}
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-[#6D7A8B] mt-1">
                 {membershipActive ? "Active member" : "Status: " + (memberDetails?.status || "Unknown")}
               </p>
             </div>
@@ -434,20 +460,25 @@ export default function MemberDashboard() {
         {/* Tabs Navigation */}
         <div className="flex flex-wrap gap-2 mb-6">
           {[
-            { id: "overview", label: "Overview", icon: Activity },
-            { id: "payments", label: "Payments", icon: CreditCard },
-            { id: "orders", label: "Orders", icon: ShoppingBag },
-            { id: "events", label: "Events", icon: Calendar },
-            { id: "profile", label: "Profile", icon: User }
+            { id: "overview", label: "Overview", icon: Activity, color: COLORS.darkBlue },
+            { id: "payments", label: "Payments", icon: CreditCard, color: COLORS.gold },
+            { id: "orders", label: "Orders", icon: ShoppingBag, color: COLORS.maroon },
+            { id: "events", label: "Events", icon: Calendar, color: COLORS.darkBlue },
+            { id: "profile", label: "Profile", icon: User, color: COLORS.gold }
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-5 py-3 font-medium rounded-lg transition flex items-center gap-2 ${
+              className={`px-5 py-3 font-medium rounded-lg transition-all flex items-center gap-2 ${
                 activeTab === tab.id
-                  ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md"
-                  : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-200"
+                  ? `text-white shadow-md`
+                  : "bg-white text-[#6D7A8B] hover:bg-[#F7F9FC] border border-[#E7ECF3]"
               }`}
+              style={{
+                background: activeTab === tab.id 
+                  ? `linear-gradient(135deg, ${tab.color}, ${tab.color === COLORS.darkBlue ? COLORS.darkBlue : tab.color === COLORS.gold ? '#FF8C00' : '#F56565'})`
+                  : 'white'
+              }}
             >
               <tab.icon size={18} />
               {tab.label}
@@ -456,94 +487,99 @@ export default function MemberDashboard() {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+        <div className="bg-white rounded-xl border border-[#E7ECF3] p-6 shadow-sm">
           {/* Overview Tab */}
           {activeTab === "overview" && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 font-poppins">Quick Actions</h2>
+                <h2 className="text-2xl font-bold text-[#0B0F1A] mb-6">Quick Actions</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Link
                     href="/payments"
-                    className="group bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 hover:shadow-lg transition"
+                    className="group bg-[#E8F4FD] p-6 rounded-xl border border-[#2B4C73]/20 hover:shadow-lg transition-all hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between mb-4">
-                      <div className="p-3 bg-blue-500 rounded-lg">
+                      <div className="p-3 bg-[#2B4C73] rounded-lg">
                         <CreditCard className="text-white" size={24} />
                       </div>
-                      <ArrowRight className="text-blue-600 group-hover:translate-x-1 transition" size={20} />
+                      <ArrowRight className="text-[#2B4C73] group-hover:translate-x-1 transition" size={20} />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 font-poppins">Make a Payment</h3>
-                    <p className="text-gray-700">Renew membership, pay for events, or settle invoices</p>
+                    <h3 className="text-xl font-bold text-[#0B0F1A] mb-2">Make a Payment</h3>
+                    <p className="text-[#6D7A8B]">Renew membership, pay for events, or settle invoices</p>
                   </Link>
 
                   <Link
                     href="/merchandise"
-                    className="group bg-gradient-to-br from-emerald-50 to-emerald-100 p-6 rounded-xl border border-emerald-200 hover:shadow-lg transition"
+                    className="group bg-[#FFF0F0] p-6 rounded-xl border border-[#E53E3E]/20 hover:shadow-lg transition-all hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between mb-4">
-                      <div className="p-3 bg-emerald-500 rounded-lg">
+                      <div className="p-3 bg-[#E53E3E] rounded-lg">
                         <ShoppingBag className="text-white" size={24} />
                       </div>
-                      <ArrowRight className="text-emerald-600 group-hover:translate-x-1 transition" size={20} />
+                      <ArrowRight className="text-[#E53E3E] group-hover:translate-x-1 transition" size={20} />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 font-poppins">Shop Merchandise</h3>
-                    <p className="text-gray-700">Browse and purchase CHRMAA branded items</p>
+                    <h3 className="text-xl font-bold text-[#0B0F1A] mb-2">Shop Merchandise</h3>
+                    <p className="text-[#6D7A8B]">Browse and purchase CHRMAA branded items</p>
                   </Link>
 
                   <Link
                     href="/events"
-                    className="group bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 hover:shadow-lg transition"
+                    className="group bg-[#FFF4E6] p-6 rounded-xl border border-[#FF7A00]/20 hover:shadow-lg transition-all hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between mb-4">
-                      <div className="p-3 bg-purple-500 rounded-lg">
+                      <div className="p-3 bg-[#FF7A00] rounded-lg">
                         <Calendar className="text-white" size={24} />
                       </div>
-                      <ArrowRight className="text-purple-600 group-hover:translate-x-1 transition" size={20} />
+                      <ArrowRight className="text-[#FF7A00] group-hover:translate-x-1 transition" size={20} />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 font-poppins">Browse Events</h3>
-                    <p className="text-gray-700">View and register for upcoming alumni events</p>
+                    <h3 className="text-xl font-bold text-[#0B0F1A] mb-2">Browse Events</h3>
+                    <p className="text-[#6D7A8B]">View and register for upcoming alumni events</p>
                   </Link>
 
                   <Link
                     href="/member/profile/edit"
-                    className="group bg-gradient-to-br from-amber-50 to-amber-100 p-6 rounded-xl border border-amber-200 hover:shadow-lg transition"
+                    className="group bg-[#E8F4FD] p-6 rounded-xl border border-[#2B4C73]/20 hover:shadow-lg transition-all hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between mb-4">
-                      <div className="p-3 bg-amber-500 rounded-lg">
+                      <div className="p-3 bg-[#2B4C73] rounded-lg">
                         <Settings className="text-white" size={24} />
                       </div>
-                      <ArrowRight className="text-amber-600 group-hover:translate-x-1 transition" size={20} />
+                      <ArrowRight className="text-[#2B4C73] group-hover:translate-x-1 transition" size={20} />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 font-poppins">Update Profile</h3>
-                    <p className="text-gray-700">Edit your personal information and preferences</p>
+                    <h3 className="text-xl font-bold text-[#0B0F1A] mb-2">Update Profile</h3>
+                    <p className="text-[#6D7A8B]">Edit your personal information and preferences</p>
                   </Link>
                 </div>
               </div>
 
               {/* Recent Activity */}
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4 font-poppins">Recent Activity</h2>
+                <h2 className="text-2xl font-bold text-[#0B0F1A] mb-4">Recent Activity</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Recent Payments */}
-                  <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <DollarSign size={20} className="text-emerald-500" />
-                      Recent Payments
-                    </h3>
+                  <div className="bg-[#F7F9FC] rounded-xl p-5 border border-[#E7ECF3]">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-[#0B0F1A] flex items-center gap-2">
+                        <DollarSign size={20} className="text-[#FF7A00]" />
+                        Recent Payments
+                      </h3>
+                      <Link href="/payments" className="text-sm text-[#2B4C73] hover:text-[#1E3A5F] flex items-center gap-1">
+                        View all <ChevronRight size={14} />
+                      </Link>
+                    </div>
                     <div className="space-y-3">
                       {payments.slice(0, 3).map((payment) => (
-                        <div key={payment.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
+                        <div key={payment.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-[#E7ECF3] hover:shadow-sm transition">
                           <div>
-                            <p className="text-gray-900 font-medium capitalize">{payment.payment_type}</p>
-                            <p className="text-sm text-gray-600">{new Date(payment.created_at).toLocaleDateString()}</p>
+                            <p className="text-[#0B0F1A] font-medium capitalize">{payment.payment_type}</p>
+                            <p className="text-sm text-[#6D7A8B]">{new Date(payment.created_at).toLocaleDateString()}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-gray-900 font-bold">Ksh {payment.amount.toLocaleString()}</p>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              payment.status === "confirmed" ? "bg-emerald-100 text-emerald-700" :
-                              payment.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                              "bg-red-100 text-red-700"
+                            <p className="text-[#0B0F1A] font-bold">Ksh {payment.amount.toLocaleString()}</p>
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              payment.status === "confirmed" ? "bg-[#E8F4FD] text-[#2B4C73]" :
+                              payment.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" :
+                              "bg-[#FFF0F0] text-[#E53E3E]"
                             }`}>
                               {payment.status}
                             </span>
@@ -551,30 +587,38 @@ export default function MemberDashboard() {
                         </div>
                       ))}
                       {payments.length === 0 && (
-                        <p className="text-center text-gray-500 py-4">No payments yet</p>
+                        <div className="text-center text-[#6D7A8B] py-4 bg-white rounded-lg border border-[#E7ECF3]">
+                          <Clock className="mx-auto mb-2 text-[#E7ECF3]" size={24} />
+                          <p>No payments yet</p>
+                        </div>
                       )}
                     </div>
                   </div>
 
                   {/* Recent Orders */}
-                  <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Package size={20} className="text-blue-500" />
-                      Recent Orders
-                    </h3>
+                  <div className="bg-[#F7F9FC] rounded-xl p-5 border border-[#E7ECF3]">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-[#0B0F1A] flex items-center gap-2">
+                        <Package size={20} className="text-[#2B4C73]" />
+                        Recent Orders
+                      </h3>
+                      <Link href="/orders" className="text-sm text-[#2B4C73] hover:text-[#1E3A5F] flex items-center gap-1">
+                        View all <ChevronRight size={14} />
+                      </Link>
+                    </div>
                     <div className="space-y-3">
                       {orders.slice(0, 3).map((order) => (
-                        <div key={order.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
+                        <div key={order.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-[#E7ECF3] hover:shadow-sm transition">
                           <div>
-                            <p className="text-gray-900 font-medium">Order #{order.id.slice(0, 8)}</p>
-                            <p className="text-sm text-gray-600">{new Date(order.created_at).toLocaleDateString()}</p>
+                            <p className="text-[#0B0F1A] font-medium">Order #{order.id.slice(0, 8)}</p>
+                            <p className="text-sm text-[#6D7A8B]">{new Date(order.created_at).toLocaleDateString()}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-gray-900 font-bold">Ksh {order.total.toLocaleString()}</p>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              order.status === "delivered" ? "bg-emerald-100 text-emerald-700" :
-                              order.status === "shipped" ? "bg-blue-100 text-blue-700" :
-                              "bg-gray-100 text-gray-700"
+                            <p className="text-[#0B0F1A] font-bold">Ksh {order.total.toLocaleString()}</p>
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              order.status === "delivered" ? "bg-[#E8F4FD] text-[#2B4C73]" :
+                              order.status === "shipped" ? "bg-[#FFF4E6] text-[#FF7A00]" :
+                              "bg-[#FFF0F0] text-[#E53E3E]"
                             }`}>
                               {order.status}
                             </span>
@@ -582,7 +626,10 @@ export default function MemberDashboard() {
                         </div>
                       ))}
                       {orders.length === 0 && (
-                        <p className="text-center text-gray-500 py-4">No orders yet</p>
+                        <div className="text-center text-[#6D7A8B] py-4 bg-white rounded-lg border border-[#E7ECF3]">
+                          <ShoppingBag className="mx-auto mb-2 text-[#E7ECF3]" size={24} />
+                          <p>No orders yet</p>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -595,46 +642,47 @@ export default function MemberDashboard() {
           {activeTab === "payments" && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 font-poppins">
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">
                   Payment History ({payments.length})
                 </h2>
                 <Link
                   href="/payments"
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:opacity-90 transition"
+                  className="px-4 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 transition hover:shadow-md flex items-center gap-2"
                 >
+                  <CreditCard size={16} />
                   Make Payment
                 </Link>
               </div>
               {payments.length > 0 ? (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-lg border border-[#E7ECF3]">
                   <table className="w-full">
                     <thead>
-                      <tr className="text-left text-gray-600 border-b border-gray-200">
-                        <th className="pb-3 px-4 font-semibold">Date</th>
-                        <th className="pb-3 px-4 font-semibold">Type</th>
-                        <th className="pb-3 px-4 font-semibold">Amount</th>
-                        <th className="pb-3 px-4 font-semibold">Status</th>
-                        <th className="pb-3 px-4 font-semibold">Receipt</th>
+                      <tr className="text-left text-[#6D7A8B] border-b border-[#E7ECF3]">
+                        <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Date</th>
+                        <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Type</th>
+                        <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Amount</th>
+                        <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Status</th>
+                        <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Receipt</th>
                       </tr>
                     </thead>
                     <tbody>
                       {payments.map((payment) => (
-                        <tr key={payment.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-4 text-gray-900">
+                        <tr key={payment.id} className="border-b border-[#F7F9FC] hover:bg-[#F7F9FC]">
+                          <td className="py-4 px-4 text-[#0B0F1A]">
                             {new Date(payment.created_at).toLocaleDateString()}
                           </td>
-                          <td className="py-4 px-4 text-gray-900 capitalize">
+                          <td className="py-4 px-4 text-[#0B0F1A] capitalize">
                             {payment.payment_type}
                           </td>
-                          <td className="py-4 px-4 text-gray-900 font-bold">
+                          <td className="py-4 px-4 text-[#0B0F1A] font-bold">
                             Ksh {payment.amount.toLocaleString()}
                           </td>
                           <td className="py-4 px-4">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${
-                              payment.status === "confirmed" ? "bg-emerald-100 text-emerald-700" :
-                              payment.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                              payment.status === "processing" ? "bg-blue-100 text-blue-700" :
-                              "bg-red-100 text-red-700"
+                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+                              payment.status === "confirmed" ? "bg-[#E8F4FD] text-[#2B4C73]" :
+                              payment.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" :
+                              payment.status === "processing" ? "bg-[#FFF0F0] text-[#E53E3E]" :
+                              "bg-[#F7F9FC] text-[#6D7A8B]"
                             }`}>
                               {payment.status === "confirmed" && <CheckCircle size={14} />}
                               {payment.status === "pending" && <Clock size={14} />}
@@ -643,7 +691,7 @@ export default function MemberDashboard() {
                           </td>
                           <td className="py-4 px-4">
                             {payment.mpesa_receipt_number && (
-                              <span className="text-sm text-gray-600 font-mono">
+                              <span className="text-sm text-[#2B4C73] font-medium font-mono">
                                 {payment.mpesa_receipt_number}
                               </span>
                             )}
@@ -654,12 +702,12 @@ export default function MemberDashboard() {
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <Clock className="mx-auto text-gray-300 mb-4" size={48} />
-                  <p className="text-gray-600 mb-4">No payment history yet</p>
+                <div className="text-center py-12 bg-[#F7F9FC] rounded-lg border border-[#E7ECF3]">
+                  <Clock className="mx-auto text-[#E7ECF3] mb-4" size={48} />
+                  <p className="text-[#6D7A8B] mb-4 font-medium">No payment history yet</p>
                   <Link
                     href="/payments"
-                    className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:opacity-90 transition"
+                    className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 transition hover:shadow-md"
                   >
                     Make Your First Payment
                     <ArrowRight size={16} />
@@ -673,53 +721,54 @@ export default function MemberDashboard() {
           {activeTab === "orders" && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 font-poppins">
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">
                   My Orders ({orders.length})
                 </h2>
                 <Link
                   href="/merchandise"
-                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:opacity-90 transition"
+                  className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#C53030] text-white rounded-lg hover:opacity-90 transition hover:shadow-md flex items-center gap-2"
                 >
+                  <ShoppingBag size={16} />
                   Shop Now
                 </Link>
               </div>
               {orders.length > 0 ? (
                 <div className="space-y-4">
                   {orders.map((order) => (
-                    <div key={order.id} className="bg-gray-50 p-5 rounded-lg border border-gray-200 hover:shadow-md transition">
+                    <div key={order.id} className="bg-[#F7F9FC] p-5 rounded-lg border border-[#E7ECF3] hover:shadow-md transition">
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div>
                           <div className="flex items-center gap-3 mb-2">
-                            <p className="font-semibold text-gray-900">Order #{order.id.slice(0, 8)}</p>
+                            <p className="font-semibold text-[#0B0F1A]">Order #{order.id.slice(0, 8)}</p>
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              order.status === "delivered" ? "bg-emerald-100 text-emerald-700" :
-                              order.status === "shipped" ? "bg-blue-100 text-blue-700" :
-                              order.status === "processing" ? "bg-yellow-100 text-yellow-700" :
-                              "bg-gray-100 text-gray-700"
+                              order.status === "delivered" ? "bg-[#E8F4FD] text-[#2B4C73]" :
+                              order.status === "shipped" ? "bg-[#FFF4E6] text-[#FF7A00]" :
+                              order.status === "processing" ? "bg-[#FFF0F0] text-[#E53E3E]" :
+                              "bg-[#F7F9FC] text-[#6D7A8B]"
                             }`}>
                               {order.status}
                             </span>
                           </div>
-                          <p className="text-sm text-gray-600">{new Date(order.created_at).toLocaleDateString()}</p>
-                          <p className="text-sm text-gray-600 mt-1">{order.items?.length || 0} items</p>
+                          <p className="text-sm text-[#6D7A8B]">{new Date(order.created_at).toLocaleDateString()}</p>
+                          <p className="text-sm text-[#6D7A8B] mt-1">{order.items?.length || 0} items</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xl font-bold text-gray-900">Ksh {order.total.toLocaleString()}</p>
-                          <button className="mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium">
-                            View Details →
-                          </button>
+                          <p className="text-xl font-bold text-[#0B0F1A]">Ksh {order.total.toLocaleString()}</p>
+                          <Link href={`/orders/${order.id}`} className="mt-2 text-sm text-[#2B4C73] hover:text-[#1E3A5F] font-medium flex items-center gap-1 justify-end">
+                            View Details <ChevronRight size={14} />
+                          </Link>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <ShoppingBag className="mx-auto text-gray-300 mb-4" size={48} />
-                  <p className="text-gray-600 mb-4">No orders yet</p>
+                <div className="text-center py-12 bg-[#F7F9FC] rounded-lg border border-[#E7ECF3]">
+                  <ShoppingBag className="mx-auto text-[#E7ECF3] mb-4" size={48} />
+                  <p className="text-[#6D7A8B] mb-4 font-medium">No orders yet</p>
                   <Link
                     href="/merchandise"
-                    className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:opacity-90 transition"
+                    className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-[#E53E3E] to-[#C53030] text-white rounded-lg hover:opacity-90 transition hover:shadow-md"
                   >
                     Start Shopping
                     <ArrowRight size={16} />
@@ -732,38 +781,38 @@ export default function MemberDashboard() {
           {/* Events Tab */}
           {activeTab === "events" && (
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 font-poppins">
+              <h2 className="text-2xl font-bold text-[#0B0F1A] mb-6">
                 Upcoming Events ({events.filter(e => e.status === 'upcoming').length})
               </h2>
               {events.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {events.map((event) => (
-                    <div key={event.id} className="bg-gray-50 p-6 rounded-lg border border-gray-200 hover:shadow-md transition">
+                    <div key={event.id} className="bg-[#F7F9FC] p-6 rounded-lg border border-[#E7ECF3] hover:shadow-md transition hover:-translate-y-1">
                       <div className="flex items-start justify-between mb-4">
-                        <div className="p-3 bg-purple-100 rounded-lg">
-                          <Calendar className="text-purple-600" size={24} />
+                        <div className="p-3 bg-[#FFF4E6] rounded-lg">
+                          <Calendar className="text-[#FF7A00]" size={24} />
                         </div>
                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          event.status === "upcoming" ? "bg-blue-100 text-blue-700" :
-                          event.status === "ongoing" ? "bg-green-100 text-green-700" :
-                          "bg-gray-100 text-gray-700"
+                          event.status === "upcoming" ? "bg-[#E8F4FD] text-[#2B4C73]" :
+                          event.status === "ongoing" ? "bg-[#FFF0F0] text-[#E53E3E]" :
+                          "bg-[#F7F9FC] text-[#6D7A8B]"
                         }`}>
                           {event.status}
                         </span>
                       </div>
-                      <h3 className="text-lg font-bold text-gray-900 mb-2">{event.name}</h3>
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">{event.description}</p>
+                      <h3 className="text-lg font-bold text-[#0B0F1A] mb-2">{event.name}</h3>
+                      <p className="text-sm text-[#6D7A8B] mb-4 line-clamp-2">{event.description}</p>
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-[#6D7A8B]">
                             {event.event_date ? new Date(event.event_date).toLocaleDateString() : "TBA"}
                           </p>
-                          <p className="text-sm text-gray-600">{event.location || "Location TBA"}</p>
+                          <p className="text-sm text-[#6D7A8B]">{event.location || "Location TBA"}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-bold text-gray-900">Ksh {event.price.toLocaleString()}</p>
+                          <p className="text-lg font-bold text-[#0B0F1A]">Ksh {event.price.toLocaleString()}</p>
                           {membershipActive && event.member_discount > 0 && (
-                            <p className="text-xs text-emerald-600">
+                            <p className="text-xs text-[#FF7A00] font-medium">
                               {event.member_discount}% member discount
                             </p>
                           )}
@@ -771,7 +820,7 @@ export default function MemberDashboard() {
                       </div>
                       <Link
                         href={`/events/register/${event.id}`}
-                        className="mt-4 block w-full text-center px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:opacity-90 transition"
+                        className="mt-4 block w-full text-center px-4 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-lg hover:opacity-90 transition hover:shadow-md"
                       >
                         Register Now
                       </Link>
@@ -779,9 +828,9 @@ export default function MemberDashboard() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <Calendar className="mx-auto text-gray-300 mb-4" size={48} />
-                  <p className="text-gray-600">No upcoming events at the moment</p>
+                <div className="text-center py-12 bg-[#F7F9FC] rounded-lg border border-[#E7ECF3]">
+                  <Calendar className="mx-auto text-[#E7ECF3] mb-4" size={48} />
+                  <p className="text-[#6D7A8B] font-medium">No upcoming events at the moment</p>
                 </div>
               )}
             </div>
@@ -791,12 +840,12 @@ export default function MemberDashboard() {
           {activeTab === "profile" && memberDetails && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 font-poppins">
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">
                   Profile Information
                 </h2>
                 <Link
-                  href="/member/profile/edit"
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:opacity-90 transition flex items-center gap-2"
+                  href="/member/dashboard/profile/edit"
+                  className="px-4 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 transition hover:shadow-md flex items-center gap-2"
                 >
                   <Settings size={16} />
                   Edit Profile
@@ -804,41 +853,42 @@ export default function MemberDashboard() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {[
-                  { label: "Full Name", value: memberDetails.full_name, icon: User },
-                  { label: "Email", value: memberDetails.email, icon: Mail },
-                  { label: "Phone Number", value: memberDetails.phone_number || "Not provided", icon: Phone },
-                  { label: "County", value: memberDetails.county || "Not provided", icon: MapPin },
-                  { label: "Graduation Year", value: memberDetails.graduation_year || "Not provided", icon: Calendar },
-                  { label: "Course", value: memberDetails.course || "Not provided", icon: Award },
+                  { label: "Full Name", value: memberDetails.full_name, icon: User, color: COLORS.darkBlue },
+                  { label: "Email", value: memberDetails.email, icon: Mail, color: COLORS.gold },
+                  { label: "Phone Number", value: memberDetails.phone_number || "Not provided", icon: Phone, color: COLORS.maroon },
+                  { label: "County", value: memberDetails.county || "Not provided", icon: MapPin, color: COLORS.darkBlue },
+                  { label: "Graduation Year", value: memberDetails.graduation_year || "Not provided", icon: Calendar, color: COLORS.gold },
+                  { label: "Course", value: memberDetails.course || "Not provided", icon: Award, color: COLORS.maroon },
                 ].map((field, index) => (
-                  <div key={index} className="bg-gray-50 p-5 rounded-lg border border-gray-200">
+                  <div key={index} className="bg-[#F7F9FC] p-5 rounded-lg border border-[#E7ECF3] hover:shadow-sm transition">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-white rounded-lg border border-gray-200">
-                        <field.icon className="text-gray-600" size={18} />
+                      <div className="p-2 bg-white rounded-lg border border-[#E7ECF3]" style={{ color: field.color }}>
+                        <field.icon size={18} />
                       </div>
-                      <p className="text-sm text-gray-600 font-medium">{field.label}</p>
+                      <p className="text-sm text-[#6D7A8B] font-medium">{field.label}</p>
                     </div>
-                    <p className="text-gray-900 font-semibold ml-11">{field.value}</p>
+                    <p className="text-[#0B0F1A] font-semibold ml-11">{field.value}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+              <div className="mt-8 p-6 bg-[#E8F4FD] rounded-lg border border-[#2B4C73]/20">
+                <h3 className="text-lg font-semibold text-[#0B0F1A] mb-4">Account Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Account Status</p>
-                    <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                      memberDetails.status === "active" ? "bg-emerald-100 text-emerald-700" :
-                      memberDetails.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                      "bg-gray-100 text-gray-700"
+                    <p className="text-sm text-[#6D7A8B] mb-1 font-medium">Account Status</p>
+                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+                      memberDetails.status === "active" ? "bg-[#E8F4FD] text-[#2B4C73]" :
+                      memberDetails.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" :
+                      "bg-[#FFF0F0] text-[#E53E3E]"
                     }`}>
+                      {memberDetails.status === "active" && <CheckCircle size={14} />}
                       {memberDetails.status}
                     </span>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Member Since</p>
-                    <p className="text-gray-900 font-medium">
+                    <p className="text-sm text-[#6D7A8B] mb-1 font-medium">Member Since</p>
+                    <p className="text-[#0B0F1A] font-medium">
                       {new Date(memberDetails.created_at).toLocaleDateString()}
                     </p>
                   </div>
@@ -848,6 +898,16 @@ export default function MemberDashboard() {
           )}
         </div>
       </div>
+      
+      {/* Add global font style */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+        
+        .font-poppins {
+          font-family: 'Poppins', sans-serif;
+        }
+      `}</style>
+      
       <Footer />
     </div>
   );

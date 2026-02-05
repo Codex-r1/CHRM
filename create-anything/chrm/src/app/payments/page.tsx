@@ -85,7 +85,7 @@ const buttonTap = { scale: 0.98 };
 
 const inputHover = {
   scale: 1.01,
-  borderColor: "#2563eb",
+  borderColor: "#2B4C73",
   transition: { type: "spring" as const, stiffness: 300, damping: 20 },
 };
 
@@ -325,278 +325,208 @@ export default function CombinedPaymentsPage() {
     }
   };
 
-// Replace your handleRegistrationAndPayment function with this:
-
-const handleRegistrationAndPayment = async () => {
-  try {
-    setLoading(true);
-    
-    // Step 1: Call /api/auth/register - this creates a PENDING payment record, NOT a user
-    const registrationResponse = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: formData.email,
-        full_name: formData.full_name,
-        phone: formData.phone,
-        graduation_year: formData.graduation_year,
-        course: formData.course,
-        county: formData.county,
-        password: formData.password
-      })
-    });
-
-    const registrationData = await registrationResponse.json();
-    
-    if (!registrationResponse.ok) {
-      throw new Error(registrationData.error || 'Registration failed');
-    }
-
-    // We now have a payment_id - the registration data is stored in the payment metadata
-    // NO user account has been created yet
-    
-    const payment_id = registrationData.payment_id;
-    const phoneNumber = registrationData.phone_number;
-    const amount = registrationData.amount;
-
-    // Step 2: Initiate STK Push with the payment_id
-    await initiateSTKPush(amount, 'registration', undefined, {
-      graduation_year: formData.graduation_year,
-      course: formData.course,
-      county: formData.county,
-    }, payment_id); 
-
-  } catch (err) {
-    console.error('Registration error:', err);
-    showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
-    setLoading(false);
-    throw err;
-  }
-};
-
-  // Update your initiateSTKPush function signature to accept payment_id:
-
-const initiateSTKPush = async (
-  amount: number, 
-  paymentType: 'registration' | 'renewal', 
-  userId?: string,
-  metadata?: any,
-  payment_id?: string  
-) => {
-  try {
-    setStkStatus('initiating');
-    
-    const response = await fetch('/api/payments/stk-push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phoneNumber: formData.phone,
-        amount: amount,
-        paymentType: paymentType,
-        userId: userId,
-        userEmail: formData.email,
-        userName: formData.full_name,
-        metadata: metadata || {
-          graduation_year: formData.graduation_year,
-          course: formData.course,
-          county: formData.county,
-          membership_number: formData.membership_number,
-          renewal_year: formData.renewal_year
-        },
-        payment_id: payment_id  // Pass payment_id for registration
-      })
-    });
-
-    const data: PaymentResponse = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to initiate payment');
-    }
-
-    if (data.success && data.checkoutRequestID) {
-      showAlert('success', 'Payment Request Sent', 
-        'Please check your phone for the M-PESA prompt and enter your PIN to complete the payment.',
-        { autoClose: 5000 }
-      );
-      
-      setCheckoutRequestID(data.checkoutRequestID);
-      setPaymentId(data.paymentId || '');
-      setStkStatus('pending');
-      setStep(2);
-      
-      // Start polling for payment status
-      startPaymentPolling(data.checkoutRequestID);
-    } else {
-      throw new Error(data.message || 'Payment initiation failed');
-    }
-  } catch (err) {
-    console.error('STK Push error:', err);
-    setStkStatus('failed');
-    showAlert('error', 'Payment Failed', err instanceof Error ? err.message : 'Failed to initiate payment');
-    throw err;
-  } finally {
-    setLoading(false);
-  }
-};
-const startPaymentPolling = async (checkoutID: string) => {
-  const interval = setInterval(async () => {
+  const handleRegistrationAndPayment = async () => {
     try {
-      // Check payment status
-      const response = await fetch(`/api/payments/${checkoutID}?verify_user=true`);
-      const data = await response.json();
+      setLoading(true);
       
-      console.log('Polling response:', data);
-      
-      if (data.status === 'confirmed') {
-        // Payment confirmed - now we need to activate/create the user
-        
-        if (paymentType === 'registration') {
-          // For registration: check if user was already created
-          if (data.user_created === true && data.user_id) {
-            // User already exists - redirect to login
-            setStkStatus('success');
-            clearInterval(interval);
-            setPollingInterval(null);
-            
-            showAlert('success', 'Account Ready!', 
-              'Your account has been created successfully. Redirecting to login...',
-              { autoClose: 2000 }
-            );
-            
-            setTimeout(() => {
-              router.push('/login');
-            }, 2000);
-            
-          } else {
-            // User not created yet - call activation endpoint
-            console.log('Payment confirmed, activating membership...');
-            
-            try {
-              const activationResult = await activateMembershipAfterPayment(
-                checkoutID, 
-                'registration'
-              );
-              
-              if (activationResult?.success) {
-                // Activation successful
-                setStkStatus('success');
-                clearInterval(interval);
-                setPollingInterval(null);
-                
-                if (activationResult.membership_number) {
-                  setFormData(prev => ({ 
-                    ...prev, 
-                    membership_number: activationResult.membership_number 
-                  }));
-                }
-                
-                showAlert('success', 'Account Created!', 
-                  `Your account has been created! Membership: ${activationResult.membership_number}. Redirecting to login...`,
-                  { autoClose: 3000 }
-                );
-                
-                setTimeout(() => {
-                  router.push('/login');
-                }, 3000);
-              }
-            } catch (activationError) {
-              console.error('Activation failed:', activationError);
-              clearInterval(interval);
-              setPollingInterval(null);
-              
-              showAlert('warning', 'Payment Confirmed - Activation Pending', 
-                'Payment received but account activation is processing. Please contact support if not activated within 1 hour.',
-                { autoClose: 5000 }
-              );
-            }
-          }
-          
-        } else if (paymentType === 'renewal') {
-          // For renewal: just activate and redirect
-          try {
-            await activateMembershipAfterPayment(checkoutID, 'renewal');
-            
-            setStkStatus('success');
-            clearInterval(interval);
-            setPollingInterval(null);
-            
-            showAlert('success', 'Renewal Complete!', 
-              'Your membership has been renewed. Redirecting to dashboard...',
-              { autoClose: 2000 }
-            );
-            
-            setTimeout(() => {
-              router.push('/member/dashboard');
-            }, 2000);
-            
-          } catch (renewalError) {
-            console.error('Renewal activation failed:', renewalError);
-            clearInterval(interval);
-            setPollingInterval(null);
-            
-            showAlert('warning', 'Payment Confirmed - Activation Pending', 
-              'Payment received. Renewal will be activated shortly.',
-              { autoClose: 4000 }
-            );
-          }
-        }
-        
-      } else if (data.status === 'failed') {
-        setStkStatus('failed');
-        clearInterval(interval);
-        setPollingInterval(null);
-        showAlert('error', 'Payment Failed', 'The payment was not completed. Please try again.');
-        
-      } else if (data.status === 'cancelled') {
-        setStkStatus('cancelled');
-        clearInterval(interval);
-        setPollingInterval(null);
-        showAlert('warning', 'Payment Cancelled', 'The payment was cancelled.');
-      }
-      
-    } catch (err) {
-      console.error('Polling error:', err);
-    }
-  }, 5000); // Poll every 3 seconds
-
-  setPollingInterval(interval);
-};
-const activateMembershipAfterPayment = async (
-  checkoutId: string, 
-  type: 'registration' | 'renewal'
-) => {
-  try {
-    const response = await fetch('/api/payments/activate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        checkoutRequestID: checkoutId,
-        paymentType: type,
-        phone: formData.phone,
-        email: formData.email,
-        ...(type === 'registration' && {
+      // Step 1: Call /api/auth/register - this creates a PENDING payment record, NOT a user
+      const registrationResponse = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
           full_name: formData.full_name,
+          phone: formData.phone,
           graduation_year: formData.graduation_year,
           course: formData.course,
           county: formData.county,
           password: formData.password
         })
-      })
-    });
+      });
 
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to activate membership');
+      const registrationData = await registrationResponse.json();
+      
+      if (!registrationResponse.ok) {
+        throw new Error(registrationData.error || 'Registration failed');
+      }
+
+      // We now have a payment_id - the registration data is stored in the payment metadata
+      // NO user account has been created yet
+      
+      const payment_id = registrationData.payment_id;
+      const phoneNumber = registrationData.phone_number;
+      const amount = registrationData.amount;
+
+      // Step 2: Initiate STK Push with the payment_id
+      await initiateSTKPush(amount, 'registration', undefined, {
+        graduation_year: formData.graduation_year,
+        course: formData.course,
+        county: formData.county,
+      }, payment_id); 
+
+    } catch (err) {
+      console.error('Registration error:', err);
+      showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
+      setLoading(false);
+      throw err;
     }
+  };
 
-    return result; 
+  const initiateSTKPush = async (
+    amount: number, 
+    paymentType: 'registration' | 'renewal', 
+    userId?: string,
+    metadata?: any,
+    payment_id?: string 
+  ) => {
+    try {
+      setStkStatus('initiating');
+      
+      const response = await fetch('/api/payments/stk-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: formData.phone,
+          amount: amount,
+          paymentType: paymentType,
+          userId: userId,
+          userEmail: formData.email,
+          userName: formData.full_name,
+          metadata: metadata || {
+            graduation_year: formData.graduation_year,
+            course: formData.course,
+            county: formData.county,
+            membership_number: formData.membership_number,
+            renewal_year: formData.renewal_year
+          },
+          payment_id: payment_id  // Pass payment_id for registration
+        })
+      });
+
+      const data: PaymentResponse = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to initiate payment');
+      }
+
+      if (data.success && data.checkoutRequestID) {
+        showAlert('success', 'Payment Request Sent', 
+          'Please check your phone for the M-PESA prompt and enter your PIN to complete the payment.',
+          { autoClose: 5000 }
+        );
+        
+        setCheckoutRequestID(data.checkoutRequestID);
+        setPaymentId(data.paymentId || '');
+        setStkStatus('pending');
+        setStep(2);
+        
+        // Start polling for payment status
+        startPaymentPolling(data.checkoutRequestID);
+      } else {
+        throw new Error(data.message || 'Payment initiation failed');
+      }
+    } catch (err) {
+      console.error('STK Push error:', err);
+      setStkStatus('failed');
+      showAlert('error', 'Payment Failed', err instanceof Error ? err.message : 'Failed to initiate payment');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const startPaymentPolling = async (checkoutID: string) => {
+    let pollCount = 0;
+    const maxPolls = 60; // Poll for max 3 minutes (60 * 3 seconds)
     
-  } catch (error) {
-    console.error('Activation error:', error);
-    throw error; 
-  }
-};
+    const interval = setInterval(async () => {
+      try {
+        pollCount++;
+        
+        // Stop polling after max attempts
+        if (pollCount > maxPolls) {
+          clearInterval(interval);
+          setPollingInterval(null);
+          setStkStatus('failed');
+          showAlert('error', 'Timeout', 
+            'Payment verification timed out. Please check your M-PESA messages and contact support if payment was deducted.',
+            { autoClose: 5000 }
+          );
+          return;
+        }
+        
+        // Check payment status
+        const response = await fetch(`/api/payments/${checkoutID}?verify_user=true`);
+        const data = await response.json();
+        
+        console.log(`Polling attempt ${pollCount}:`, data);
+        
+        if (data.status === 'confirmed' && data.user_created === true && data.user_id) {
+          setStkStatus('success');
+          clearInterval(interval);
+          setPollingInterval(null);
+          
+          if (data.membership_number) {
+            setFormData(prev => ({ 
+              ...prev, 
+              membership_number: data.membership_number 
+            }));
+          }
+          
+          showAlert('success', 'Account Ready!', 
+            `Your account has been created! ${data.membership_number ? `Membership: ${data.membership_number}.` : ''} Redirecting to login...`,
+            { autoClose: 2000 }
+          );
+          
+          setTimeout(() => {
+            router.push('/login');
+          }, 2000);
+          
+        } else if (data.status === 'confirmed' && data.user_created === false) {
+          clearInterval(interval);
+          setPollingInterval(null);
+          setStkStatus('failed');
+          
+          showAlert('error', 'Account Creation Failed', 
+            'Payment was received but account creation failed. Please contact support with your M-PESA receipt.',
+            { autoClose: 6000 }
+          );
+          
+        } else if (data.status === 'confirmed' && data.user_created === undefined) {
+          console.log('Payment confirmed, waiting for user creation...');
+          // Keep polling
+          
+        } else if (data.status === 'failed') {
+          clearInterval(interval);
+          setPollingInterval(null);
+          setStkStatus('failed');
+          
+          showAlert('error', 'Payment Failed', 
+            'The payment was not completed. Please try again.'
+          );
+          
+        } else if (data.status === 'cancelled') {
+    
+          clearInterval(interval);
+          setPollingInterval(null);
+          setStkStatus('cancelled');
+          
+          showAlert('warning', 'Payment Cancelled', 
+            'The payment was cancelled.'
+          );
+          
+        } else {
+          // ⏳ Still pending
+          console.log('Payment still pending...');
+        }
+        
+      } catch (err) {
+        console.error('Polling error:', err);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    setPollingInterval(interval);
+  };
 
   const cancelPayment = () => {
     if (pollingInterval) {
@@ -646,39 +576,39 @@ const activateMembershipAfterPayment = async (
       switch (alertModal.type) {
         case 'error':
           return {
-            bg: 'bg-gradient-to-br from-red-50 to-pink-50',
-            border: 'border-red-200',
-            icon: <AlertCircle className="text-red-600" size={32} />,
-            buttonBg: 'bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700',
-            titleColor: 'text-red-900',
-            messageColor: 'text-red-800'
+            bg: 'bg-gradient-to-br from-[#FFF0F0] to-pink-50',
+            border: 'border-[#E53E3E]/30',
+            icon: <AlertCircle className="text-[#E53E3E]" size={32} />,
+            buttonBg: 'bg-gradient-to-r from-[#E53E3E] to-[#CC3636] hover:from-[#E53E3E] hover:to-[#CC3636]',
+            titleColor: 'text-[#E53E3E]',
+            messageColor: 'text-[#E53E3E]/90'
           };
         case 'success':
           return {
-            bg: 'bg-gradient-to-br from-green-50 to-emerald-50',
-            border: 'border-green-200',
-            icon: <CheckCircle className="text-green-600" size={32} />,
-            buttonBg: 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700',
-            titleColor: 'text-green-900',
-            messageColor: 'text-green-800'
+            bg: 'bg-gradient-to-br from-[#E8F4FD] to-emerald-50',
+            border: 'border-[#2B4C73]/30',
+            icon: <CheckCircle className="text-[#2B4C73]" size={32} />,
+            buttonBg: 'bg-gradient-to-r from-[#2B4C73] to-[#1A3557] hover:from-[#2B4C73] hover:to-[#1A3557]',
+            titleColor: 'text-[#2B4C73]',
+            messageColor: 'text-[#2B4C73]/90'
           };
         case 'warning':
           return {
-            bg: 'bg-gradient-to-br from-amber-50 to-yellow-50',
-            border: 'border-amber-200',
-            icon: <AlertCircle className="text-amber-600" size={32} />,
-            buttonBg: 'bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600',
-            titleColor: 'text-amber-900',
-            messageColor: 'text-amber-800'
+            bg: 'bg-gradient-to-br from-[#FFF4E6] to-yellow-50',
+            border: 'border-[#FF7A00]/30',
+            icon: <AlertCircle className="text-[#FF7A00]" size={32} />,
+            buttonBg: 'bg-gradient-to-r from-[#FF7A00] to-[#E56B00] hover:from-[#FF7A00] hover:to-[#E56B00]',
+            titleColor: 'text-[#FF7A00]',
+            messageColor: 'text-[#FF7A00]/90'
           };
         case 'info':
           return {
-            bg: 'bg-gradient-to-br from-blue-50 to-indigo-50',
-            border: 'border-blue-200',
-            icon: <Info className="text-blue-600" size={32} />,
-            buttonBg: 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700',
-            titleColor: 'text-blue-900',
-            messageColor: 'text-blue-800'
+            bg: 'bg-gradient-to-br from-[#E8F4FD] to-indigo-50',
+            border: 'border-[#2B4C73]/30',
+            icon: <Info className="text-[#2B4C73]" size={32} />,
+            buttonBg: 'bg-gradient-to-r from-[#2B4C73] to-[#1A3557] hover:from-[#2B4C73] hover:to-[#1A3557]',
+            titleColor: 'text-[#2B4C73]',
+            messageColor: 'text-[#2B4C73]/90'
           };
       }
     };
@@ -766,7 +696,7 @@ const activateMembershipAfterPayment = async (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="min-h-screen bg-gradient-to-br from-gray-50 to-white"
+        className="min-h-screen bg-gradient-to-br from-[#F7F9FC] to-white"
       >
         {/* Alert Modal */}
         <AlertModalComponent />
@@ -780,15 +710,15 @@ const activateMembershipAfterPayment = async (
             className="w-full max-w-md text-center"
           >
             <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
-              <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-green-100 to-emerald-50 rounded-full -translate-x-16 -translate-y-16" />
-              <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-blue-100 to-indigo-50 rounded-full translate-x-20 translate-y-20" />
+              <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-[#E8F4FD] to-[#FFF4E6] rounded-full -translate-x-16 -translate-y-16" />
+              <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-[#E8F4FD] to-[#FFF0F0] rounded-full translate-x-20 translate-y-20" />
               
               <div className="relative z-10">
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                  className="w-24 h-24 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg"
+                  className="w-24 h-24 bg-gradient-to-br from-[#2B4C73] to-[#1A3557] rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg"
                 >
                   <CheckCircle className="text-white" size={48} />
                 </motion.div>
@@ -797,7 +727,7 @@ const activateMembershipAfterPayment = async (
                   variants={fadeUp}
                   initial="hidden"
                   animate="visible"
-                  className="text-3xl font-bold font-poppins text-gray-900 mb-4"
+                  className="text-3xl font-bold font-poppins text-[#0B0F1A] mb-4"
                 >
                   {successInfo.title}
                 </motion.h1>
@@ -807,7 +737,7 @@ const activateMembershipAfterPayment = async (
                   initial="hidden"
                   animate="visible"
                   transition={{ delay: 0.1 }}
-                  className="text-gray-600 mb-8 leading-relaxed"
+                  className="text-[#6D7A8B] mb-8 leading-relaxed"
                 >
                   {successInfo.message}
                 </motion.p>
@@ -818,11 +748,11 @@ const activateMembershipAfterPayment = async (
                     initial="hidden"
                     animate="visible"
                     transition={{ delay: 0.15 }}
-                    className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100"
+                    className="mb-6 p-4 bg-[#E8F4FD] rounded-xl border border-[#2B4C73]/20"
                   >
-                    <p className="text-sm text-blue-700 font-semibold mb-2">Your Membership Number:</p>
-                    <p className="text-2xl font-bold text-blue-900 font-mono">{formData.membership_number}</p>
-                    <p className="text-xs text-blue-600 mt-2">
+                    <p className="text-sm text-[#2B4C73] font-semibold mb-2">Your Membership Number:</p>
+                    <p className="text-2xl font-bold text-[#2B4C73] font-mono">{formData.membership_number}</p>
+                    <p className="text-xs text-[#2B4C73]/80 mt-2">
                       Save this number! You'll need it for future renewals and member services.
                     </p>
                   </motion.div>
@@ -838,7 +768,7 @@ const activateMembershipAfterPayment = async (
                 >
                   <Link
                     href={paybillInfo.payment_type === "registration" ? "/login" : "/member/dashboard"}
-                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300"
+                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#2B4C73] to-[#1A3557] text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300"
                   >
                     {paybillInfo.payment_type === "registration" ? "Go to Login" : "Go to Dashboard"}
                     <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
@@ -859,7 +789,7 @@ const activateMembershipAfterPayment = async (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="min-h-screen bg-gradient-to-br from-gray-50 to-white"
+        className="min-h-screen bg-gradient-to-br from-[#F7F9FC] to-white"
       >
         {/* Alert Modal */}
         <AlertModalComponent />
@@ -874,8 +804,8 @@ const activateMembershipAfterPayment = async (
             className="max-w-2xl mx-auto"
           >
             <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-full translate-x-20 -translate-y-20" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full -translate-x-16 translate-y-16" />
+              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-[#FFF4E6] to-[#FFF0F0] rounded-full translate-x-20 -translate-y-20" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-br from-[#E8F4FD] to-[#FFF4E6] rounded-full -translate-x-16 translate-y-16" />
               
               <div className="relative z-10">
                 <motion.div
@@ -885,10 +815,10 @@ const activateMembershipAfterPayment = async (
                   viewport={{ once: true }}
                   className="flex items-center justify-center gap-3 mb-6"
                 >
-                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-full flex items-center justify-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#FF7A00] to-[#E56B00] rounded-full flex items-center justify-center">
                     <Smartphone className="text-white" size={24} />
                   </div>
-                  <h1 className="text-3xl font-bold font-poppins text-gray-900">
+                  <h1 className="text-3xl font-bold font-poppins text-[#0B0F1A]">
                     Complete Payment on Your Phone
                   </h1>
                 </motion.div>
@@ -901,22 +831,22 @@ const activateMembershipAfterPayment = async (
                   viewport={{ once: true }}
                   className={`p-6 rounded-2xl mb-8 border ${
                     stkStatus === 'success' 
-                      ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-100'
+                      ? 'bg-gradient-to-r from-[#E8F4FD] to-emerald-50 border-[#2B4C73]/20'
                       : stkStatus === 'failed' || stkStatus === 'cancelled'
-                      ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-100'
-                      : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-100'
+                      ? 'bg-gradient-to-r from-[#FFF0F0] to-pink-50 border-[#E53E3E]/20'
+                      : 'bg-gradient-to-r from-[#FFF4E6] to-yellow-50 border-[#FF7A00]/20'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h2 className="text-2xl font-bold font-poppins mb-2">
+                      <h2 className="text-2xl font-bold font-poppins mb-2 text-[#0B0F1A]">
                         {paybillInfo.payment_type === "registration" 
                           ? "Registration Fee" 
                           : "Renewal Fee"}
                       </h2>
-                      <p className="text-sm opacity-80">{paybillInfo.description}</p>
+                      <p className="text-sm text-[#6D7A8B]">{paybillInfo.description}</p>
                     </div>
-                    <div className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-full font-bold text-lg">
+                    <div className="px-4 py-2 bg-gradient-to-r from-[#FF7A00] to-[#E56B00] text-white rounded-full font-bold text-lg">
                       Ksh {paybillInfo.amount.toLocaleString()}
                     </div>
                   </div>
@@ -927,24 +857,24 @@ const activateMembershipAfterPayment = async (
                       <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full"
+                        className="w-8 h-8 border-2 border-[#FF7A00] border-t-transparent rounded-full"
                       />
                     )}
                     {stkStatus === 'success' && (
-                      <CheckCircle className="text-green-500" size={32} />
+                      <CheckCircle className="text-[#2B4C73]" size={32} />
                     )}
                     {(stkStatus === 'failed' || stkStatus === 'cancelled') && (
-                      <AlertCircle className="text-red-500" size={32} />
+                      <AlertCircle className="text-[#E53E3E]" size={32} />
                     )}
                     <div>
-                      <p className="font-semibold">
+                      <p className="font-semibold text-[#0B0F1A]">
                         {stkStatus === 'initiating' && 'Initiating Payment...'}
                         {stkStatus === 'pending' && 'Awaiting Payment on Phone'}
                         {stkStatus === 'success' && 'Payment Confirmed!'}
                         {stkStatus === 'failed' && 'Payment Failed'}
                         {stkStatus === 'cancelled' && 'Payment Cancelled'}
                       </p>
-                      <p className="text-sm opacity-80">
+                      <p className="text-sm text-[#6D7A8B]">
                         {stkStatusMessages[stkStatus]}
                       </p>
                     </div>
@@ -955,9 +885,9 @@ const activateMembershipAfterPayment = async (
                     {paymentSteps.map((stepText, index) => (
                       <div key={index} className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-8 h-8 bg-white/50 rounded-full flex items-center justify-center">
-                          <span className="font-bold text-sm">{index + 1}</span>
+                          <span className="font-bold text-sm text-[#0B0F1A]">{index + 1}</span>
                         </div>
-                        <p className="text-sm">{stepText}</p>
+                        <p className="text-sm text-[#6D7A8B]">{stepText}</p>
                       </div>
                     ))}
                   </div>
@@ -969,16 +899,16 @@ const activateMembershipAfterPayment = async (
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl mb-8 border border-blue-100"
+                  className="bg-gradient-to-r from-[#E8F4FD] to-[#FFF4E6] p-6 rounded-2xl mb-8 border border-[#2B4C73]/20"
                 >
                   <div className="flex items-center gap-3 mb-3">
-                    <Phone className="text-blue-600" size={20} />
+                    <Phone className="text-[#2B4C73]" size={20} />
                     <div>
-                      <div className="text-sm text-blue-800 font-medium">Payment will be sent to:</div>
-                      <div className="text-xl font-bold text-gray-900">{formData.phone}</div>
+                      <div className="text-sm text-[#2B4C73] font-medium">Payment will be sent to:</div>
+                      <div className="text-xl font-bold text-[#0B0F1A]">{formData.phone}</div>
                     </div>
                   </div>
-                  <p className="text-sm text-blue-700">
+                  <p className="text-sm text-[#2B4C73]">
                    Keep your phone nearby. You should receive a payment prompt shortly.
                   </p>
                 </motion.div>
@@ -995,7 +925,7 @@ const activateMembershipAfterPayment = async (
                   {stkStatus === 'failed' && (
                     <button
                       onClick={() => setStep(1)}
-                      className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-200"
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-[#FF7A00] to-[#E56B00] text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-200"
                     >
                       Try Again
                     </button>
@@ -1009,7 +939,7 @@ const activateMembershipAfterPayment = async (
                     whileInView="visible"
                     viewport={{ once: true }}
                     transition={{ delay: 0.1 }}
-                    className="text-sm text-gray-500 text-center mt-4"
+                    className="text-sm text-[#6D7A8B] text-center mt-4"
                   >
                    Payment status updates automatically. Please wait...
                   </motion.p>
@@ -1028,7 +958,7 @@ const activateMembershipAfterPayment = async (
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50"
+      className="min-h-screen bg-gradient-to-br from-[#F7F9FC] via-white to-[#E8F4FD]"
     >
       {/* Alert Modal */}
       <AlertModalComponent />
@@ -1045,8 +975,8 @@ const activateMembershipAfterPayment = async (
         >
           <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
             {/* Background Elements */}
-            <div className="absolute top-0 left-0 w-40 h-40 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-full -translate-x-20 -translate-y-20" />
-            <div className="absolute bottom-0 right-0 w-48 h-48 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-full translate-x-24 translate-y-24" />
+            <div className="absolute top-0 left-0 w-40 h-40 bg-gradient-to-br from-[#E8F4FD] to-[#FFF4E6] rounded-full -translate-x-20 -translate-y-20" />
+            <div className="absolute bottom-0 right-0 w-48 h-48 bg-gradient-to-br from-[#FFF4E6] to-[#FFF0F0] rounded-full translate-x-24 translate-y-24" />
             
             <div className="relative z-10">
               <motion.div
@@ -1057,14 +987,14 @@ const activateMembershipAfterPayment = async (
                 className="text-center mb-8"
               >
                 <div className="flex items-center justify-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-full flex items-center justify-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#FF7A00] to-[#E56B00] rounded-full flex items-center justify-center">
                     <CreditCard className="text-white" size={24} />
                   </div>
-                  <h1 className="text-3xl md:text-4xl font-bold font-poppins text-gray-900">
+                  <h1 className="text-3xl md:text-4xl font-bold font-poppins text-[#0B0F1A]">
                     Make a Payment
                   </h1>
                 </div>
-                <p className="text-gray-600">
+                <p className="text-[#6D7A8B]">
                   Register as a new member or renew your membership
                 </p>
               </motion.div>
@@ -1078,8 +1008,20 @@ const activateMembershipAfterPayment = async (
                 className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"
               >
                 {[
-                  { id: "registration" as const, label: "New Member", icon: BookOpen, color: "from-blue-500 to-cyan-600", desc: "Join CHRMAA community" },
-                  { id: "renewal" as const, label: "Membership Renewal", icon: Users, color: "from-amber-500 to-yellow-500", desc: "Renew your annual membership" },
+                  { 
+                    id: "registration" as const, 
+                    label: "New Member", 
+                    icon: BookOpen, 
+                    color: "from-[#2B4C73] to-[#1A3557]", 
+                    desc: "Join CHRMAA community" 
+                  },
+                  { 
+                    id: "renewal" as const, 
+                    label: "Membership Renewal", 
+                    icon: Users, 
+                    color: "from-[#FF7A00] to-[#E56B00]", 
+                    desc: "Renew your annual membership" 
+                  },
                 ].map((type, index) => (
                   <motion.button
                     key={type.id}
@@ -1110,7 +1052,7 @@ const activateMembershipAfterPayment = async (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-6 opacity-75"
+                  className="bg-[#FFF0F0] border border-[#E53E3E]/20 text-[#E53E3E] px-4 py-3 rounded-xl mb-6 opacity-75"
                 >
                   <div className="flex items-center gap-2">
                     <AlertCircle size={16} />
@@ -1139,8 +1081,8 @@ const activateMembershipAfterPayment = async (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                            <User size={16} className="text-gray-500" />
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
+                            <User size={16} className="text-[#6D7A8B]" />
                             Full Name *
                           </label>
                           <motion.input
@@ -1152,14 +1094,14 @@ const activateMembershipAfterPayment = async (
                             onChange={(e) =>
                               setFormData({ ...formData, full_name: e.target.value })
                             }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
                             placeholder="Enter your full name"
                           />
                         </motion.div>
 
                         <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                            <Mail size={16} className="text-gray-500" />
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
+                            <Mail size={16} className="text-[#6D7A8B]" />
                             Email Address *
                           </label>
                           <motion.input
@@ -1171,14 +1113,14 @@ const activateMembershipAfterPayment = async (
                             onChange={(e) =>
                               setFormData({ ...formData, email: e.target.value })
                             }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
                             placeholder="Enter your email"
                           />
                         </motion.div>
 
                         <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                            <Phone size={16} className="text-gray-500" />
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
+                            <Phone size={16} className="text-[#6D7A8B]" />
                             Phone Number (M-PESA) *
                           </label>
                           <div className="relative">
@@ -1191,21 +1133,21 @@ const activateMembershipAfterPayment = async (
                               onChange={(e) =>
                                 setFormData({ ...formData, phone: e.target.value })
                               }
-                              className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                              className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
                               placeholder="0712345678"
                               pattern="^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$"
                               title="Enter a valid Kenyan phone number"
                             />
-                            <Phone size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                            <Phone size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#6D7A8B]" />
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-[#6D7A8B] mt-1">
                             You'll receive a prompt on this number
                           </p>
                         </motion.div>
 
                         <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                            <Calendar size={16} className="text-gray-500" />
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
+                            <Calendar size={16} className="text-[#6D7A8B]" />
                             Graduation Year *
                           </label>
                           <motion.input
@@ -1219,15 +1161,15 @@ const activateMembershipAfterPayment = async (
                             onChange={(e) =>
                               setFormData({ ...formData, graduation_year: e.target.value })
                             }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
                             placeholder="e.g., 2024"
                           />
                         </motion.div>
 
                         {/* Course Selection Field */}
                         <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                            <BookOpen size={16} className="text-gray-500" />
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
+                            <BookOpen size={16} className="text-[#6D7A8B]" />
                             Course Studied *
                           </label>
                           <motion.select
@@ -1238,7 +1180,7 @@ const activateMembershipAfterPayment = async (
                             onChange={(e) =>
                               setFormData({ ...formData, course: e.target.value })
                             }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
                           >
                             <option value="">Select your course</option>
                             {CHRM_COURSES.map((course) => (
@@ -1251,8 +1193,8 @@ const activateMembershipAfterPayment = async (
 
                         {/* County Selection Field */}
                         <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                            <Users size={16} className="text-gray-500" />
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
+                            <Users size={16} className="text-[#6D7A8B]" />
                             County of Residence *
                           </label>
                           <motion.select
@@ -1263,7 +1205,7 @@ const activateMembershipAfterPayment = async (
                             onChange={(e) =>
                               setFormData({ ...formData, county: e.target.value })
                             }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
                           >
                             <option value="">Select your county</option>
                             {COUNTIES_IN_KENYA.map((county) => (
@@ -1276,8 +1218,8 @@ const activateMembershipAfterPayment = async (
                       </div>
 
                       <motion.div variants={scaleIn} className="relative">
-                        <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2 flex items-center gap-2">
-                          <Lock size={16} className="text-gray-500" />
+                        <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
+                          <Lock size={16} className="text-[#6D7A8B]" />
                           Password *
                         </label>
                         <motion.input
@@ -1290,13 +1232,13 @@ const activateMembershipAfterPayment = async (
                           onChange={(e) =>
                             setFormData({ ...formData, password: e.target.value })
                           }
-                          className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none transition-all duration-200"
+                          className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
                           placeholder="Minimum 6 characters"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#6D7A8B] hover:text-[#0B0F1A] transition-colors"
                         >
                           {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                         </button>
@@ -1304,40 +1246,40 @@ const activateMembershipAfterPayment = async (
 
                       <motion.div
                         variants={scaleIn}
-                        className="bg-gradient-to-r from-blue-50 to-blue-50 p-6 rounded-2xl border border-blue-100 mt-6"
+                        className="bg-gradient-to-r from-[#E8F4FD] to-[#FFF4E6] p-6 rounded-2xl border border-[#2B4C73]/20 mt-6"
                       >
                         <div className="flex items-center gap-3 mb-4">
-                          <Gift className="text-blue-600" size={24} />
-                          <p className="text-blue-700 font-semibold text-lg">Registration Benefits:</p>
+                          <Gift className="text-[#2B4C73]" size={24} />
+                          <p className="text-[#2B4C73] font-semibold text-lg">Registration Benefits:</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                           <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-gray-700">Lifetime membership access</span>
+                            <CheckCircle size={18} className="text-[#2B4C73] mt-0.5 flex-shrink-0" />
+                            <span className="text-[#6D7A8B]">Lifetime membership access</span>
                           </div>
                           <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-gray-700">Networking opportunities</span>
+                            <CheckCircle size={18} className="text-[#2B4C73] mt-0.5 flex-shrink-0" />
+                            <span className="text-[#6D7A8B]">Networking opportunities</span>
                           </div>
                           <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-gray-700">Exclusive events & workshops</span>
+                            <CheckCircle size={18} className="text-[#2B4C73] mt-0.5 flex-shrink-0" />
+                            <span className="text-[#6D7A8B]">Exclusive events & workshops</span>
                           </div>
                           <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-gray-700">Member resources & discounts</span>
+                            <CheckCircle size={18} className="text-[#2B4C73] mt-0.5 flex-shrink-0" />
+                            <span className="text-[#6D7A8B]">Member resources & discounts</span>
                           </div>
                         </div>
-                        <div className="pt-4 border-t border-blue-200">
+                        <div className="pt-4 border-t border-[#2B4C73]/20">
                           <div className="flex items-center justify-between">
-                            <p className="text-lg font-bold text-blue-700">
+                            <p className="text-lg font-bold text-[#2B4C73]">
                               Registration Fee:
                             </p>
-                            <p className="text-2xl font-bold text-blue-700">
+                            <p className="text-2xl font-bold text-[#2B4C73]">
                               Ksh 1,500
                             </p>
                           </div>
-                          <p className="text-sm text-blue-600 mt-2">
+                          <p className="text-sm text-[#2B4C73] mt-2">
                             Payment will be requested via STK Push on your phone
                           </p>
                         </div>
@@ -1345,12 +1287,12 @@ const activateMembershipAfterPayment = async (
 
                       <motion.p
                         variants={fadeUp}
-                        className="text-sm text-gray-500 text-center pt-4"
+                        className="text-sm text-[#6D7A8B] text-center pt-4"
                       >
                         Already have an account?{" "}
                         <Link
                           href="/login"
-                          className="text-amber-600 hover:text-amber-700 font-semibold hover:underline transition-colors"
+                          className="text-[#FF7A00] hover:text-[#E56B00] font-semibold hover:underline transition-colors"
                         >
                           Login here
                         </Link>
@@ -1358,12 +1300,12 @@ const activateMembershipAfterPayment = async (
                       
                       <div className="mt-8 border-t pt-8">
                         <div className="text-center">
-                          <p className="text-gray-600 mb-4">
+                          <p className="text-[#6D7A8B] mb-4">
                             Already have a CHRMAA membership number?
                           </p>
                           <Link
                             href="/claim-account"
-                            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-semibold hover:underline transition-colors"
+                            className="inline-flex items-center gap-2 text-[#2B4C73] hover:text-[#1A3557] font-semibold hover:underline transition-colors"
                           >
                             <Key size={16} />
                             Click here to claim your account
@@ -1376,7 +1318,7 @@ const activateMembershipAfterPayment = async (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2">
                             Membership Number *
                           </label>
                           <motion.input
@@ -1391,18 +1333,18 @@ const activateMembershipAfterPayment = async (
                                 membership_number: e.target.value,
                               })
                             }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition-all duration-200"
                             placeholder="e.g., 100121"
                             pattern="^100\d{3}$"
                             title="Enter your 6-digit membership number (e.g., 100121)"
                           />
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-[#6D7A8B] mt-1">
                             Format: 100XXX (e.g., 100121)
                           </p>
                         </motion.div>
 
                         <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2">
                             Full Name *
                           </label>
                           <motion.input
@@ -1414,13 +1356,13 @@ const activateMembershipAfterPayment = async (
                             onChange={(e) =>
                               setFormData({ ...formData, full_name: e.target.value })
                             }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition-all duration-200"
                             placeholder="John Doe"
                           />
                         </motion.div>
 
                         <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2">
                             Email *
                           </label>
                           <motion.input
@@ -1432,13 +1374,13 @@ const activateMembershipAfterPayment = async (
                             onChange={(e) =>
                               setFormData({ ...formData, email: e.target.value })
                             }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition-all duration-200"
                             placeholder="john.doe@example.com"
                           />
                         </motion.div>
 
                         <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2">
                             Phone Number (M-PESA) *
                           </label>
                           <div className="relative">
@@ -1451,20 +1393,20 @@ const activateMembershipAfterPayment = async (
                               onChange={(e) =>
                                 setFormData({ ...formData, phone: e.target.value })
                               }
-                              className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                              className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition-all duration-200"
                               placeholder="0712345678"
                               pattern="^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$"
                               title="Enter a valid Kenyan phone number"
                             />
-                            <Phone size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                            <Phone size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#6D7A8B]" />
                           </div>
-                          <p className="text-xs text-gray-500 mt-1">
+                          <p className="text-xs text-[#6D7A8B] mt-1">
                             You'll receive a prompt on this number
                           </p>
                         </motion.div>
 
                         <motion.div variants={scaleIn} className="md:col-span-2">
-                          <label className="block font-poppins font-semibold text-sm text-gray-700 mb-2">
+                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2">
                             Renewal Year *
                           </label>
                           <motion.select
@@ -1478,7 +1420,7 @@ const activateMembershipAfterPayment = async (
                                 renewal_year: e.target.value,
                               })
                             }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all duration-200"
+                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition-all duration-200"
                           >
                             {Array.from(
                               { length: 7 },
@@ -1494,17 +1436,17 @@ const activateMembershipAfterPayment = async (
 
                       <motion.div
                         variants={scaleIn}
-                        className="bg-gradient-to-r from-amber-50 to-yellow-50 p-6 rounded-2xl border border-amber-100 mt-6"
+                        className="bg-gradient-to-r from-[#FFF4E6] to-[#FFF0F0] p-6 rounded-2xl border border-[#FF7A00]/20 mt-6"
                       >
                         <div className="flex items-center justify-between">
-                          <p className="text-lg font-bold text-amber-700">
+                          <p className="text-lg font-bold text-[#FF7A00]">
                             Annual Membership Fee:
                           </p>
-                          <p className="text-2xl font-bold text-amber-700">
+                          <p className="text-2xl font-bold text-[#FF7A00]">
                             Ksh 1,000
                           </p>
                         </div>
-                        <p className="text-sm text-amber-600 mt-2">
+                        <p className="text-sm text-[#FF7A00] mt-2">
                           Payment will be requested via STK Push on your phone
                         </p>
                       </motion.div>
@@ -1517,7 +1459,7 @@ const activateMembershipAfterPayment = async (
                     disabled={loading}
                     whileHover={buttonHover}
                     whileTap={buttonTap}
-                    className="group w-full px-4 py-4 bg-gradient-to-r from-amber-500 to-yellow-500 text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 mt-8"
+                    className="group w-full px-4 py-4 bg-gradient-to-r from-[#FF7A00] to-[#E56B00] text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 mt-8"
                   >
                     {loading ? (
                       <>

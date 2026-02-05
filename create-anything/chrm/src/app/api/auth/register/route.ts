@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Registration already in progress. Please complete the payment.',
-        payment_id: existingPayment.id,
+        
         phone_number: phone,
         amount: 1
       })

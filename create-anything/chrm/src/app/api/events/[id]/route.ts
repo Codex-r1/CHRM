@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase/admin';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -9,30 +12,37 @@ export async function GET(
     const { id } = params;
 
     console.log('API: Fetching event with ID:', id);
-
-    // Use the database function to bypass RLS
-    const { data, error } = await supabaseAdmin
-      .rpc('get_event_by_id', { p_event_id: id });
+    const { data: event, error } = await supabaseAdmin
+      .from('events')
+      .select('*')
+      .eq('id', id)
+      .eq('is_active', true)
+      .single();
 
     if (error) {
-      console.error('Database function error:', error);
+      console.error('Database error:', error);
       return NextResponse.json(
         { error: 'Failed to fetch event', details: error.message },
         { status: 500 }
       );
     }
 
-    if (!data || data.length === 0) {
+    if (!event) {
       return NextResponse.json(
         { error: 'Event not found or inactive' },
         { status: 404 }
       );
     }
 
-    const event = data[0];
-    console.log('Event found:', event.name);
+    console.log('Event found:', event.name, 'Price:', event.price);
     
-    return NextResponse.json(event);
+    return NextResponse.json(event, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
     
   } catch (error: any) {
     console.error('Unexpected error:', error);
