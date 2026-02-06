@@ -28,17 +28,20 @@ async function verifyAdmin(request: NextRequest) {
 // POST add photos to CSR event
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+  context: { params: Promise<{ id: string }> }
+) { // ← Only ONE opening brace here
   try {
     const user = await verifyAdmin(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Await params
+    const params = await context.params;
+    const { id: eventId } = params;
+
     const body = await request.json();
     const { photos } = body; // Array of { image_url, caption, display_order }
-    const { id: eventId } = params;
 
     if (!photos || !Array.isArray(photos)) {
       return NextResponse.json(
@@ -75,13 +78,16 @@ export async function POST(
 // DELETE photo
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> } // ← Fixed this too!
 ) {
   try {
     const user = await verifyAdmin(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Await params (even though we don't use the id here)
+    await context.params;
 
     const { searchParams } = new URL(request.url);
     const photoId = searchParams.get('photoId');
