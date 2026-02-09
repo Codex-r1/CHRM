@@ -16,7 +16,6 @@ export async function GET(
     console.log('Verify User:', verifyUser);
     console.log('========================================');
 
-    // First, try to find payment by checkout_request_id
     console.log('Looking for payment with checkout_request_id:', checkoutID);
     
     const { data: payment, error: paymentError } = await supabaseAdmin
@@ -28,7 +27,7 @@ export async function GET(
     if (paymentError || !payment) {
       console.error('Payment not found by checkout_request_id:', paymentError);
       
-      // Try alternative: search in callback_data
+      // alternative: search in callback_data
       const { data: paymentByCallback } = await supabaseAdmin
         .from('payments')
         .select('*, profiles:user_id(*)')
@@ -86,13 +85,13 @@ async function handlePaymentResponse(payment: any, verifyUser: boolean) {
     has_profile: !!payment.profiles
   });
 
-  // If payment is confirmed and we need to verify user creation
+
   if (verifyUser && payment.status === 'confirmed') {
     console.log('Verifying user creation...');
     
     if (payment.user_id) {
       try {
-        // Check if user exists in auth
+      
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(payment.user_id);
         
         console.log('Auth user check:', {
@@ -101,7 +100,6 @@ async function handlePaymentResponse(payment: any, verifyUser: boolean) {
           user_id: payment.user_id
         });
 
-        // Check if profile exists
         const { data: profile } = await supabaseAdmin
           .from('profiles')
           .select('id, status, membership_number, email')
@@ -119,8 +117,6 @@ async function handlePaymentResponse(payment: any, verifyUser: boolean) {
         response.profile_status = profile?.status;
         response.membership_number = profile?.membership_number;
         response.email = profile?.email;
-        
-        // For registration payments, check if membership exists
         if (payment.payment_type === 'registration' && payment.user_id) {
           const { data: membership } = await supabaseAdmin
             .from('memberships')

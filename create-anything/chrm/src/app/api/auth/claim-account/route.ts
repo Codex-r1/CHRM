@@ -1,102 +1,168 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../../lib/supabase/admin'
-import { sendEmail } from '../../../lib/email/service'
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '../../../lib/supabase/admin';
+import { sendEmail } from '../../../lib/email/service';
 
 export async function POST(request: NextRequest) {
   try {
-    const { membership_number, email } = await request.json();
+    const body = await request.json();
+    const {
+      membership_number,
+      email,
+      full_name,
+      phone,
+      password,
+      graduation_year,
+      course,
+      county
+    } = body;
 
-    if (!membership_number || !email) {
+    // Validate required fields
+    if (!membership_number || !email || !full_name || !phone || !password) {
       return NextResponse.json(
-        { error: 'Membership number and email are required' },
+        { error: 'All fields are required' },
         { status: 400 }
       );
     }
 
-    console.log('Claim request:', { membership_number, email });
-    const { data: profile, error: profileError } = await supabaseAdmin
+    console.log(' Claim account request:', { membership_number, email });
+    const { data: existingProfile, error: lookupError } = await supabaseAdmin
       .from('profiles')
-      .select('*')
+      .select('id, email, full_name')
       .eq('membership_number', membership_number.toUpperCase().trim())
-      .eq('email', email.toLowerCase().trim())
       .maybeSingle();
 
-    if (profileError || !profile) {
+    if (lookupError) {
+      console.error('Profile lookup error:', lookupError);
       return NextResponse.json(
-        { error: 'No account found. Please check your membership number and email, or contact admin.' },
-        { status: 404 }
+        { error: 'Database error occurred' },
+        { status: 500 }
       );
     }
+    if (existingProfile) {
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(existingProfile.id);
+      
+      if (authUser && authUser.user) {
+        return NextResponse.json(
+          { error: 'This membership number is already claimed. Please use the login page.' },
+          { status: 400 }
+        );
+      }
+      console.log(' Found profile without auth user - will link to new auth user');
+    }
 
-    console.log('✅ Profile found:', profile.full_name);
-
-    // Create auth user (they don't have one yet)
+    // Step 3: Create the auth user with the provided password
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: profile.email,
+      email: email.toLowerCase().trim(),
+      password: password,
       email_confirm: true,
       user_metadata: {
-        full_name: profile.full_name,
-        phone: profile.phone_number,
-        membership_number: profile.membership_number,
-        role: profile.role
+        full_name: full_name,
+        phone: phone,
+        membership_number: membership_number.toUpperCase().trim(),
+        role: 'member'
       }
     });
 
     if (authError) {
-      // Check if user already exists
-      if (authError.message.includes('already registered')) {
+      console.error('Auth user creation failed:', authError);
+      
+      if (authError.message.includes('already registered') || authError.message.includes('User already registered')) {
         return NextResponse.json(
-          { error: 'Account already claimed. Please use the login page.' },
+          { error: 'An account with this email already exists. Please use the login page.' },
           { status: 400 }
         );
       }
+      
       throw authError;
     }
 
-    console.log('✅ Auth user created:', authData.user.id);
+    const userId = authData.user.id;
+    console.log(' Auth user created:', userId);
+    const profileData = {
+      id: userId,
+      email: email.toLowerCase().trim(),
+      full_name: full_name,
+      phone_number: phone,
+      graduation_year: graduation_year ? parseInt(graduation_year) : null,
+      course: course || null,
+      county: county || null,
+      membership_number: membership_number.toUpperCase().trim(), // ← EXISTING number
+      role: 'member' as const,
+      status: 'active' as const,
+      registration_source: 'manual' as const,
+      needs_password_setup: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
 
-    // Update profile with auth user ID
-    await supabaseAdmin
+    // Use upsert to handle both create and update scenarios
+    const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({ 
-        id: authData.user.id, // Link profile to auth user
-        status: 'active',
-        needs_password_setup: false
-      })
-      .eq('membership_number', profile.membership_number);
+      .upsert(profileData, { 
+        onConflict: 'id',
+        ignoreDuplicates: false 
+      });
 
-    // Generate password setup link
-    const { data: resetData, error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
-      email: profile.email,
-    });
-
-    if (resetError || !resetData.properties?.action_link) {
-      throw new Error('Failed to generate password setup link');
+    if (profileError) {
+      console.error('Profile creation failed:', profileError);
+      
+      // Clean up the auth user if profile creation failed
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      
+      throw new Error('Failed to create profile: ' + profileError.message);
     }
 
-    // Send email
-    await sendEmail({
-      to: profile.email,
-      type: 'password_reset',
-      data: {
-        name: profile.full_name,
-        reset_url: resetData.properties.action_link,
-        membership_number: profile.membership_number
-      }
-    });
+    console.log('Profile created with membership number:', membership_number);
 
-    console.log('✅ Password setup email sent');
+    // Step 5: Create an active membership (they already paid)
+    const { error: membershipError } = await supabaseAdmin
+      .from('memberships')
+      .insert({
+        user_id: userId,
+        start_date: new Date().toISOString().split('T')[0],
+        expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+        is_active: true,
+        payment_id: null // No payment record since they paid manually
+      });
+
+    if (membershipError) {
+      console.error(' Membership creation failed:', membershipError);
+      // Don't fail the request - membership can be added manually later
+    } else {
+      console.log('Membership created');
+    }
+
+    // Step 6: Send welcome email
+    try {
+      await sendEmail({
+        to: email,
+        type: 'welcome',
+        data: {
+          name: full_name,
+          membership_number: membership_number.toUpperCase().trim(),
+          email: email
+        }
+      });
+      console.log('Welcome email sent');
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      // Don't fail the request if email fails
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Password setup link sent to your email'
+      message: 'Account created successfully',
+      user_id: userId,
+      membership_number: membership_number.toUpperCase().trim()
     });
 
   } catch (error: any) {
-    console.error('❌ Claim error:', error);
+    console.error('Claim account error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to process request' },
+      { 
+        success: false,
+        error: error.message || 'Failed to create account'
+      },
       { status: 500 }
     );
   }

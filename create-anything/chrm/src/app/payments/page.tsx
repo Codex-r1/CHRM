@@ -1459,7 +1459,7 @@ export default function CombinedPaymentsPage() {
                     disabled={loading}
                     whileHover={buttonHover}
                     whileTap={buttonTap}
-                    className="group w-full px-4 py-4 bg-gradient-to-r from-[#FF7A00] to-[#E56B00] text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 mt-8"
+                    className="group w-full px-4 py-4 bg-gradient-to-br from-[#E53E3E] to-[#CC3636] text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 mt-8"
                   >
                     {loading ? (
                       <>

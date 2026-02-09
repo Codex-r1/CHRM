@@ -257,7 +257,7 @@ export default function HomePage() {
                 >
                   <Link
                     href="/about"
-                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#FF7A00] to-[#E56B00] text-white font-bold rounded-lg hover:shadow-xl transition-all duration-300 text-lg"
+                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-br from-[#E53E3E] to-[#CC3636] text-white font-bold rounded-lg hover:shadow-xl transition-all duration-300 text-lg"
                   >
                     Learn More
                     <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
