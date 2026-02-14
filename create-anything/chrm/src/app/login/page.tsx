@@ -1,6 +1,5 @@
 "use client";
-
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase/client";
 import Header from "../components/Header";
@@ -47,7 +46,8 @@ const slideDown: Variants = {
   },
 };
 
-export default function LoginPage() {
+// Separate component that uses useSearchParams
+function LoginForm() {
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
@@ -370,5 +370,21 @@ export default function LoginPage() {
 
       <Footer />
     </motion.div>
+  );
+}
+
+// Main page component wrapped with Suspense
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F7F9FC] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#2B4C73] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-[#6D7A8B]">Loading...</p>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
