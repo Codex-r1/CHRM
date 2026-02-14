@@ -21,6 +21,7 @@ export default function ClaimAccountPage() {
     graduation_year: "",
     course: "",
     county: "",
+    registration_date: "", // When they originally registered/paid
   });
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
@@ -155,7 +156,7 @@ export default function ClaimAccountPage() {
                     placeholder="100XXX"
                   />
                   <p className="text-xs text-[#2B4C73] mt-1">
-                    Enter your membership number
+                    Enter your existing CHRMAA membership number
                   </p>
                 </div>
 
@@ -230,6 +231,26 @@ export default function ClaimAccountPage() {
                       className="w-full px-4 py-3 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] focus:ring-2 focus:ring-[#E8F4FD] transition-all duration-200"
                       placeholder="e.g., 2024"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block font-poppins font-semibold text-sm text-[#6D7A8B] mb-2 flex items-center gap-2">
+                      <Calendar size={16} />
+                      Registration Date *
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={formData.registration_date}
+                      onChange={(e) =>
+                        setFormData({ ...formData, registration_date: e.target.value })
+                      }
+                      max={new Date().toISOString().split('T')[0]}
+                      className="w-full px-4 py-3 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] focus:ring-2 focus:ring-[#E8F4FD] transition-all duration-200"
+                    />
+                    <p className="text-xs text-[#6D7A8B] mt-1">
+                      When did you originally register/pay? (Used to calculate membership expiry)
+                    </p>
                   </div>
 
                   <div>

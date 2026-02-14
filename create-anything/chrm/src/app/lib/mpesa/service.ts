@@ -48,19 +48,19 @@ export class MpesaService {
       `${this.shortCode}${this.passkey}${timestamp}`
     ).toString('base64')
 
-    const stkBody = {
-      BusinessShortCode: this.shortCode,
-      Password: password,
-      Timestamp: timestamp,
-      TransactionType: 'CustomerPayBillOnline',
-      Amount: request.amount,
-      PartyA: request.phoneNumber,
-      PartyB: this.shortCode,
-      PhoneNumber: request.phoneNumber,
-      CallBackURL: `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback`,
-      AccountReference: request.accountReference,
-      TransactionDesc: request.transactionDesc
-    }
+  const stkBody = {
+  BusinessShortCode: this.shortCode,
+  Password: password,
+  Timestamp: timestamp,
+  TransactionType: 'CustomerPayBillOnline',
+  Amount: request.amount,
+  PartyA: request.phoneNumber,
+  PartyB: this.shortCode,
+  PhoneNumber: request.phoneNumber,
+  CallBackURL: process.env.MPESA_CALLBACK_URL || `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback`, // ← FIXED
+  AccountReference: request.accountReference,
+  TransactionDesc: request.transactionDesc
+}
 
     const response = await axios.post(
       `${this.baseURL}/mpesa/stkpush/v1/processrequest`,

@@ -472,15 +472,36 @@ export default function CombinedPaymentsPage() {
               membership_number: data.membership_number 
             }));
           }
+           // Handle registration vs renewal differently
+  if (paymentType === 'registration') {
+    if (data.membership_number) {
+      setFormData(prev => ({ 
+        ...prev, 
+        membership_number: data.membership_number 
+      }));
+    }
+    
+    showAlert('success', 'Welcome to CHRMAA!', 
+      `Your account has been created! ${data.membership_number ? `Membership Number: ${data.membership_number}.` : ''} Redirecting to login...`,
+      { autoClose: 3000 }
+    );
+    
+    setTimeout(() => {
+      router.push('/login');
+    }, 3000);
+    
+  } else if (paymentType === 'renewal') {
+    // Renewal success
+    showAlert('success', 'Renewal Successful!', 
+      `Your membership has been renewed! Your membership now expires on December 31st. Redirecting to dashboard...`,
+      { autoClose: 3000 }
+    );
+    
+    setTimeout(() => {
+      router.push('/member/dashboard');
+    }, 3000);
+  }
           
-          showAlert('success', 'Account Ready!', 
-            `Your account has been created! ${data.membership_number ? `Membership: ${data.membership_number}.` : ''} Redirecting to login...`,
-            { autoClose: 2000 }
-          );
-          
-          setTimeout(() => {
-            router.push('/login');
-          }, 2000);
           
         } else if (data.status === 'confirmed' && data.user_created === false) {
           clearInterval(interval);

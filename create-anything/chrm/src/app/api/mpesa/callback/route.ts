@@ -2,22 +2,76 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase/admin';
 import { sendEmail } from '@/app/lib/email/service';
 
+// Inline membership calculation function
+function calculateMembershipDates(registrationDate: string | Date) {
+  const regDate = new Date(registrationDate);
+  const regMonth = regDate.getMonth(); // 0-11
+  const regYear = regDate.getFullYear();
+  
+  const startDate = new Date(regDate);
+  startDate.setHours(0, 0, 0, 0);
+  
+  // Check if October-December (waiver period)
+  const hasWaiver = regMonth >= 9; // Months 9, 10, 11 = Oct, Nov, Dec
+  
+  let expiryDate: Date;
+  if (hasWaiver) {
+    // October-December: Expires December 31st of NEXT year
+    expiryDate = new Date(regYear + 1, 11, 31);
+  } else {
+    // January-September: Expires December 31st of SAME year
+    expiryDate = new Date(regYear, 11, 31);
+  }
+  
+  expiryDate.setHours(23, 59, 59, 999);
+  
+  const today = new Date();
+  const isActive = expiryDate >= today;
+  
+  return {
+    start_date: formatDate(startDate),
+    expiry_date: formatDate(expiryDate),
+    is_active: isActive,
+    has_waiver: hasWaiver
+  };
+}
+
+function calculateRenewalDates(currentExpiryDate: string | Date) {
+  const expiryDate = new Date(currentExpiryDate);
+  const nextYear = expiryDate.getFullYear() + 1;
+  
+  // Renewals always: Jan 1 - Dec 31 of next year
+  const startDate = new Date(nextYear, 0, 1); // January 1st
+  const newExpiryDate = new Date(nextYear, 11, 31); // December 31st
+  
+  startDate.setHours(0, 0, 0, 0);
+  newExpiryDate.setHours(23, 59, 59, 999);
+  
+  const today = new Date();
+  const isActive = newExpiryDate >= today;
+  
+  return {
+    start_date: formatDate(startDate),
+    expiry_date: formatDate(newExpiryDate),
+    is_active: isActive
+  };
+}
+
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export async function POST(req: NextRequest) {
-  console.log('  M-PESA CALLBACK RECEIVED AT:', new Date().toISOString());
+  console.log('M-PESA CALLBACK RECEIVED AT:', new Date().toISOString());
   
   try {
     const body = await req.json();
     
-    console.log(' RAW CALLBACK BODY:');
+    console.log('RAW CALLBACK BODY:');
     console.log(JSON.stringify(body, null, 2));
-    
-    // Log callback for debugging
-    await supabaseAdmin
-      .from('callback_logs')
-      .insert({
-        raw_data: body,
-        received_at: new Date().toISOString()
-      });
     
     // Parse the callback
     const { Body } = body;
@@ -45,7 +99,7 @@ export async function POST(req: NextRequest) {
     console.log('- ResultDesc:', ResultDesc);
     
     // Find the payment
-    console.log(' Searching for payment...');
+    console.log('  Searching for payment...');
     const { data: payment, error } = await supabaseAdmin
       .from('payments')
       .select('*')
@@ -55,15 +109,6 @@ export async function POST(req: NextRequest) {
     if (error || !payment) {
       console.error('  Payment not found:', error);
       console.error('CheckoutRequestID:', CheckoutRequestID);
-      
-      // Try alternative search
-      const { data: allPayments } = await supabaseAdmin
-        .from('payments')
-        .select('checkout_request_id, status')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      console.log('Recent payments:', allPayments);
       
       return NextResponse.json({ 
         ResultCode: 1,
@@ -75,14 +120,13 @@ export async function POST(req: NextRequest) {
     console.log('  Payment found:', {
       id: payment.id,
       current_status: payment.status,
-      checkout_id: payment.checkout_request_id,
       payment_type: payment.payment_type,
       has_user_id: !!payment.user_id
     });
     
     // Check if payment already confirmed
     if (payment.status === 'confirmed') {
-      console.log('Payment already confirmed');
+      console.log('  Payment already confirmed');
       return NextResponse.json({ 
         ResultCode: 0,
         ResultDesc: 'Already processed' 
@@ -91,7 +135,7 @@ export async function POST(req: NextRequest) {
     
     // Process based on ResultCode
     if (Number(ResultCode) === 0) {
-      console.log(' Payment successful! Updating to confirmed...');
+      console.log('  Payment successful! Updating to confirmed...');
       
       // Extract M-PESA receipt number
       let mpesaReceiptNumber = null;
@@ -113,7 +157,7 @@ export async function POST(req: NextRequest) {
         callback_data: body
       };
       
-      console.log(' Updating payment with:', updateData);
+      console.log('Updating payment with:', updateData);
       
       const { data: updatedPayment, error: updateError } = await supabaseAdmin
         .from('payments')
@@ -138,13 +182,13 @@ export async function POST(req: NextRequest) {
         switch (payment.payment_type) {
           case 'registration':
             if (!payment.user_id) {
-              console.log('👤 Handling registration payment...');
+              console.log(' Handling registration payment...');
               await handleRegistrationPayment(payment);
             }
             break;
             
           case 'renewal':
-            console.log(' Handling renewal payment...');
+            console.log('Handling renewal payment...');
             await handleRenewalPayment(payment);
             break;
             
@@ -159,54 +203,10 @@ export async function POST(req: NextRequest) {
             break;
             
           default:
-            console.log('  Unknown payment type:', payment.payment_type);
+            console.log(' Unknown payment type:', payment.payment_type);
         }
       } catch (handlerError) {
         console.error('  Payment type handler failed:', handlerError);
-        
-        // Send admin alert
-        try {
-          const adminEmail = process.env.ADMIN_EMAIL || 'admin@chrmaa.com';
-          await sendEmail({
-            to: adminEmail,
-            type: 'payment_confirmation',
-            data: {
-              name: 'Admin',
-              amount: payment.amount,
-              reference: CheckoutRequestID,
-              receipt: mpesaReceiptNumber || 'N/A',
-              type: payment.payment_type,
-              alert_note: `Payment confirmed but handler failed: ${handlerError instanceof Error ? handlerError.message : 'Unknown error'}`
-            }
-          });
-        } catch (emailError) {
-          console.error('Failed to send admin alert:', emailError);
-        }
-      }
-      
-      // Send payment confirmation email to customer
-      try {
-        const userEmail = payment.metadata?.registration_data?.email || 
-                         payment.metadata?.userEmail;
-        const userName = payment.metadata?.registration_data?.full_name || 
-                        payment.metadata?.userName || 'Customer';
-        
-        if (userEmail) {
-          await sendEmail({
-            to: userEmail,
-            type: 'payment_confirmation', 
-            data: {
-              name: userName,
-              amount: payment.amount,
-              reference: CheckoutRequestID,
-              receipt: mpesaReceiptNumber || 'N/A',
-              type: payment.payment_type,
-            }
-          });
-          console.log('  Payment confirmation email sent to:', userEmail);
-        }
-      } catch (emailError) {
-        console.error('  Email send failed:', emailError);
       }
       
       return NextResponse.json({ 
@@ -221,6 +221,7 @@ export async function POST(req: NextRequest) {
         .from('payments')
         .update({
           status: 'failed',
+          error_message: ResultDesc,
           updated_at: new Date().toISOString(),
           callback_data: body
         })
@@ -233,7 +234,7 @@ export async function POST(req: NextRequest) {
     }
     
   } catch (error) {
-    console.error(' CALLBACK ERROR:', error);
+    console.error('  CALLBACK ERROR:', error);
     return NextResponse.json({ 
       ResultCode: 1,
       ResultDesc: 'Internal server error' 
@@ -260,10 +261,10 @@ async function handleRegistrationPayment(payment: any) {
     let authUserId;
     
     if (userExists) {
-      console.log(' Auth user already exists:', userExists.id);
+      console.log('  Auth user already exists:', userExists.id);
       authUserId = userExists.id;
     } else {
-      console.log(' Creating new user account...');
+      console.log('👤 Creating new user account...');
       
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: registrationData.email,
@@ -297,7 +298,7 @@ async function handleRegistrationPayment(payment: any) {
     let membershipNumber = '';
     
     if (existingProfile) {
-      console.log(' Profile exists, updating...');
+      console.log('  Profile exists, updating...');
       membershipNumber = existingProfile.membership_number;
       
       await supabaseAdmin
@@ -323,7 +324,7 @@ async function handleRegistrationPayment(payment: any) {
         }
       }
 
-      console.log(' Generated:', membershipNumber);
+      console.log('  Generated:', membershipNumber);
 
       // Create profile
       const { error: profileError } = await supabaseAdmin
@@ -355,7 +356,7 @@ async function handleRegistrationPayment(payment: any) {
       .update({ user_id: authUserId })
       .eq('id', payment.id);
 
-    // Create membership
+    // Create membership with December 31st expiry
     const { data: existingMembership } = await supabaseAdmin
       .from('memberships')
       .select('id')
@@ -363,21 +364,26 @@ async function handleRegistrationPayment(payment: any) {
       .maybeSingle();
     
     if (!existingMembership) {
-      const startDate = new Date();
-      const expiryDate = new Date();
-      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      // Calculate membership dates based on TODAY
+      const membershipDates = calculateMembershipDates(new Date());
+      
+      console.log(' Creating membership:', {
+        start: membershipDates.start_date,
+        expiry: membershipDates.expiry_date,
+        has_waiver: membershipDates.has_waiver
+      });
       
       await supabaseAdmin
         .from('memberships')
         .insert({
           user_id: authUserId,
-          start_date: startDate.toISOString().split('T')[0],
-          expiry_date: expiryDate.toISOString().split('T')[0],
+          start_date: membershipDates.start_date,
+          expiry_date: membershipDates.expiry_date,
           is_active: true,
           payment_id: payment.id
         });
       
-      console.log('  Membership created');
+      console.log('  Membership created (expires Dec 31st)');
     }
 
     // Send welcome email
@@ -388,7 +394,8 @@ async function handleRegistrationPayment(payment: any) {
           type: 'welcome',
           data: {
             name: registrationData.full_name || 'Member',
-            membership_number: membershipNumber
+            membership_number: membershipNumber,
+            email: registrationData.email
           }
         });
         console.log('  Welcome email sent');
@@ -415,46 +422,67 @@ async function handleRenewalPayment(payment: any) {
       return;
     }
     
-    // Update membership
-    const { data: membership } = await supabaseAdmin
+    // Get current membership
+    const { data: currentMembership } = await supabaseAdmin
       .from('memberships')
       .select('*')
       .eq('user_id', payment.user_id)
+      .eq('is_active', true)
       .maybeSingle();
     
-    if (membership) {
-      const currentExpiry = new Date(membership.expiry_date);
-      const now = new Date();
-      const newExpiry = currentExpiry > now ? currentExpiry : now;
-      newExpiry.setFullYear(newExpiry.getFullYear() + 1);
+    if (currentMembership) {
+      // Calculate renewal dates (always Jan 1 - Dec 31 of next year)
+      const renewalDates = calculateRenewalDates(currentMembership.expiry_date);
       
+      console.log(' Renewal dates calculated:', {
+        current_expiry: currentMembership.expiry_date,
+        new_start: renewalDates.start_date,
+        new_expiry: renewalDates.expiry_date
+      });
+      
+      // Deactivate old membership
       await supabaseAdmin
         .from('memberships')
-        .update({
-          expiry_date: newExpiry.toISOString().split('T')[0],
-          is_active: true,
-          updated_at: new Date().toISOString(),
+        .update({ 
+          is_active: false,
+          updated_at: new Date().toISOString()
         })
-        .eq('user_id', payment.user_id);
+        .eq('id', currentMembership.id);
       
-      console.log(`  Membership renewed for user ${payment.user_id}`);
+      // Create new membership
+      await supabaseAdmin
+        .from('memberships')
+        .insert({
+          user_id: payment.user_id,
+          start_date: renewalDates.start_date,
+          expiry_date: renewalDates.expiry_date,
+          is_active: true,
+          payment_id: payment.id
+        });
+      
+      // Update profile status
+      await supabaseAdmin
+        .from('profiles')
+        .update({ status: 'active' })
+        .eq('id', payment.user_id);
+      
+      console.log(`  Membership renewed (expires ${renewalDates.expiry_date})`);
+      
     } else {
-      // Create new membership if doesn't exist
-      const startDate = new Date();
-      const expiryDate = new Date();
-      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      // Create new membership if doesn't exist (treat as first registration)
+      const membershipDates = calculateMembershipDates(new Date());
       
       await supabaseAdmin
         .from('memberships')
         .insert({
           user_id: payment.user_id,
-          start_date: startDate.toISOString().split('T')[0],
-          expiry_date: expiryDate.toISOString().split('T')[0],
+          start_date: membershipDates.start_date,
+          expiry_date: membershipDates.expiry_date,
           is_active: true,
           payment_id: payment.id
         });
       
-      console.log(`  New membership created for user ${payment.user_id}`);
+      console.log(`  New membership created (expires ${membershipDates.expiry_date})`);
     }
     
   } catch (error) {
@@ -465,7 +493,7 @@ async function handleRenewalPayment(payment: any) {
 
 async function handleEventPayment(payment: any) {
   try {
-    console.log('Processing event payment:', payment.id);
+    console.log(' Processing event payment:', payment.id);
     
     const metadata = payment.metadata || {};
     const eventId = metadata.event_id;
@@ -495,7 +523,7 @@ async function handleEventPayment(payment: any) {
       .maybeSingle();
 
     if (existingReg) {
-      console.log('Registration already exists');
+      console.log('  Registration already exists');
       return;
     }
 
@@ -512,12 +540,7 @@ async function handleEventPayment(payment: any) {
       .insert({
         user_id: payment.user_id || null,
         event_id: eventId,
-        payment_id: payment.id,
-        attendee_name: attendeeName,
-        attendee_email: attendeeEmail,
-        attendee_phone: attendeePhone,
-        membership_number: membershipNumber || null,
-        is_member: isMember
+        payment_id: payment.id
       })
       .select()
       .single();
@@ -561,7 +584,7 @@ async function handleEventPayment(payment: any) {
     }
     
   } catch (error) {
-    console.error('  Event handler error:', error);
+    console.error(' Event handler error:', error);
     throw error;
   }
 }
@@ -574,7 +597,7 @@ async function handleMerchandisePayment(payment: any) {
     const orderId = metadata.order_id;
     
     if (!orderId) {
-      console.log('  No order_id in metadata');
+      console.log('No order_id in metadata');
       return;
     }
     
@@ -591,11 +614,11 @@ async function handleMerchandisePayment(payment: any) {
       .single();
 
     if (!order) {
-      console.log('  Order not found:', orderId);
+      console.log(' Order not found:', orderId);
       return;
     }
 
-    console.log('  Order updated to processing');
+    console.log('Order updated to processing');
 
     // Send order confirmation email
     const customerEmail = order.customer_email;
@@ -612,14 +635,14 @@ async function handleMerchandisePayment(payment: any) {
             shipping_address: order.shipping_address || 'N/A',
           }
         });
-        console.log(`  Order email sent to ${customerEmail}`);
+        console.log(` Order email sent to ${customerEmail}`);
       } catch (emailError) {
-        console.error('  Order email failed:', emailError);
+        console.error(' Order email failed:', emailError);
       }
     }
     
   } catch (error) {
-    console.error('  Merchandise handler error:', error);
+    console.error(' Merchandise handler error:', error);
     throw error;
   }
 }

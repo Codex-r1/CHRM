@@ -14,7 +14,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { useAuth } from "../../../context/auth";
-
+import { useRef } from "react";
 // Animation Variants
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -39,7 +39,27 @@ const scaleIn: Variants = {
     },
   },
 };
+const [alertModal, setAlertModal] = useState<AlertModal>({
+  show: false,
+  type: 'error',
+  title: '',
+  message: '',
+  confirmText: 'OK',
+  cancelText: 'Cancel'
+});
 
+const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+type AlertModal = {
+  show: boolean;
+  type: 'error' | 'success' | 'info' | 'warning';
+  title: string;
+  message: string;
+  onConfirm?: () => void;
+  confirmText?: string;
+  onCancel?: () => void;
+  cancelText?: string;
+};
 type EventType = {
   id: string;
   name: string;
@@ -144,7 +164,13 @@ export default function EventRegistrationPage() {
       }));
     }
   }, [authUser, authLoading]);
-
+useEffect(() => {
+  return () => {
+    if (alertTimeoutRef.current) {
+      clearTimeout(alertTimeoutRef.current);
+    }
+  };
+}, []);
   const calculateMemberPrice = () => {
     if (!event) return 0;
     return event.price - (event.price * event.member_discount) / 100;
@@ -154,7 +180,50 @@ export default function EventRegistrationPage() {
     const phoneRegex = /^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$/;
     return phoneRegex.test(phone.replace(/\s/g, ''));
   };
+// Show alert modal
+const showAlert = (
+  type: 'error' | 'success' | 'info' | 'warning',
+  title: string,
+  message: string,
+  options?: {
+    onConfirm?: () => void;
+    confirmText?: string;
+    onCancel?: () => void;
+    cancelText?: string;
+    autoClose?: number;
+  }
+) => {
+  if (alertTimeoutRef.current) {
+    clearTimeout(alertTimeoutRef.current);
+    alertTimeoutRef.current = null;
+  }
 
+  setAlertModal({
+    show: true,
+    type,
+    title,
+    message,
+    onConfirm: options?.onConfirm,
+    confirmText: options?.confirmText || 'OK',
+    onCancel: options?.onCancel,
+    cancelText: options?.cancelText || 'Cancel'
+  });
+
+  if (options?.autoClose) {
+    alertTimeoutRef.current = setTimeout(() => {
+      hideAlert();
+    }, options.autoClose);
+  }
+};
+
+// Hide alert modal
+const hideAlert = () => {
+  if (alertTimeoutRef.current) {
+    clearTimeout(alertTimeoutRef.current);
+    alertTimeoutRef.current = null;
+  }
+  setAlertModal(prev => ({ ...prev, show: false }));
+};
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
@@ -164,21 +233,31 @@ export default function EventRegistrationPage() {
       return;
     }
 
-    // Validation
-    if (!formData.full_name || !formData.email || !formData.phone) {
-      setError("Please fill in all required fields");
-      return;
-    }
-
-    if (!validatePhoneNumber(formData.phone)) {
-      setError("Please enter a valid Kenyan phone number (e.g., 0712345678)");
-      return;
-    }
-
     try {
       setStkStatus('initiating');
-      
-      // ✅ SIMPLIFIED: Logged in = member, Not logged in = guest (full price)
+if (!formData.full_name || !formData.email || !formData.phone) {
+  setError("Please fill in all required fields");
+  return;
+}
+
+// With:
+if (!formData.full_name || !formData.email || !formData.phone) {
+  showAlert('error', 'Missing Information', 'Please fill in all required fields');
+  return;
+}
+
+// Also replace:
+if (!validatePhoneNumber(formData.phone)) {
+  setError("Please enter a valid Kenyan phone number (e.g., 0712345678)");
+  return;
+}
+
+// With:
+if (!validatePhoneNumber(formData.phone)) {
+  showAlert('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
+  return;
+}
+      // SIMPLIFIED: Logged in = member, Not logged in = guest (full price)
       const isMember = !!authUser;
       const amount = isMember ? calculateMemberPrice() : event.price;
       
@@ -252,14 +331,20 @@ export default function EventRegistrationPage() {
         const data = await response.json();
         
         if (data.status === 'confirmed') {
-          setStkStatus('success');
-          clearInterval(interval);
-          setPollingInterval(null);
-          
-          // Auto-redirect to success after 2 seconds
-          setTimeout(() => {
-            setStep(3);
-          }, 2000);
+  setStkStatus('success');
+  clearInterval(interval);
+  setPollingInterval(null);
+  
+  // Show success popup
+  showAlert('success', 'Registration Confirmed!', 
+    `Your payment has been confirmed! You're registered for ${event?.name}. Redirecting...`,
+    { autoClose: 3000 }
+  );
+  
+  // Auto-redirect to success after 3 seconds
+  setTimeout(() => {
+    setStep(3);
+  }, 3000);
           
         } else if (data.status === 'failed' || data.status === 'cancelled') {
           setStkStatus(data.status);
