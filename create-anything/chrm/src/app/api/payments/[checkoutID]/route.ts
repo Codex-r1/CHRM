@@ -18,7 +18,7 @@ export async function GET(
 
     console.log('Looking for payment with checkout_request_id:', checkoutID);
     
-    const { data: payment, error: paymentError } = await supabaseAdmin
+    const { data: payment, error: paymentError } = await supabaseAdmin()
       .from('payments')
       .select('*, profiles:user_id(*)')
       .eq('checkout_request_id', checkoutID)
@@ -28,7 +28,7 @@ export async function GET(
       console.error('Payment not found by checkout_request_id:', paymentError);
       
       // alternative: search in callback_data
-      const { data: paymentByCallback } = await supabaseAdmin
+      const { data: paymentByCallback } = await supabaseAdmin()
         .from('payments')
         .select('*, profiles:user_id(*)')
         .ilike('checkout_request_id', `%${checkoutID}%`)
@@ -92,7 +92,7 @@ async function handlePaymentResponse(payment: any, verifyUser: boolean) {
     if (payment.user_id) {
       try {
       
-        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(payment.user_id);
+        const { data: authUser, error: authError } = await supabaseAdmin().auth.admin.getUserById(payment.user_id);
         
         console.log('Auth user check:', {
           has_user: !!authUser,
@@ -100,7 +100,7 @@ async function handlePaymentResponse(payment: any, verifyUser: boolean) {
           user_id: payment.user_id
         });
 
-        const { data: profile } = await supabaseAdmin
+        const { data: profile } = await supabaseAdmin()
           .from('profiles')
           .select('id, status, membership_number, email')
           .eq('id', payment.user_id)
@@ -118,7 +118,7 @@ async function handlePaymentResponse(payment: any, verifyUser: boolean) {
         response.membership_number = profile?.membership_number;
         response.email = profile?.email;
         if (payment.payment_type === 'registration' && payment.user_id) {
-          const { data: membership } = await supabaseAdmin
+          const { data: membership } = await supabaseAdmin()
             .from('memberships')
             .select('id, is_active, expiry_date')
             .eq('user_id', payment.user_id)

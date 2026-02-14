@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     console.log('Claim account request:', { membership_number, email, registration_date });
 
     // Step 1: Check if membership number already has an auth account
-    const { data: existingProfile, error: lookupError } = await supabaseAdmin
+    const { data: existingProfile, error: lookupError } = await supabaseAdmin()
       .from('profiles')
       .select('id, email, full_name')
       .eq('membership_number', membership_number.toUpperCase().trim())
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     // Step 2: If profile exists with this membership number
     if (existingProfile) {
-      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(existingProfile.id);
+      const { data: authUser } = await supabaseAdmin().auth.admin.getUserById(existingProfile.id);
       
       if (authUser && authUser.user) {
         return NextResponse.json(
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Step 4: Create the auth user with the provided password
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: authData, error: authError } = await supabaseAdmin().auth.admin.createUser({
       email: email.toLowerCase().trim(),
       password: password,
       email_confirm: true,
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Use upsert to handle both create and update scenarios
-    const { error: profileError } = await supabaseAdmin
+    const { error: profileError } = await supabaseAdmin()
       .from('profiles')
       .upsert(profileData, { 
         onConflict: 'id',
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
       console.error('Profile creation failed:', profileError);
       
       // Clean up the auth user if profile creation failed
-      await supabaseAdmin.auth.admin.deleteUser(userId);
+      await supabaseAdmin().auth.admin.deleteUser(userId);
       
       throw new Error('Failed to create profile: ' + profileError.message);
     }
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     console.log('Profile created with membership number:', membership_number);
 
     // Step 7: Create membership with December 31st expiry
-    const { error: membershipError } = await supabaseAdmin
+    const { error: membershipError } = await supabaseAdmin()
       .from('memberships')
       .insert({
         user_id: userId,

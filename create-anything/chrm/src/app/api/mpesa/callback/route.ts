@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     
     // Find the payment
     console.log('  Searching for payment...');
-    const { data: payment, error } = await supabaseAdmin
+    const { data: payment, error } = await supabaseAdmin()
       .from('payments')
       .select('*')
       .eq('checkout_request_id', CheckoutRequestID)
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
       
       console.log('Updating payment with:', updateData);
       
-      const { data: updatedPayment, error: updateError } = await supabaseAdmin
+      const { data: updatedPayment, error: updateError } = await supabaseAdmin()
         .from('payments')
         .update(updateData)
         .eq('id', payment.id)
@@ -217,7 +217,7 @@ export async function POST(req: NextRequest) {
     } else {
       console.log('  Payment failed with ResultCode:', ResultCode);
       
-      await supabaseAdmin
+      await supabaseAdmin()
         .from('payments')
         .update({
           status: 'failed',
@@ -255,7 +255,7 @@ async function handleRegistrationPayment(payment: any) {
     console.log(' Registration data found for:', registrationData.email);
     
     // Check if user already exists
-    const { data: existingAuthUser } = await supabaseAdmin.auth.admin.listUsers();
+    const { data: existingAuthUser } = await supabaseAdmin().auth.admin.listUsers();
     const userExists = existingAuthUser.users.find(u => u.email === registrationData.email);
     
     let authUserId;
@@ -266,7 +266,7 @@ async function handleRegistrationPayment(payment: any) {
     } else {
       console.log('👤 Creating new user account...');
       
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      const { data: authData, error: authError } = await supabaseAdmin().auth.admin.createUser({
         email: registrationData.email,
         password: registrationData.password || 'DefaultPassword123',
         email_confirm: true,
@@ -289,7 +289,7 @@ async function handleRegistrationPayment(payment: any) {
     }
 
     // Check if profile exists
-    const { data: existingProfile } = await supabaseAdmin
+    const { data: existingProfile } = await supabaseAdmin()
       .from('profiles')
       .select('id, membership_number, status')
       .eq('id', authUserId)
@@ -301,7 +301,7 @@ async function handleRegistrationPayment(payment: any) {
       console.log('  Profile exists, updating...');
       membershipNumber = existingProfile.membership_number;
       
-      await supabaseAdmin
+      await supabaseAdmin()
         .from('profiles')
         .update({ status: 'active' })
         .eq('id', authUserId);
@@ -309,7 +309,7 @@ async function handleRegistrationPayment(payment: any) {
     } else {
       // Generate membership number
       console.log(' Generating membership number...');
-      const { data: maxMembershipData } = await supabaseAdmin
+      const { data: maxMembershipData } = await supabaseAdmin()
         .from('profiles')
         .select('membership_number')
         .order('membership_number', { ascending: false })
@@ -327,7 +327,7 @@ async function handleRegistrationPayment(payment: any) {
       console.log('  Generated:', membershipNumber);
 
       // Create profile
-      const { error: profileError } = await supabaseAdmin
+      const { error: profileError } = await supabaseAdmin()
         .from('profiles')
         .insert({
           id: authUserId,
@@ -351,13 +351,13 @@ async function handleRegistrationPayment(payment: any) {
     }
 
     // Link payment to user
-    await supabaseAdmin
+    await supabaseAdmin()
       .from('payments')
       .update({ user_id: authUserId })
       .eq('id', payment.id);
 
     // Create membership with December 31st expiry
-    const { data: existingMembership } = await supabaseAdmin
+    const { data: existingMembership } = await supabaseAdmin()
       .from('memberships')
       .select('id')
       .eq('user_id', authUserId)
@@ -373,7 +373,7 @@ async function handleRegistrationPayment(payment: any) {
         has_waiver: membershipDates.has_waiver
       });
       
-      await supabaseAdmin
+      await supabaseAdmin()
         .from('memberships')
         .insert({
           user_id: authUserId,
@@ -423,7 +423,7 @@ async function handleRenewalPayment(payment: any) {
     }
     
     // Get current membership
-    const { data: currentMembership } = await supabaseAdmin
+    const { data: currentMembership } = await supabaseAdmin()
       .from('memberships')
       .select('*')
       .eq('user_id', payment.user_id)
@@ -441,7 +441,7 @@ async function handleRenewalPayment(payment: any) {
       });
       
       // Deactivate old membership
-      await supabaseAdmin
+      await supabaseAdmin()
         .from('memberships')
         .update({ 
           is_active: false,
@@ -450,7 +450,7 @@ async function handleRenewalPayment(payment: any) {
         .eq('id', currentMembership.id);
       
       // Create new membership
-      await supabaseAdmin
+      await supabaseAdmin()
         .from('memberships')
         .insert({
           user_id: payment.user_id,
@@ -461,7 +461,7 @@ async function handleRenewalPayment(payment: any) {
         });
       
       // Update profile status
-      await supabaseAdmin
+      await supabaseAdmin()
         .from('profiles')
         .update({ status: 'active' })
         .eq('id', payment.user_id);
@@ -472,7 +472,7 @@ async function handleRenewalPayment(payment: any) {
       // Create new membership if doesn't exist (treat as first registration)
       const membershipDates = calculateMembershipDates(new Date());
       
-      await supabaseAdmin
+      await supabaseAdmin()
         .from('memberships')
         .insert({
           user_id: payment.user_id,
@@ -504,7 +504,7 @@ async function handleEventPayment(payment: any) {
     }
 
     // Get event details
-    const { data: event, error: eventError } = await supabaseAdmin
+    const { data: event, error: eventError } = await supabaseAdmin()
       .from('events')
       .select('*')
       .eq('id', eventId)
@@ -516,7 +516,7 @@ async function handleEventPayment(payment: any) {
     }
 
     // Check if already registered
-    const { data: existingReg } = await supabaseAdmin
+    const { data: existingReg } = await supabaseAdmin()
       .from('event_registrations')
       .select('id')
       .eq('payment_id', payment.id)
@@ -535,7 +535,7 @@ async function handleEventPayment(payment: any) {
     const isMember = metadata.is_alumni_member === 'yes' || metadata.is_member === true;
 
     // Create registration
-    const { data: registration, error: regError } = await supabaseAdmin
+    const { data: registration, error: regError } = await supabaseAdmin()
       .from('event_registrations')
       .insert({
         user_id: payment.user_id || null,
@@ -550,7 +550,7 @@ async function handleEventPayment(payment: any) {
     }
 
     // Increment attendees count
-    await supabaseAdmin
+    await supabaseAdmin()
       .from('events')
       .update({ 
         current_attendees: event.current_attendees + 1 
@@ -602,7 +602,7 @@ async function handleMerchandisePayment(payment: any) {
     }
     
     // Update order status
-    const { data: order } = await supabaseAdmin
+    const { data: order } = await supabaseAdmin()
       .from('orders')
       .update({
         status: 'processing',

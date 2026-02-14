@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase/admin';
 
 // Use the admin client that has proper permissions
-const supabase = supabaseAdmin;
+const supabase = supabaseAdmin();
 
 export async function POST(request: NextRequest) {
   try {

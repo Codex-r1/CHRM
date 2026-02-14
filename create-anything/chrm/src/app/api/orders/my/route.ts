@@ -12,13 +12,13 @@ export async function GET(request: Request) {
     const token = authHeader.replace('Bearer ', '')
     
     // Verify user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user }, error: authError } = await supabaseAdmin().auth.getUser(token)
     if (authError || !user) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
     // Get orders for this user
-    const { data: orders, error } = await supabaseAdmin
+    const { data: orders, error } = await supabaseAdmin()
       .from('orders')
       .select('*')
       .eq('user_id', user.id)

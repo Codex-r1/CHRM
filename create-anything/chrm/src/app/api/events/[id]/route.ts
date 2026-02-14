@@ -12,7 +12,7 @@ export async function GET(
     const { id } = params;
 
     console.log('API: Fetching event with ID:', id);
-    const { data: event, error } = await supabaseAdmin
+    const { data: event, error } = await supabaseAdmin()
       .from('events')
       .select('*')
       .eq('id', id)

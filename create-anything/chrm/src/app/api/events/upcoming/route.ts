@@ -4,7 +4,7 @@ import { supabaseAdmin } from '../../../lib/supabase/admin'
 
 export async function GET() {
   try {
-    const { data: events, error } = await supabaseAdmin
+    const { data: events, error } = await supabaseAdmin()
       .from('events')
       .select('*')
       .eq('is_active', true)

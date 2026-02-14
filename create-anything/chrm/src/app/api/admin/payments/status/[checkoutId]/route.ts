@@ -17,7 +17,7 @@ export async function GET(
     }
 
     // First, check database
-    const { data: payment, error } = await supabaseAdmin
+    const { data: payment, error } = await supabaseAdmin()
       .from('payments')
       .select('*')
       .eq('checkout_request_id', checkoutId)
@@ -56,13 +56,13 @@ export async function GET(
           };
 
           // Update payment in database
-          await supabaseAdmin
+          await supabaseAdmin()
             .from('payments')
             .update(updateData)
             .eq('checkout_request_id', checkoutId);
 
           // Refetch updated payment
-          const { data: updatedPayment } = await supabaseAdmin
+          const { data: updatedPayment } = await supabaseAdmin()
             .from('payments')
             .select('*')
             .eq('checkout_request_id', checkoutId)
@@ -81,7 +81,7 @@ export async function GET(
             callback_data: mpesaResponse
           };
 
-          await supabaseAdmin
+          await supabaseAdmin()
             .from('payments')
             .update(updateData)
             .eq('checkout_request_id', checkoutId);

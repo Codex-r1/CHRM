@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     // For registration, update existing payment record
     if (paymentType === 'registration' && payment_id) {
       // Get the existing payment record
-      const { data: existingPayment, error: fetchError } = await supabaseAdmin
+      const { data: existingPayment, error: fetchError } = await supabaseAdmin()
         .from('payments')
         .select('*')
         .eq('id', payment_id)
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       paymentRecord = existingPayment;
     } else {
       // For other payment types, create new payment record
-      const { data: payment, error: paymentError } = await supabaseAdmin
+      const { data: payment, error: paymentError } = await supabaseAdmin()
         .from('payments')
         .insert({
           user_id: userId || null,
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Update payment with M-PESA response
-    await supabaseAdmin
+    await supabaseAdmin()
       .from('payments')
       .update({
         checkout_request_id: stkResponse.CheckoutRequestID,

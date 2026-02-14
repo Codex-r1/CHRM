@@ -16,7 +16,7 @@ async function verifyAdmin(request: NextRequest) {
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return null;
 
-  const { data: profile } = await supabaseAdmin
+  const { data: profile } = await supabaseAdmin()
     .from('profiles')
     .select('role')
     .eq('id', user.id)
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: events, error } = await supabaseAdmin
+    const { data: events, error } = await supabaseAdmin()
       .from('csr_events')
       .select(`
         *,
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: event, error } = await supabaseAdmin
+    const { data: event, error } = await supabaseAdmin()
       .from('csr_events')
       .insert({
         event_type,

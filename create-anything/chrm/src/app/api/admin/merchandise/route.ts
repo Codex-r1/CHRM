@@ -4,7 +4,7 @@ import { supabaseAdmin } from '../../../lib/supabase/admin';
 // GET all products (admin)
 export async function GET(request: NextRequest) {
   try {
-    const { data: products, error } = await supabaseAdmin
+    const { data: products, error } = await supabaseAdmin()
       .from('products')
       .select(`
         *,
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       .replace(/(^-|-$)/g, '');
 
     // Create product
-    const { data: product, error: productError } = await supabaseAdmin
+    const { data: product, error: productError } = await supabaseAdmin()
       .from('products')
       .insert({
         name,
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
         is_available: variant.is_available !== undefined ? variant.is_available : true
       }));
 
-      const { error: variantsError } = await supabaseAdmin
+      const { error: variantsError } = await supabaseAdmin()
         .from('product_variants')
         .insert(variantsWithProductId);
 
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
         is_primary: image.is_primary || false
       }));
 
-      const { error: imagesError } = await supabaseAdmin
+      const { error: imagesError } = await supabaseAdmin()
         .from('product_images')
         .insert(imagesWithProductId);
 
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch complete product with relationships
-    const { data: completeProduct, error: fetchError } = await supabaseAdmin
+    const { data: completeProduct, error: fetchError } = await supabaseAdmin()
       .from('products')
       .select(`
         *,

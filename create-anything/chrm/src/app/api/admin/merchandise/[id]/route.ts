@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { id } = params;
 
-    const { data: product, error } = await supabaseAdmin
+    const { data: product, error } = await supabaseAdmin()
       .from('products')
       .select(`
         *,
@@ -74,7 +74,7 @@ export async function PUT(
         .replace(/(^-|-$)/g, '');
     }
 
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin()
       .from('products')
       .update(updateData)
       .eq('id', id);
@@ -90,7 +90,7 @@ export async function PUT(
     // Update variants if provided
     if (variants && Array.isArray(variants)) {
       // First, delete existing variants
-      await supabaseAdmin
+      await supabaseAdmin()
         .from('product_variants')
         .delete()
         .eq('product_id', id);
@@ -102,7 +102,7 @@ export async function PUT(
           product_id: id
         }));
 
-        const { error: variantsError } = await supabaseAdmin
+        const { error: variantsError } = await supabaseAdmin()
           .from('product_variants')
           .insert(variantsWithProductId);
 
@@ -115,7 +115,7 @@ export async function PUT(
     // Update images if provided
     if (images && Array.isArray(images)) {
       // Delete existing images
-      await supabaseAdmin
+      await supabaseAdmin()
         .from('product_images')
         .delete()
         .eq('product_id', id);
@@ -128,7 +128,7 @@ export async function PUT(
           sort_order: image.sort_order || index
         }));
 
-        const { error: imagesError } = await supabaseAdmin
+        const { error: imagesError } = await supabaseAdmin()
           .from('product_images')
           .insert(imagesWithProductId);
 
@@ -139,7 +139,7 @@ export async function PUT(
     }
 
     // Fetch updated product
-    const { data: product, error: fetchError } = await supabaseAdmin
+    const { data: product, error: fetchError } = await supabaseAdmin()
       .from('products')
       .select(`
         *,
@@ -171,7 +171,7 @@ export async function DELETE(
     const { id } = params;
 
     // Soft delete by setting is_active to false
-    const { error } = await supabaseAdmin
+    const { error } = await supabaseAdmin()
       .from('products')
       .update({ is_active: false })
       .eq('id', id);

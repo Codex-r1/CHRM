@@ -11,14 +11,14 @@ export async function GET(request: Request) {
     const token = authHeader.replace('Bearer ', '');
     
     // Verify token and get user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabaseAdmin().auth.getUser(token);
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get member profile
-    const { data: member, error: memberError } = await supabaseAdmin
+    const { data: member, error: memberError } = await supabaseAdmin()
       .from('members')
       .select('*')
       .eq('email', user.email)

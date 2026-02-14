@@ -12,13 +12,13 @@ export async function GET(request: NextRequest) {
     const token = authHeader.replace('Bearer ', '')
     
     // Verify user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user }, error: authError } = await supabaseAdmin().auth.getUser(token)
     if (authError || !user) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
     // Get user profile to check role
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabaseAdmin()
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all users (admin only)
-    const { data: users, error: usersError } = await supabaseAdmin
+    const { data: users, error: usersError } = await supabaseAdmin()
       .from('profiles')
       .select('*')
       .order('created_at', { ascending: false })

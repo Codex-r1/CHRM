@@ -13,14 +13,14 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split('Bearer ')[1]
     
     // Verify the token and get user
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user }, error: authError } = await supabaseAdmin().auth.getUser(token)
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
     // Get user profile
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabaseAdmin()
       .from('profiles')
       .select('*')
       .eq('id', user.id)

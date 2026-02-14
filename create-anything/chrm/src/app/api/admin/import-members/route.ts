@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Check if member already exists
-        const { data: existing } = await supabaseAdmin
+        const { data: existing } = await supabaseAdmin()
           .from('profiles')
           .select('id')
           .eq('membership_number', member.membership_number.toUpperCase().trim())
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Insert profile (NO auth user yet - they'll create it when claiming)
-        const { error: insertError } = await supabaseAdmin
+        const { error: insertError } = await supabaseAdmin()
           .from('profiles')
           .insert({
             id: crypto.randomUUID(), // Generate UUID for profile

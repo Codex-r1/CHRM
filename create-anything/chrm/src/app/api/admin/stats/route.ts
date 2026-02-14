@@ -18,40 +18,40 @@ export async function GET(request: NextRequest) {
       { data: revenueData }
     ] = await Promise.all([
       // Total members
-      supabaseAdmin
+      supabaseAdmin()
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('role', 'member'),
       
       // Active members
-      supabaseAdmin
+      supabaseAdmin()
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('role', 'member')
         .eq('status', 'active'),
       
       // Payments data
-      supabaseAdmin
+      supabaseAdmin()
         .from('payments')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100),
       
       // Orders data
-      supabaseAdmin
+      supabaseAdmin()
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100),
       
       // Events data
-      supabaseAdmin
+      supabaseAdmin()
         .from('events')
         .select('*')
         .order('event_date', { ascending: true }),
       
       // Today's revenue
-      supabaseAdmin
+      supabaseAdmin()
         .from('payments')
         .select('amount')
         .eq('status', 'confirmed')
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     // Recent activity
     const recentPayments = paymentsData?.slice(0, 5) || [];
-    const recentMembers = await supabaseAdmin
+    const recentMembers = await supabaseAdmin()
       .from('profiles')
       .select('*')
       .eq('role', 'member')

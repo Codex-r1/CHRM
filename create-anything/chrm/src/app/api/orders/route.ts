@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: order, error } = await supabaseAdmin
+    const { data: order, error } = await supabaseAdmin()
+
       .from('orders')
       .insert({
         user_id,

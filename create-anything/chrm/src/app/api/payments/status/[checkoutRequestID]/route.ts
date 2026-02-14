@@ -9,7 +9,7 @@ export async function GET(
     const { checkoutRequestID } = params;
     
     console.log('Checking payment status for:', checkoutRequestID);
-    const { data: payment, error } = await supabaseAdmin
+    const { data: payment, error } = await supabaseAdmin()
       .from('payments')
       .select('*')
       .eq('checkout_request_id', checkoutRequestID)

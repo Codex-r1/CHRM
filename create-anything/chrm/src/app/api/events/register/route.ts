@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if event exists and has capacity
-    const { data: event, error: eventError } = await supabaseAdmin
+    const { data: event, error: eventError } = await supabaseAdmin()
       .from('events')
       .select('*')
       .eq('id', event_id)
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user already registered
     if (user_id) {
-      const { data: existingRegistration } = await supabaseAdmin
+      const { data: existingRegistration } = await supabaseAdmin()
         .from('event_registrations')
         .select('id')
         .eq('event_id', event_id)
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create registration
-    const { data: registration, error: regError } = await supabaseAdmin
+    const { data: registration, error: regError } = await supabaseAdmin()
       .from('event_registrations')
       .insert({
         user_id: user_id || null,
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Increment event attendees count
-    await supabaseAdmin
+    await supabaseAdmin()
       .from('events')
       .update({
         current_attendees: event.current_attendees + 1
