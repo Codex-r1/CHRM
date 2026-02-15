@@ -37,8 +37,8 @@ export async function GET(
   }
 }
 
-// PUT update product
-export async function PUT(
+// PATCH update product (partial updates)
+export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
@@ -57,22 +57,21 @@ export async function PUT(
       images
     } = body;
 
-    // Update product
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
+    // Update product - only update fields that are provided
+    const updateData: any = { updated_at: new Date().toISOString() };
+    if (name !== undefined) {
+      updateData.name = name;
+      // Generate new slug if name changed
+      updateData.slug = name.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+    }
     if (description !== undefined) updateData.description = description;
     if (base_price !== undefined) updateData.base_price = parseFloat(base_price);
     if (category !== undefined) updateData.category = category;
     if (is_active !== undefined) updateData.is_active = is_active;
     if (is_out_of_stock !== undefined) updateData.is_out_of_stock = is_out_of_stock;
     if (featured_image_url !== undefined) updateData.featured_image_url = featured_image_url;
-
-    // Generate new slug if name changed
-    if (name) {
-      updateData.slug = name.toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-    }
 
     const { error: updateError } = await supabaseAdmin()
       .from('products')
@@ -89,7 +88,7 @@ export async function PUT(
 
     // Update variants if provided
     if (variants && Array.isArray(variants)) {
-      // First, delete existing variants
+      // Delete existing variants
       await supabaseAdmin()
         .from('product_variants')
         .delete()
@@ -98,7 +97,14 @@ export async function PUT(
       // Insert new variants
       if (variants.length > 0) {
         const variantsWithProductId = variants.map((variant: any) => ({
-          ...variant,
+          color_name: variant.color_name,
+          color_hex: variant.color_hex,
+          size: variant.size,
+          sku: variant.sku,
+          price_adjustment: parseFloat(variant.price_adjustment) || 0,
+          stock_quantity: parseInt(variant.stock_quantity) || 0,
+          is_available: variant.is_available !== undefined ? variant.is_available : true,
+          image_url: variant.image_url || null,
           product_id: id
         }));
 
@@ -125,7 +131,7 @@ export async function PUT(
         const imagesWithProductId = images.map((image: any, index: number) => ({
           ...image,
           product_id: id,
-          sort_order: image.sort_order || index
+          sort_order: image.sort_order !== undefined ? image.sort_order : index
         }));
 
         const { error: imagesError } = await supabaseAdmin()
@@ -162,6 +168,15 @@ export async function PUT(
   }
 }
 
+// PUT update product (full replacement)
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  // Use same logic as PATCH for now
+  return PATCH(request, { params });
+}
+
 // DELETE product
 export async function DELETE(
   request: NextRequest,
@@ -173,7 +188,10 @@ export async function DELETE(
     // Soft delete by setting is_active to false
     const { error } = await supabaseAdmin()
       .from('products')
-      .update({ is_active: false })
+      .update({ 
+        is_active: false,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', id);
 
     if (error) {

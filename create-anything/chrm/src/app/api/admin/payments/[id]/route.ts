@@ -84,10 +84,19 @@ export async function PATCH(
       );
     }
 
+    // Check if user_id exists
+    if (!payment.user_id) {
+      return NextResponse.json(
+        { error: 'Payment has no associated user' },
+        { status: 400 }
+      );
+    }
+
     // Prepare update data
     const updateData: any = {
       status,
     };
+    
     if (status === 'confirmed' && payment.status !== 'confirmed') {
       updateData.confirmed_at = new Date().toISOString();
       updateData.paid_at = updateData.paid_at || new Date().toISOString();
@@ -108,6 +117,47 @@ export async function PATCH(
         { error: `Failed to update payment status: ${updateError.message}` },
         { status: 500 }
       );
+    }
+
+    // If this is a membership payment and it's confirmed, create/update membership
+    if (status === 'confirmed' && payment.payment_type === 'membership') {
+      // Check if membership already exists
+      const { data: existingMembership } = await supabase
+        .from('memberships')
+        .select('*')
+        .eq('user_id', payment.user_id)
+        .single();
+
+      if (existingMembership) {
+        // Update existing membership
+        await supabase
+          .from('memberships')
+          .update({
+            is_active: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', payment.user_id);
+      } else {
+        // Create new membership
+        const startDate = new Date();
+        const expiryDate = new Date();
+        expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+
+        await supabase
+          .from('memberships')
+          .insert({
+            user_id: payment.user_id,
+            start_date: startDate.toISOString(),
+            expiry_date: expiryDate.toISOString(),
+            is_active: true
+          });
+      }
+
+      // Update profile status
+      await supabase
+        .from('profiles')
+        .update({ status: 'active' })
+        .eq('id', payment.user_id);
     }
 
     // Log admin action

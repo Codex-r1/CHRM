@@ -1,7 +1,6 @@
-//app/events/register[eventId]/page.tsx
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, FormEvent, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Header from "../../../components/Header";
 import Footer from "../../../components/Footer";
@@ -14,7 +13,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 import { useAuth } from "../../../context/auth";
-import { useRef } from "react";
+
 // Animation Variants
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
@@ -39,16 +38,6 @@ const scaleIn: Variants = {
     },
   },
 };
-const [alertModal, setAlertModal] = useState<AlertModal>({
-  show: false,
-  type: 'error',
-  title: '',
-  message: '',
-  confirmText: 'OK',
-  cancelText: 'Cancel'
-});
-
-const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 type AlertModal = {
   show: boolean;
@@ -60,6 +49,7 @@ type AlertModal = {
   onCancel?: () => void;
   cancelText?: string;
 };
+
 type EventType = {
   id: string;
   name: string;
@@ -84,6 +74,18 @@ export default function EventRegistrationPage() {
   
   const { user: authUser, loading: authLoading } = useAuth();
   
+  // ALL HOOKS MUST BE HERE - INSIDE THE COMPONENT
+  const [alertModal, setAlertModal] = useState<AlertModal>({
+    show: false,
+    type: 'error',
+    title: '',
+    message: '',
+    confirmText: 'OK',
+    cancelText: 'Cancel'
+  });
+
+  const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const [event, setEvent] = useState<EventType | null>(null);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
@@ -105,6 +107,15 @@ export default function EventRegistrationPage() {
       if (pollingInterval) clearInterval(pollingInterval);
     };
   }, [pollingInterval]);
+
+  // Clean up alert timeout
+  useEffect(() => {
+    return () => {
+      if (alertTimeoutRef.current) {
+        clearTimeout(alertTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Fetch event data
   useEffect(() => {
@@ -164,13 +175,7 @@ export default function EventRegistrationPage() {
       }));
     }
   }, [authUser, authLoading]);
-useEffect(() => {
-  return () => {
-    if (alertTimeoutRef.current) {
-      clearTimeout(alertTimeoutRef.current);
-    }
-  };
-}, []);
+
   const calculateMemberPrice = () => {
     if (!event) return 0;
     return event.price - (event.price * event.member_discount) / 100;
@@ -180,184 +185,211 @@ useEffect(() => {
     const phoneRegex = /^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$/;
     return phoneRegex.test(phone.replace(/\s/g, ''));
   };
-// Show alert modal
-const showAlert = (
-  type: 'error' | 'success' | 'info' | 'warning',
-  title: string,
-  message: string,
-  options?: {
-    onConfirm?: () => void;
-    confirmText?: string;
-    onCancel?: () => void;
-    cancelText?: string;
-    autoClose?: number;
-  }
-) => {
-  if (alertTimeoutRef.current) {
-    clearTimeout(alertTimeoutRef.current);
-    alertTimeoutRef.current = null;
-  }
 
-  setAlertModal({
-    show: true,
-    type,
-    title,
-    message,
-    onConfirm: options?.onConfirm,
-    confirmText: options?.confirmText || 'OK',
-    onCancel: options?.onCancel,
-    cancelText: options?.cancelText || 'Cancel'
-  });
+  // Show alert modal
+  const showAlert = (
+    type: 'error' | 'success' | 'info' | 'warning',
+    title: string,
+    message: string,
+    options?: {
+      onConfirm?: () => void;
+      confirmText?: string;
+      onCancel?: () => void;
+      cancelText?: string;
+      autoClose?: number;
+    }
+  ) => {
+    if (alertTimeoutRef.current) {
+      clearTimeout(alertTimeoutRef.current);
+      alertTimeoutRef.current = null;
+    }
 
-  if (options?.autoClose) {
-    alertTimeoutRef.current = setTimeout(() => {
-      hideAlert();
-    }, options.autoClose);
-  }
-};
+    setAlertModal({
+      show: true,
+      type,
+      title,
+      message,
+      onConfirm: options?.onConfirm,
+      confirmText: options?.confirmText || 'OK',
+      onCancel: options?.onCancel,
+      cancelText: options?.cancelText || 'Cancel'
+    });
 
-// Hide alert modal
-const hideAlert = () => {
-  if (alertTimeoutRef.current) {
-    clearTimeout(alertTimeoutRef.current);
-    alertTimeoutRef.current = null;
-  }
-  setAlertModal(prev => ({ ...prev, show: false }));
-};
+    if (options?.autoClose) {
+      alertTimeoutRef.current = setTimeout(() => {
+        hideAlert();
+      }, options.autoClose);
+    }
+  };
+
+  // Hide alert modal
+  const hideAlert = () => {
+    if (alertTimeoutRef.current) {
+      clearTimeout(alertTimeoutRef.current);
+      alertTimeoutRef.current = null;
+    }
+    setAlertModal(prev => ({ ...prev, show: false }));
+  };
+
   const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError("");
+  e.preventDefault();
+  setError("");
 
-    if (!event) {
-      setError("Event information is still loading. Please wait.");
+  if (!event) {
+    setError("Event information is still loading. Please wait.");
+    return;
+  }
+
+  try {
+    setStkStatus('initiating');
+    
+    if (!formData.full_name || !formData.email || !formData.phone) {
+      showAlert('error', 'Missing Information', 'Please fill in all required fields');
       return;
     }
 
-    try {
-      setStkStatus('initiating');
-if (!formData.full_name || !formData.email || !formData.phone) {
-  setError("Please fill in all required fields");
-  return;
-}
-
-// With:
-if (!formData.full_name || !formData.email || !formData.phone) {
-  showAlert('error', 'Missing Information', 'Please fill in all required fields');
-  return;
-}
-
-// Also replace:
-if (!validatePhoneNumber(formData.phone)) {
-  setError("Please enter a valid Kenyan phone number (e.g., 0712345678)");
-  return;
-}
-
-// With:
-if (!validatePhoneNumber(formData.phone)) {
-  showAlert('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
-  return;
-}
-      // SIMPLIFIED: Logged in = member, Not logged in = guest (full price)
-      const isMember = !!authUser;
-      const amount = isMember ? calculateMemberPrice() : event.price;
-      
-      const userId = authUser?.id || null;
-      const userEmail = authUser?.email || formData.email;
-      const userName = authUser?.user_metadata?.full_name || formData.full_name;
-      
-      console.log('💳 Payment Info:', {
-        isMember,
-        isLoggedIn: !!authUser,
-        regularPrice: event.price,
-        discount: event.member_discount,
-        finalAmount: amount
-      });
-      
-      // Initiate STK Push
-      const response = await fetch('/api/payments/stk-push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: formData.phone,
-          amount: amount,
-          paymentType: 'event',
-          userId: userId,
-          userEmail: userEmail,
-          userName: userName,
-          description: `Event Registration - ${event.name}`,
-          metadata: {
-            event_id: eventId,
-            event_name: event.name,
-            attendee_name: formData.full_name,
-            attendee_email: formData.email,
-            attendee_phone: formData.phone,
-            membership_number: authUser?.user_metadata?.membership_number || null,
-            is_member: isMember,
-            registration_type: isMember ? "member" : "guest"
-          }
-        })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to initiate payment');
-      }
-
-      if (data.success && data.data.checkoutRequestID) {
-        setCheckoutRequestID(data.data.checkoutRequestID);
-        setPaymentId(data.data.paymentId);
-        setStkStatus('pending');
-        setStep(2);
-        
-        // Start polling
-        startPaymentPolling(data.data.checkoutRequestID);
-      } else {
-        throw new Error(data.message || 'Payment initiation failed');
-      }
-
-    } catch (err: any) {
-      console.error('Registration error:', err);
-      setStkStatus('failed');
-      setError(err.message || 'Failed to register for event');
+    if (!validatePhoneNumber(formData.phone)) {
+      showAlert('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
+      return;
     }
-  };
+
+    // SIMPLIFIED: Logged in = member, Not logged in = guest (full price)
+    const isMember = !!authUser;
+    const amount = isMember ? calculateMemberPrice() : event.price;
+    
+    const userId = authUser?.id || null;
+    const userEmail = authUser?.email || formData.email;
+    const userName = authUser?.user_metadata?.full_name || formData.full_name;
+    
+    console.log('💳 Payment Info:', {
+      isMember,
+      isLoggedIn: !!authUser,
+      regularPrice: event.price,
+      discount: event.member_discount,
+      finalAmount: amount
+    });
+    
+    // Initiate STK Push
+    const response = await fetch('/api/payments/stk-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phoneNumber: formData.phone,
+        amount: amount,
+        paymentType: 'event',
+        userId: userId,
+        userEmail: userEmail,
+        userName: userName,
+        description: `Event Registration - ${event.name}`,
+        metadata: {
+          event_id: eventId,
+          event_name: event.name,
+          attendee_name: formData.full_name,
+          attendee_email: formData.email,
+          attendee_phone: formData.phone,
+          membership_number: authUser?.user_metadata?.membership_number || null,
+          is_member: isMember,
+          registration_type: isMember ? "member" : "guest"
+        }
+      })
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to initiate payment');
+    }
+
+    if (data.success && data.data.checkoutRequestID) {
+      setCheckoutRequestID(data.data.checkoutRequestID);
+      setPaymentId(data.data.paymentId);
+      setStkStatus('pending');
+      setStep(2);
+      
+      // Start polling
+      startPaymentPolling(data.data.checkoutRequestID);
+    } else {
+      throw new Error(data.message || 'Payment initiation failed');
+    }
+
+  } catch (err: any) {
+    console.error('Registration error:', err);
+    setStkStatus('failed');
+    setError(err.message || 'Failed to register for event');
+  }
+};
 
   // Start polling for payment status
-  const startPaymentPolling = (checkoutID: string) => {
-    const interval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/payments/status/${checkoutID}`);
-        const data = await response.json();
-        
-        if (data.status === 'confirmed') {
-  setStkStatus('success');
-  clearInterval(interval);
-  setPollingInterval(null);
-  
-  // Show success popup
-  showAlert('success', 'Registration Confirmed!', 
-    `Your payment has been confirmed! You're registered for ${event?.name}. Redirecting...`,
-    { autoClose: 3000 }
-  );
-  
-  // Auto-redirect to success after 3 seconds
-  setTimeout(() => {
-    setStep(3);
-  }, 3000);
+const startPaymentPolling = (checkoutID: string) => {
+  const interval = setInterval(async () => {
+    try {
+      const response = await fetch(`/api/payments/status/${checkoutID}`);
+      const data = await response.json();
+      
+      if (data.status === 'confirmed') {
+        // Payment confirmed - NOW create the registration
+        try {
+          const isMember = !!authUser;
           
-        } else if (data.status === 'failed' || data.status === 'cancelled') {
-          setStkStatus(data.status);
+          const registrationResponse = await fetch('/api/events/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: authUser?.id || null,
+              event_id: eventId,
+              attendee_name: formData.full_name,
+              attendee_email: formData.email,
+              attendee_phone: formData.phone,
+              membership_number: authUser?.user_metadata?.membership_number || null,
+              is_member: isMember,
+              payment_id: paymentId
+            })
+          });
+
+          if (!registrationResponse.ok) {
+            const regError = await registrationResponse.json();
+            console.error('Registration creation failed:', regError);
+            showAlert('error', 'Registration Error', 
+              'Payment confirmed but registration failed. Please contact support.');
+            return;
+          }
+
+          const registrationData = await registrationResponse.json();
+          console.log('✅ Registration created:', registrationData);
+
+          setStkStatus('success');
           clearInterval(interval);
           setPollingInterval(null);
+          
+          // Show success popup
+          showAlert('success', 'Registration Confirmed!', 
+            `Your payment has been confirmed! You're registered for ${event?.name}. Redirecting...`,
+            { autoClose: 3000 }
+          );
+          
+          // Auto-redirect to success after 3 seconds
+          setTimeout(() => {
+            setStep(3);
+          }, 3000);
+          
+        } catch (regError) {
+          console.error('Error creating registration:', regError);
+          showAlert('error', 'Registration Error', 
+            'Payment confirmed but registration failed. Please contact support.');
         }
-      } catch (err) {
-        console.error('Polling error:', err);
+        
+      } else if (data.status === 'failed' || data.status === 'cancelled') {
+        setStkStatus(data.status);
+        clearInterval(interval);
+        setPollingInterval(null);
       }
-    }, 3000);
+    } catch (err) {
+      console.error('Polling error:', err);
+    }
+  }, 3000);
 
-    setPollingInterval(interval);
-  };
+  setPollingInterval(interval);
+};
 
   // Loading state
   if (loading) {

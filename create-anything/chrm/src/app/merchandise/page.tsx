@@ -381,7 +381,17 @@ export default function MerchandisePage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
-
+const [stkStatus, setStkStatus] = useState<'idle' | 'requesting' | 'waiting' | 'success' | 'failed'>('idle');
+const [checkoutRequestId, setCheckoutRequestId] = useState<string>('');
+const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+const [paymentError, setPaymentError] = useState<string>('');
+useEffect(() => {
+  return () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+  };
+}, [pollingInterval]);
   // Update customer info when user changes
   useEffect(() => {
     if (user) {
@@ -565,89 +575,196 @@ export default function MerchandisePage() {
     console.log("User exists, proceeding to step 2");
     setStep(2);
   };
+const checkPaymentStatus = async (checkoutId: string, orderId: string) => {
+  try {
+    const response = await fetch(`/api/payments/${checkoutId}`);
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        // Payment not found yet - still pending
+        return null;
+      }
+      throw new Error('Failed to check payment status');
+    }
+    
+    const data = await response.json();
+    console.log('Payment status:', data);
 
-  const handleCompleteOrder = async () => {
-    if (!user) {
-      router.push("/login?redirect=/merchandise&checkout=true");
+    if (data.status === 'confirmed') {
+      // Payment successful
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        setPollingInterval(null);
+      }
+      setStkStatus('success');
+      setStep(4); // Show success page
+      return true;
+    } else if (data.status === 'failed') {
+      // Payment failed
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        setPollingInterval(null);
+      }
+      setStkStatus('failed');
+      setPaymentError('Payment failed. Please try again.');
+      return false;
+    }
+    
+    // Still pending, continue polling
+    return null;
+  } catch (error) {
+    console.error('Error checking payment status:', error);
+    return null;
+  }
+};
+
+// Updated handleCompleteOrder function
+const handleCompleteOrder = async () => {
+  if (!user) {
+    router.push("/login?redirect=/merchandise&checkout=true");
+    return;
+  }
+
+  setIsSubmitting(true);
+  setErrors({});
+  setStkStatus('requesting');
+
+  try {
+    // Validate phone number
+    if (!validatePhoneNumber(customerInfo.phone)) {
+      setErrors({ submit: "Please enter a valid Kenyan phone number (e.g., 0712345678)" });
+      setIsSubmitting(false);
+      setStkStatus('idle');
       return;
     }
 
-    setIsSubmitting(true);
-    setErrors({});
+    // Validate all required fields
+    if (!customerInfo.full_name.trim()) {
+      setErrors({ fullName: "Full name is required" });
+      setIsSubmitting(false);
+      setStkStatus('idle');
+      return;
+    }
 
-    try {
-      if (!validatePhoneNumber(customerInfo.phone)) {
-        setErrors({ submit: "Please enter a valid Kenyan phone number (e.g., 0712345678)" });
-        setIsSubmitting(false);
-        return;
-      }
+    if (!customerInfo.email.trim()) {
+      setErrors({ email: "Email is required" });
+      setIsSubmitting(false);
+      setStkStatus('idle');
+      return;
+    }
 
-      const userId = user.id;
-      if (!userId) {
-        throw new Error("User ID not found. Please login again.");
-      }
+    const userId = user.id;
+    if (!userId) {
+      throw new Error("User ID not found. Please login again.");
+    }
 
-      const total = calculateTotal();
+    const total = calculateTotal();
 
-      const orderResponse = await fetch('/api/orders/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
+    // Step 1: Create the order first
+    console.log('Creating order...');
+    const orderResponse = await fetch('/api/orders/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        items: cart,
+        total: total,
+        customer_name: customerInfo.full_name,
+        customer_phone: customerInfo.phone,
+        customer_email: customerInfo.email,
+        shipping_address: "To be provided after payment",
+        status: 'pending'
+      })
+    });
+
+    const orderData = await orderResponse.json();
+
+    if (!orderResponse.ok) {
+      throw new Error(orderData.error || 'Failed to create order');
+    }
+
+    console.log('Order created:', orderData.order?.id);
+
+    // Step 2: Initiate STK Push
+    console.log('Initiating STK Push...');
+    const paymentResponse = await fetch('/api/payments/stkpush', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phoneNumber: customerInfo.phone,
+        amount: total,
+        paymentType: 'merchandise',
+        userId: userId,
+        userEmail: customerInfo.email,
+        userName: customerInfo.full_name,
+        description: `Merchandise Order - ${cart.length} items`,
+        metadata: {
+          order_id: orderData.order?.id,
           items: cart,
           total: total,
           customer_name: customerInfo.full_name,
-          customer_phone: customerInfo.phone,
           customer_email: customerInfo.email,
-          shipping_address: "To be provided after payment",
-          status: 'pending'
-        })
-      });
+          customer_phone: customerInfo.phone
+        }
+      })
+    });
 
-      const orderData = await orderResponse.json();
+    const paymentData = await paymentResponse.json();
 
-      if (!orderResponse.ok) {
-        throw new Error(orderData.error || 'Failed to create order');
-      }
-
-      const paymentResponse = await fetch('/api/payments/stk-push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: customerInfo.phone,
-          amount: total,
-          paymentType: 'merchandise',
-          userId: userId,
-          userEmail: customerInfo.email,
-          userName: customerInfo.full_name,
-          description: `Merchandise Order - ${cart.length} items`,
-          metadata: {
-            order_id: orderData.order?.id,
-            items: cart,
-            total: total,
-            customer_name: customerInfo.full_name,
-            customer_email: customerInfo.email,
-            customer_phone: customerInfo.phone
-          }
-        })
-      });
-
-      const paymentData = await paymentResponse.json();
-
-      if (!paymentResponse.ok) {
-        throw new Error(paymentData.error || 'Payment initiation failed');
-      }
-
-      setStep(4);
-    } catch (error) {
-      console.error("Error creating order:", error);
-      setErrors({
-        submit: error instanceof Error ? error.message : "Failed to create order. Please try again."
-      });
-    } finally {
-      setIsSubmitting(false);
+    if (!paymentResponse.ok) {
+      throw new Error(paymentData.error || 'Payment initiation failed');
     }
-  };
+
+    console.log('STK Push initiated:', paymentData);
+
+    // Step 3: Start polling for payment status
+    if (paymentData.checkoutRequestId) {
+      setCheckoutRequestId(paymentData.checkoutRequestId);
+      setStkStatus('waiting');
+      
+      // Start polling every 3 seconds
+      let pollCount = 0;
+      const maxPolls = 40; // Poll for up to 2 minutes (40 * 3 seconds)
+      
+      const interval = setInterval(async () => {
+        pollCount++;
+        console.log(`Polling attempt ${pollCount}/${maxPolls}`);
+        
+        const result = await checkPaymentStatus(paymentData.checkoutRequestId, orderData.order?.id);
+        
+        if (result === true) {
+          // Payment confirmed
+          clearInterval(interval);
+          setPollingInterval(null);
+        } else if (result === false) {
+          // Payment failed
+          clearInterval(interval);
+          setPollingInterval(null);
+        } else if (pollCount >= maxPolls) {
+          // Timeout
+          clearInterval(interval);
+          setPollingInterval(null);
+          setStkStatus('failed');
+          setPaymentError('Payment verification timed out. Please check your phone for the M-PESA prompt.');
+        }
+      }, 3000);
+      
+      setPollingInterval(interval);
+    } else {
+      throw new Error('No checkout request ID received');
+    }
+
+  } catch (error) {
+    console.error("Error creating order:", error);
+    setErrors({
+      submit: error instanceof Error ? error.message : "Failed to create order. Please try again."
+    });
+    setStkStatus('failed');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+ 
 
   const resetCart = () => {
     setCart([]);
@@ -660,7 +777,74 @@ export default function MerchandisePage() {
     });
     setErrors({});
   };
+const STKPushModal = () => {
+  if (stkStatus === 'idle') return null;
 
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full p-8 text-center">
+        {stkStatus === 'requesting' && (
+          <>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Initiating Payment...</h3>
+            <p className="text-gray-600">Please wait while we process your request</p>
+          </>
+        )}
+
+        {stkStatus === 'waiting' && (
+          <>
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <ShoppingCart className="w-8 h-8 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Check Your Phone</h3>
+            <p className="text-gray-600 mb-4">
+              Enter your M-PESA PIN to complete the payment of{' '}
+              <span className="font-bold text-blue-600">KSH {calculateTotal().toLocaleString()}</span>
+            </p>
+            <p className="text-sm text-gray-500 mb-4">
+              M-PESA prompt sent to: <span className="font-semibold">{customerInfo.phone}</span>
+            </p>
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              Waiting for payment confirmation...
+            </div>
+          </>
+        )}
+
+        {stkStatus === 'failed' && (
+          <>
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Payment Failed</h3>
+            <p className="text-gray-600 mb-6">{paymentError || 'Please try again'}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setStkStatus('idle');
+                  setPaymentError('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setStkStatus('idle');
+                  setPaymentError('');
+                  handleCompleteOrder();
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -722,6 +906,7 @@ export default function MerchandisePage() {
         onBackToProducts={() => setStep(1)}
         onCompleteOrder={handleCompleteOrder}
       />
+      
     );
   }
 

@@ -509,7 +509,7 @@ export default function CombinedPaymentsPage() {
           setStkStatus('failed');
           
           showAlert('error', 'Account Creation Failed', 
-            'Payment was received but account creation failed. Please contact support with your M-PESA receipt.',
+            'Payment was received but account creation failed. Please contact the admin with your M-PESA receipt.',
             { autoClose: 6000 }
           );
           

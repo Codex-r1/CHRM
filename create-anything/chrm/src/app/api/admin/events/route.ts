@@ -48,6 +48,26 @@ async function verifyAdminAuth(request: NextRequest) {
   }
 }
 
+// Helper function to calculate event status based on date
+function calculateEventStatus(eventDate: string | null): string {
+  if (!eventDate) return 'upcoming';
+  
+  const now = new Date();
+  const event = new Date(eventDate);
+  
+  // Clear time portion for accurate date comparison
+  now.setHours(0, 0, 0, 0);
+  event.setHours(0, 0, 0, 0);
+  
+  if (event < now) {
+    return 'completed';
+  } else if (event.getTime() === now.getTime()) {
+    return 'ongoing';
+  } else {
+    return 'upcoming';
+  }
+}
+
 // POST - Create a new event
 export async function POST(request: NextRequest) {
   try {
@@ -92,6 +112,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Auto-calculate status based on event_date if not provided
+    const calculatedStatus = status || calculateEventStatus(event_date);
+
     // Prepare event data
     const eventData = {
       name,
@@ -104,7 +127,7 @@ export async function POST(request: NextRequest) {
       current_attendees: 0,
       image_url: image_url || null,
       is_active: is_active !== undefined ? is_active : true,
-      status: status || 'upcoming',
+      status: calculatedStatus,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -192,10 +215,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Auto-update event statuses based on current date
+    const updatedEvents = (events || []).map(event => {
+      const autoStatus = calculateEventStatus(event.event_date);
+      
+      // If status has changed, update in database (async, don't wait)
+      if (autoStatus !== event.status) {
+        supabase
+          .from('events')
+          .update({ status: autoStatus, updated_at: new Date().toISOString() })
+          .eq('id', event.id)
+          .then(() => console.log(`Updated event ${event.id} status to ${autoStatus}`))
+        
+        // Return updated status immediately in response
+        return { ...event, status: autoStatus };
+      }
+      
+      return event;
+    });
+
     return NextResponse.json({
       success: true,
-      events: events || [],
-      count: events?.length || 0
+      events: updatedEvents,
+      count: updatedEvents.length
     });
 
   } catch (error: any) {
