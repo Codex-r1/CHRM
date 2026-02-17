@@ -847,7 +847,7 @@ const startPaymentPolling = (checkoutID: string) => {
                     <div>
                       <p className="font-semibold text-blue-900">Guest Registration</p>
                       <p className="text-sm text-blue-700 mt-1">
-                        <Link href="/login" className="underline hover:text-blue-900">Log in</Link> or <Link href="/register" className="underline hover:text-blue-900">create an account</Link> to get {event.member_discount}% member discount.
+                        <Link href="/login" className="underline hover:text-blue-900">Log in</Link> or <Link href="/register" className="underline hover:text-blue-900">create an account</Link> to register for events.
                       </p>
                     </div>
                   </div>

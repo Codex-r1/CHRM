@@ -322,13 +322,6 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <motion.div
-                variants={fadeUp}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-[#2B4C73]/10 to-[#FF7A00]/10 px-6 py-3 rounded-full mb-6"
-              >
-                <div className="w-4 h-4 bg-[#2B4C73] rounded-full animate-pulse" />
-                <span className="text-[#2B4C73] font-semibold">Our Benefits</span>
-              </motion.div>
               
               <motion.h2
                 variants={fadeUp}

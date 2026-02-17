@@ -1,228 +1,94 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Users,
-  DollarSign,
-  ShoppingBag,
-  Calendar,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Plus,
-  Edit,
-  Heart,
-  Trash2,
-  Eye,
-  Download,
-  Search,
-  BarChart,
-  Activity,
-  UserPlus,
-  Ticket,
-  MapPin,
-  Users as UsersIcon,
-  Tag,
-  Image as ImageIcon,
-  Shield,
-  Package,
-  CreditCard,
-  ChevronRight,
-  LogOut,
-  AlertCircle,
-  AlertTriangle,
-  Info,
-  X,
-  Loader2,
+  Users, DollarSign, ShoppingBag, Calendar, CheckCircle, XCircle, Clock,
+  Plus, Edit, Heart, Trash2, Eye, Download, Search, BarChart, Activity,
+  UserPlus, Ticket, MapPin, Users as UsersIcon, Tag, Image as ImageIcon,
+  Shield, Package, CreditCard, ChevronRight, LogOut, AlertCircle,
+  AlertTriangle, Info, X, Loader2, Upload,
 } from "lucide-react";
 import { useAuth } from "../../context/auth";
 import Footer from "@/app/components/Footer";
 import { supabase } from "@/app/lib/supabase/client";
 
-// Type definitions (keep as is)
+// ─── Type definitions ────────────────────────────────────────────────────────
 type User = {
-  id: string;
-  full_name: string;
-  email: string;
-  membership_number?: string;
-  status: string;
-  role: string;
-  phone_number?: string;
-  graduation_year?: number;
-  course?: string;
-  county?: string;
-  created_at: string;
-  memberships?: {
-    start_date: string;
-    expiry_date: string;
-    is_active: boolean;
-  }[];
+  id: string; full_name: string; email: string; membership_number?: string;
+  status: string; role: string; phone_number?: string; graduation_year?: number;
+  course?: string; county?: string; created_at: string;
+  memberships?: { start_date: string; expiry_date: string; is_active: boolean }[];
 };
-
 type Payment = {
-  id: string;
-  user_id: string;
-  payment_type: string;
-  amount: number;
+  id: string; user_id: string; payment_type: string; amount: number;
   status: 'pending' | 'processing' | 'confirmed' | 'failed';
-  checkout_request_id?: string;
-  account_reference?: string;
-  phone_number?: string;
-  description?: string;
-  created_at: string;
-  updated_at: string;
-  profiles?: {
-    full_name: string;
-    email: string;
-    membership_number: string;
-  };
+  checkout_request_id?: string; account_reference?: string; phone_number?: string;
+  description?: string; created_at: string; updated_at: string;
+  profiles?: { full_name: string; email: string; membership_number: string };
 };
-
 type Order = {
-  id: string;
-  user_id: string;
-  items: any[];
-  total: number;
+  id: string; user_id: string; items: any[]; total: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
-  customer_name?: string;
-  customer_phone?: string;
-  customer_email?: string;
-  shipping_address?: string;
-  created_at: string;
-  profiles?: {
-    full_name: string;
-    email: string;
-  };
+  customer_name?: string; customer_phone?: string; customer_email?: string;
+  shipping_address?: string; created_at: string;
+  profiles?: { full_name: string; email: string };
 };
-
 type Event = {
-  id: string;
-  name: string;
-  description: string;
-  event_date?: string;
-  location?: string;
-  price: number;
-  member_discount: number;
-  max_attendees?: number;
-  current_attendees: number;
-  is_active: boolean;
-  created_at: string;
-  image_url?: string;
-  status: string;
+  id: string; name: string; description: string; event_date?: string;
+  location?: string; price: number; member_discount: number;
+  max_attendees?: number; current_attendees: number; is_active: boolean;
+  created_at: string; image_url?: string; status: string;
 };
-
 type Stats = {
-  totalMembers: number;
-  activeMembers: number;
-  pendingPayments: number;
-  totalRevenue: number;
-  pendingOrders: number;
-  totalEvents: number;
-  upcomingEvents: number;
-  monthlyRevenue: number;
+  totalMembers: number; activeMembers: number; pendingPayments: number;
+  totalRevenue: number; pendingOrders: number; totalEvents: number;
+  upcomingEvents: number; monthlyRevenue: number;
 };
-
 type Product = {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  base_price: number;
-  category: 'tshirt' | 'polo' | 'hoodie' | 'accessory' | 'other';
-  is_active: boolean;
-  is_out_of_stock: boolean;
-  featured_image_url?: string;
-  sort_order: number;
-  created_at: string;
-  product_variants?: ProductVariant[];
-  product_images?: ProductImage[];
+  id: string; name: string; slug: string; description: string;
+  base_price: number; category: 'tshirt' | 'polo' | 'hoodie' | 'accessory' | 'other';
+  is_active: boolean; is_out_of_stock: boolean; featured_image_url?: string;
+  sort_order: number; created_at: string;
+  product_variants?: ProductVariant[]; product_images?: ProductImage[];
 };
-
 type ProductVariant = {
-  id: string;
-  product_id: string;
-  color_name: string;
-  color_hex: string;
-  size: string;
-  sku: string;
-  price_adjustment: number;
-  stock_quantity: number;
-  is_available: boolean;
-  image_url?: string;
+  id: string; product_id: string; color_name: string; color_hex: string;
+  size: string; sku: string; price_adjustment: number; stock_quantity: number;
+  is_available: boolean; image_url?: string;
 };
-
 type ProductImage = {
-  id: string;
-  product_id: string;
-  image_url: string;
-  is_primary: boolean;
-  sort_order: number;
+  id: string; product_id: string; image_url: string; is_primary: boolean; sort_order: number;
 };
-
 type CSREvent = {
   id: string;
   event_type: 'tree_planting' | 'community_service' | 'charity_drive' | 'educational' | 'health_campaign' | 'other';
-  title: string;
-  description: string;
-  event_date: string;
-  location: string;
-  main_image_url?: string;
-  is_published: boolean;
-  created_at: string;
-  updated_at: string;
+  title: string; description: string; event_date: string; location: string;
+  main_image_url?: string; is_published: boolean; created_at: string; updated_at: string;
   photos?: CSREventPhoto[];
 };
-
 type CSREventPhoto = {
-  id: string;
-  csr_event_id: string;
-  image_url: string;
-  caption?: string;
-  display_order: number;
-  created_at: string;
+  id: string; csr_event_id: string; image_url: string; caption?: string;
+  display_order: number; created_at: string;
 };
 
-// CHRMAA Colors
-const COLORS = {
-  darkBlue: "#2B4C73",
-  gold: "#FF7A00",
-  maroon: "#E53E3E",
-  lightBlue: "#E8F4FD",
-  lightGold: "#FFF4E6",
-  lightMaroon: "#FFF0F0",
-  white: "#FFFFFF",
-  offWhite: "#F7F9FC",
-  darkText: "#0B0F1A",
-  lightText: "#6D7A8B",
-  borderLight: "#E7ECF3",
-};
-
-// Modal Component (keep as is)
-const Modal = ({ 
-  isOpen, 
-  onClose, 
-  title, 
-  children, 
-  type = 'info',
-  size = 'md'
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  title: string; 
-  children: React.ReactNode;
-  type?: 'success' | 'error' | 'warning' | 'info' | 'confirm';
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+// ─── Modal Components ─────────────────────────────────────────────────────────
+const Modal = ({
+  isOpen, onClose, title, children, type = 'info', size = 'md'
+}: {
+  isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode;
+  type?: 'success' | 'error' | 'warning' | 'info' | 'confirm'; size?: 'sm' | 'md' | 'lg' | 'xl';
 }) => {
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl'
-  };
-
+  const sizeClasses = { sm: 'max-w-md', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
   const typeIcons = {
     success: <CheckCircle className="text-white" size={24} />,
     error: <XCircle className="text-white" size={24} />,
@@ -230,7 +96,6 @@ const Modal = ({
     info: <Info className="text-white" size={24} />,
     confirm: <AlertCircle className="text-white" size={24} />
   };
-
   const typeColors = {
     success: 'bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F]',
     error: 'bg-gradient-to-r from-[#E53E3E] to-[#C53030]',
@@ -240,85 +105,48 @@ const Modal = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className={`bg-white rounded-xl w-full ${sizeClasses[size]} animate-in fade-in zoom-in-95 duration-200`}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className={`bg-white rounded-xl w-full ${sizeClasses[size]} shadow-2xl`}
+           onClick={e => e.stopPropagation()}>
         <div className={`p-4 rounded-t-xl ${typeColors[type]} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-lg">
-              {typeIcons[type]}
-            </div>
+            <div className="p-2 bg-white/20 rounded-lg">{typeIcons[type]}</div>
             <h3 className="text-lg font-bold text-white font-poppins">{title}</h3>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-white/20 rounded-lg transition"
-          >
+          <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-lg transition">
             <X className="text-white" size={20} />
           </button>
         </div>
-        <div className="p-6">
-          {children}
-        </div>
+        <div className="p-6">{children}</div>
       </div>
     </div>
   );
 };
 
-// Confirmation Modal Component (keep as is)
 const ConfirmationModal = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  title,
-  message,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
-  type = 'confirm'
+  isOpen, onClose, onConfirm, title, message,
+  confirmText = "Confirm", cancelText = "Cancel", type = 'confirm'
 }: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
+  isOpen: boolean; onClose: () => void; onConfirm: () => Promise<void>;
+  title: string; message: string; confirmText?: string; cancelText?: string;
   type?: 'success' | 'error' | 'warning' | 'info' | 'confirm';
 }) => {
   const [loading, setLoading] = useState(false);
-
   const handleConfirm = async () => {
     setLoading(true);
-    try {
-      await onConfirm();
-    } finally {
-      setLoading(false);
-      onClose();
-    }
+    try { await onConfirm(); } finally { setLoading(false); onClose(); }
   };
-
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={title}
-      type={type}
-      size="sm"
-    >
+    <Modal isOpen={isOpen} onClose={onClose} title={title} type={type} size="sm">
       <div className="space-y-4">
         <p className="text-[#6D7A8B]">{message}</p>
         <div className="flex gap-3 justify-end pt-4">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="px-4 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3] transition disabled:opacity-50"
-          >
+          <button onClick={onClose} disabled={loading}
+            className="px-4 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3] transition disabled:opacity-50">
             {cancelText}
           </button>
-          <button
-            onClick={handleConfirm}
-            disabled={loading}
-            className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#C53030] text-white rounded-lg hover:opacity-90 transition flex items-center gap-2 disabled:opacity-50"
-          >
+          <button onClick={handleConfirm} disabled={loading}
+            className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#C53030] text-white rounded-lg hover:opacity-90 transition flex items-center gap-2 disabled:opacity-50">
             {loading && <Loader2 className="animate-spin" size={16} />}
             {confirmText}
           </button>
@@ -328,61 +156,70 @@ const ConfirmationModal = ({
   );
 };
 
-// Status Modal Component (keep as is)
 const StatusModal = ({
-  isOpen,
-  onClose,
-  type,
-  title,
-  message
+  isOpen, onClose, type, title, message
 }: {
-  isOpen: boolean;
-  onClose: () => void;
-  type: 'success' | 'error' | 'warning' | 'info';
-  title: string;
-  message: string;
-}) => {
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={title}
-      type={type}
-      size="sm"
-    >
-      <div className="space-y-4">
-        <div className="flex items-center justify-center">
-          <div className={`p-4 rounded-full ${
-            type === 'success' ? 'bg-[#E8F4FD]' :
-            type === 'error' ? 'bg-[#FFF0F0]' :
-            type === 'warning' ? 'bg-[#FFF4E6]' :
-            'bg-[#E8F4FD]'
-          }`}>
-            {type === 'success' && <CheckCircle className="text-[#2B4C73]" size={48} />}
-            {type === 'error' && <XCircle className="text-[#E53E3E]" size={48} />}
-            {type === 'warning' && <AlertTriangle className="text-[#FF7A00]" size={48} />}
-            {type === 'info' && <Info className="text-[#2B4C73]" size={48} />}
-          </div>
-        </div>
-        <p className="text-center text-[#6D7A8B]">{message}</p>
-        <div className="flex justify-center pt-4">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 transition"
-          >
-            Continue
-          </button>
+  isOpen: boolean; onClose: () => void;
+  type: 'success' | 'error' | 'warning' | 'info'; title: string; message: string;
+}) => (
+  <Modal isOpen={isOpen} onClose={onClose} title={title} type={type} size="sm">
+    <div className="space-y-4">
+      <div className="flex items-center justify-center">
+        <div className={`p-4 rounded-full ${
+          type === 'success' ? 'bg-[#E8F4FD]' : type === 'error' ? 'bg-[#FFF0F0]' :
+          type === 'warning' ? 'bg-[#FFF4E6]' : 'bg-[#E8F4FD]'}`}>
+          {type === 'success' && <CheckCircle className="text-[#2B4C73]" size={48} />}
+          {type === 'error' && <XCircle className="text-[#E53E3E]" size={48} />}
+          {type === 'warning' && <AlertTriangle className="text-[#FF7A00]" size={48} />}
+          {type === 'info' && <Info className="text-[#2B4C73]" size={48} />}
         </div>
       </div>
-    </Modal>
-  );
-};
+      <p className="text-center text-[#6D7A8B]">{message}</p>
+      <div className="flex justify-center pt-4">
+        <button onClick={onClose}
+          className="px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 transition">
+          Continue
+        </button>
+      </div>
+    </div>
+  </Modal>
+);
 
+// ─── Image Upload Component ───────────────────────────────────────────────────
+const ImageUploadField = ({
+  label, preview, onFileChange, onClear, accept = "image/*"
+}: {
+  label: string; preview: string; onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onClear: () => void; accept?: string;
+}) => (
+  <div>
+    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">{label}</label>
+    {preview ? (
+      <div className="relative w-full h-40 rounded-lg overflow-hidden border border-[#E7ECF3] mb-2">
+        <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+        <button type="button" onClick={onClear}
+          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md">
+          <X size={14} />
+        </button>
+      </div>
+    ) : (
+      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#E7ECF3] rounded-lg cursor-pointer hover:border-[#FF7A00] hover:bg-[#FFF4E6] transition mb-2">
+        <Upload className="text-[#6D7A8B] mb-2" size={24} />
+        <span className="text-sm text-[#6D7A8B]">Click to upload image</span>
+        <span className="text-xs text-[#6D7A8B] mt-1">PNG, JPG, WEBP up to 10MB</span>
+        <input type="file" accept={accept} onChange={onFileChange} className="hidden" />
+      </label>
+    )}
+  </div>
+);
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading: authLoading, logout } = useAuth();
-  
-  // State declarations
+  const fetchedRef = useRef(false);
+
+  // Core state
   const [products, setProducts] = useState<Product[]>([]);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -393,14 +230,8 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [stats, setStats] = useState<Stats>({
-    totalMembers: 0,
-    activeMembers: 0,
-    pendingPayments: 0,
-    totalRevenue: 0,
-    pendingOrders: 0,
-    totalEvents: 0,
-    upcomingEvents: 0,
-    monthlyRevenue: 0,
+    totalMembers: 0, activeMembers: 0, pendingPayments: 0, totalRevenue: 0,
+    pendingOrders: 0, totalEvents: 0, upcomingEvents: 0, monthlyRevenue: 0,
   });
   const [dataLoading, setDataLoading] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
@@ -408,1108 +239,590 @@ export default function AdminDashboard() {
   const [paymentSearch, setPaymentSearch] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
-  
-  // Modal states
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+
+  // Modal state
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState<(() => Promise<void>) | null>(null);
   const [modalTitle, setModalTitle] = useState("");
   const [modalMessage, setModalMessage] = useState("");
-  
-  // File upload states
-  const [uploadingFiles, setUploadingFiles] = useState(false);
-  
-  // CSR Event states
+
+  // CSR state
   const [csrEvents, setCSREvents] = useState<CSREvent[]>([]);
   const [showCSREventForm, setShowCSREventForm] = useState(false);
   const [editingCSREvent, setEditingCSREvent] = useState<CSREvent | null>(null);
   const [showPhotoUploadModal, setShowPhotoUploadModal] = useState(false);
   const [selectedCSREventId, setSelectedCSREventId] = useState<string | null>(null);
-  
-  // CSR Event Form State
+  const [csrLoading, setCsrLoading] = useState(false);
+
+  // CSR form state
   const [newCSREvent, setNewCSREvent] = useState({
     event_type: 'tree_planting' as CSREvent['event_type'],
-    title: '',
-    description: '',
-    event_date: '',
-    location: '',
-    main_image_url: '',
-    is_published: true
+    title: '', description: '', event_date: '', location: '',
+    main_image_url: '', is_published: true
   });
-  
-  // CSR Photo upload states
   const [csrMainImage, setCsrMainImage] = useState<File | null>(null);
   const [csrMainImagePreview, setCsrMainImagePreview] = useState<string>('');
   const [csrPhotoFiles, setCsrPhotoFiles] = useState<File[]>([]);
   const [csrPhotoPreviews, setCsrPhotoPreviews] = useState<string[]>([]);
-  
-  // Event Form State
+
+  // Event form state
   const [newEvent, setNewEvent] = useState({
-    name: '',
-    description: '',
-    event_date: '',
-    location: '',
-    price: '',
-    member_discount: '5',
-    max_attendees: '',
-    image_url: '',
-    is_active: true,
-    status: 'upcoming'
+    name: '', description: '', event_date: '', location: '', price: '',
+    member_discount: '5', max_attendees: '', image_url: '', is_active: true, status: 'upcoming'
   });
+  const [eventImageFile, setEventImageFile] = useState<File | null>(null);
+  const [eventImagePreview, setEventImagePreview] = useState<string>('');
   const [creatingEvent, setCreatingEvent] = useState(false);
-  
-  // Product Form State
+
+  // Product form state
   const [newProduct, setNewProduct] = useState({
-    name: '',
-    description: '',
-    base_price: '',
+    name: '', description: '', base_price: '',
     category: 'tshirt' as 'tshirt' | 'polo' | 'hoodie' | 'accessory' | 'other',
-    featured_image_url: '',
-    is_active: true,
-    is_out_of_stock: false,
-    variants: [] as ProductVariant[],
-    images: [] as ProductImage[]
+    featured_image_url: '', is_active: true, is_out_of_stock: false,
+    variants: [] as ProductVariant[], images: [] as ProductImage[]
   });
-  
-  // Product Variant State
   const [newVariant, setNewVariant] = useState({
-    color_name: '',
-    color_hex: '#2B4C73',
-    size: '',
-    sku: '',
-    price_adjustment: '0',
-    stock_quantity: '0',
-    is_available: true,
-    image_url: ''
+    color_name: '', color_hex: '#2B4C73', size: '', sku: '',
+    price_adjustment: '0', stock_quantity: '0', is_available: true, image_url: ''
   });
-  
-  // Product image upload states
   const [productMainImage, setProductMainImage] = useState<File | null>(null);
   const [productMainImagePreview, setProductMainImagePreview] = useState<string>('');
   const [variantImageFiles, setVariantImageFiles] = useState<Map<string, File>>(new Map());
 
-  // Helper function to get session token
+  // ─── Helpers ───────────────────────────────────────────────────────────────
   const getSessionToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return session?.access_token || null;
   };
 
-  // Helper functions for modals
   const showSuccessMessage = (title: string, message: string) => {
-    setModalTitle(title);
-    setModalMessage(message);
-    setShowSuccessModal(true);
+    setModalTitle(title); setModalMessage(message); setShowSuccessModal(true);
   };
-
   const showErrorMessage = (title: string, message: string) => {
-    setModalTitle(title);
-    setModalMessage(message);
-    setShowErrorModal(true);
+    setModalTitle(title); setModalMessage(message); setShowErrorModal(true);
   };
-
   const showConfirmation = (title: string, message: string, action: () => Promise<void>) => {
-    setModalTitle(title);
-    setModalMessage(message);
-    setConfirmAction(() => action);
-    setShowConfirmModal(true);
+    setModalTitle(title); setModalMessage(message);
+    setConfirmAction(() => action); setShowConfirmModal(true);
   };
 
-  // Upload file to Supabase Storage
   const uploadFile = async (file: File, bucket: string, path: string): Promise<string> => {
-    try {
-      const token = await getSessionToken();
-      if (!token) throw new Error('No session');
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${path}/${Date.now()}.${fileExt}`;
-      const filePath = fileName;
-
-      const { error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (error) throw error;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Upload error:', error);
-      throw error;
-    }
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${path}/${Date.now()}.${fileExt}`;
+    const { error } = await supabase.storage.from(bucket).upload(fileName, file, {
+      cacheControl: '3600', upsert: false
+    });
+    if (error) throw error;
+    const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
+    return publicUrl;
   };
 
-  // Handle CSR main image selection
-  const handleCsrMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setCsrMainImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCsrMainImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  const formatCurrency = (amount: number) => `Ksh ${amount.toLocaleString()}`;
+
+  const getEventTypeLabel = (type: CSREvent['event_type']) => ({
+    tree_planting: 'Tree Planting', community_service: 'Community Service',
+    charity_drive: 'Charity Drive', educational: 'Educational',
+    health_campaign: 'Health Campaign', other: 'Other'
+  })[type] || type;
+
+  // ─── Image handlers ────────────────────────────────────────────────────────
+  const handleFileChange = (
+    file: File,
+    setFile: (f: File | null) => void,
+    setPreview: (s: string) => void
+  ) => {
+    setFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setPreview(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
-  // Handle CSR photo files selection
   const handleCsrPhotoFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     setCsrPhotoFiles(prev => [...prev, ...files]);
-    
     files.forEach(file => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setCsrPhotoPreviews(prev => [...prev, reader.result as string]);
-      };
+      reader.onloadend = () => setCsrPhotoPreviews(prev => [...prev, reader.result as string]);
       reader.readAsDataURL(file);
     });
   };
 
-  // Remove CSR photo
-  const removeCsrPhoto = (index: number) => {
-    setCsrPhotoFiles(prev => prev.filter((_, i) => i !== index));
-    setCsrPhotoPreviews(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Handle product main image selection
-  const handleProductMainImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setProductMainImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProductMainImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Handle variant image selection
-  const handleVariantImageChange = (variantId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setVariantImageFiles(prev => new Map(prev).set(variantId, file));
-    }
-  };
-
-  // Reset CSR form
-  const resetCsrForm = () => {
-    setNewCSREvent({
-      event_type: 'tree_planting',
-      title: '',
-      description: '',
-      event_date: '',
-      location: '',
-      main_image_url: '',
-      is_published: true
-    });
-    setCsrMainImage(null);
-    setCsrMainImagePreview('');
-    setCsrPhotoFiles([]);
-    setCsrPhotoPreviews([]);
-    setShowCSREventForm(false);
-    setEditingCSREvent(null);
-  };
-
-  // Reset product form
-  const resetProductForm = () => {
-    setNewProduct({
-      name: '',
-      description: '',
-      base_price: '',
-      category: 'tshirt',
-      featured_image_url: '',
-      is_active: true,
-      is_out_of_stock: false,
-      variants: [],
-      images: []
-    });
-    setProductMainImage(null);
-    setProductMainImagePreview('');
-    setVariantImageFiles(new Map());
-    setShowProductForm(false);
-    setEditingProduct(null);
-  };
-
-  const fetchData = useCallback(async () => {
-  try {
-    setDataLoading(true);
-    
-    const token = await getSessionToken();
-    
-    if (!token) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        console.error("No session available");
-        return;
+  // ─── Data fetching ─────────────────────────────────────────────────────────
+  const fetchCSREvents = useCallback(async () => {
+    try {
+      const token = await getSessionToken();
+      if (!token) return;
+      const res = await fetch('/api/admin/csr-events', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCSREvents(data.events || []);
       }
-    }
+    } catch (err) { console.error('CSR fetch error:', err); }
+  }, []);
 
-    const headers = {
-      'Authorization': `Bearer ${token || (await supabase.auth.getSession()).data.session?.access_token}`,
-      'Content-Type': 'application/json'
-    };
-
-    // Fetch all data in parallel
-    const [usersRes, paymentsRes, ordersRes, eventsRes] = await Promise.all([
-      fetch('/api/admin/users', { headers }),
-      fetch('/api/admin/payments', { headers }),
-      fetch('/api/admin/orders', { headers }),
-      fetch('/api/admin/events', { headers })
-    ]);
-
-    let fetchedUsers: User[] = [];
-    let fetchedPayments: Payment[] = [];
-    let fetchedOrders: Order[] = [];
-    let fetchedEvents: Event[] = [];
-
-    if (usersRes.ok) {
-      const data = await usersRes.json();
-      fetchedUsers = data.users || [];
-      setUsers(fetchedUsers);
-    }
-
-    if (paymentsRes.ok) {
-      const data = await paymentsRes.json();
-      fetchedPayments = data.payments || [];
-      setPayments(fetchedPayments);
-    }
-
-    if (ordersRes.ok) {
-      const data = await ordersRes.json();
-      fetchedOrders = data.orders || [];
-      setOrders(fetchedOrders);
-    }
-
-    if (eventsRes.ok) {
-      const data = await eventsRes.json();
-      fetchedEvents = data.events || [];
-      setEvents(fetchedEvents);
-    }
-
-    // Fetch products and CSR events
-    await Promise.all([
-      fetchProducts(),
-      fetchCSREvents()
-    ]);
-
-    // Calculate stats with the fetched data
-    const totalMembers = fetchedUsers.length;
-    const activeMembers = fetchedUsers.filter((u: User) => u.status === 'active').length;
-    const pendingPayments = fetchedPayments.filter((p: Payment) => p.status === 'pending').length;
-    const totalRevenue = fetchedPayments
-      .filter((p: Payment) => p.status === 'confirmed')
-      .reduce((acc: number, p: Payment) => acc + p.amount, 0);
-    const pendingOrders = fetchedOrders.filter((o: Order) => o.status === 'pending').length;
-    const totalEvents = fetchedEvents.length;
-    const upcomingEvents = fetchedEvents.filter((e: Event) => 
-      e.status === 'upcoming' && e.is_active
-    ).length;
-    const monthlyRevenue = fetchedPayments
-      .filter((p: Payment) => 
-        p.status === 'confirmed' && 
-        new Date(p.created_at).getMonth() === new Date().getMonth()
-      )
-      .reduce((acc: number, p: Payment) => acc + p.amount, 0);
-
-    setStats({
-      totalMembers,
-      activeMembers,
-      pendingPayments,
-      totalRevenue,
-      pendingOrders,
-      totalEvents,
-      upcomingEvents,
-      monthlyRevenue
-    });
-
-  } catch (error) {
-    console.error("Failed to fetch data:", error);
-    showErrorMessage("Data Fetch Error", "Failed to load dashboard data. Please try again.");
-  } finally {
-    setDataLoading(false);
-  }
-}, []); 
-
-  // Fetch products
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setProductLoading(true);
       const token = await getSessionToken();
       if (!token) return;
-
-      const response = await fetch('/api/admin/merchandise', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      const res = await fetch('/api/admin/merchandise', {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (res.ok) { const data = await res.json(); setProducts(data.products || []); }
+    } catch (err) { console.error('Products fetch error:', err); }
+    finally { setProductLoading(false); }
+  }, []);
 
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data.products || []);
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      showErrorMessage("Products Error", "Failed to load products. Please try again.");
-    } finally {
-      setProductLoading(false);
-    }
-  };
-
-const handleCreateProduct = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setProductLoading(true);
-  setUploadingFiles(true);
-
-  try {
-    const token = await getSessionToken();
-    if (!token) throw new Error('No session');
-
-    let mainImageUrl = newProduct.featured_image_url;
-    if (productMainImage) {
-      mainImageUrl = await uploadFile(productMainImage, 'merchandise', `products/${Date.now()}`);
-    }
-
-    const variants = await Promise.all(newProduct.variants.map(async (variant) => {
-      let variantImageUrl = variant.image_url;
-      const variantImageFile = variantImageFiles.get(variant.id);
-      if (variantImageFile) {
-        variantImageUrl = await uploadFile(
-          variantImageFile, 
-          'product-variants', 
-          `variants/${Date.now()}_${variant.id}`
-        );
-      }
-
-      return {
-        ...variant,
-        price_adjustment: parseFloat(variant.price_adjustment.toString()),
-        stock_quantity: parseInt(variant.stock_quantity.toString()),
-        image_url: variantImageUrl
-      };
-    }));
-
-    const response = await fetch('/api/admin/merchandise', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        ...newProduct,
-        base_price: parseFloat(newProduct.base_price),
-        featured_image_url: mainImageUrl,
-        variants
-      })
-    });
-
-    if (response.ok) {
-      resetProductForm();
-      showSuccessMessage("Success", "Product created successfully!");
-      await fetchProducts();
-    } else {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to create product');
-    }
-  } catch (error: any) {
-    showErrorMessage("Error", error.message || 'Failed to create product');
-  } finally {
-    setProductLoading(false);
-    setUploadingFiles(false);
-  }
-};
-
-  // Update product
-  const handleUpdateProduct = async (productId: string, updates: Partial<Product>) => {
+  const fetchData = useCallback(async () => {
     try {
+      setDataLoading(true);
       const token = await getSessionToken();
       if (!token) return;
 
-      const response = await fetch(`/api/admin/merchandise/${productId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updates)
+      const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+      const [usersRes, paymentsRes, ordersRes, eventsRes] = await Promise.all([
+        fetch('/api/admin/users', { headers }),
+        fetch('/api/admin/payments', { headers }),
+        fetch('/api/admin/orders', { headers }),
+        fetch('/api/admin/events', { headers })
+      ]);
+
+      let fetchedUsers: User[] = [];
+      let fetchedPayments: Payment[] = [];
+      let fetchedOrders: Order[] = [];
+      let fetchedEvents: Event[] = [];
+
+      if (usersRes.ok) { const d = await usersRes.json(); fetchedUsers = d.users || []; setUsers(fetchedUsers); }
+      if (paymentsRes.ok) { const d = await paymentsRes.json(); fetchedPayments = d.payments || []; setPayments(fetchedPayments); }
+      if (ordersRes.ok) { const d = await ordersRes.json(); fetchedOrders = d.orders || []; setOrders(fetchedOrders); }
+      if (eventsRes.ok) { const d = await eventsRes.json(); fetchedEvents = d.events || []; setEvents(fetchedEvents); }
+
+      await Promise.all([fetchProducts(), fetchCSREvents()]);
+
+      setStats({
+        totalMembers: fetchedUsers.length,
+        activeMembers: fetchedUsers.filter(u => u.status === 'active').length,
+        pendingPayments: fetchedPayments.filter(p => p.status === 'pending').length,
+        totalRevenue: fetchedPayments.filter(p => p.status === 'confirmed').reduce((a, p) => a + p.amount, 0),
+        pendingOrders: fetchedOrders.filter(o => o.status === 'pending').length,
+        totalEvents: fetchedEvents.length,
+        upcomingEvents: fetchedEvents.filter(e => e.status === 'upcoming' && e.is_active).length,
+        monthlyRevenue: fetchedPayments
+          .filter(p => p.status === 'confirmed' && new Date(p.created_at).getMonth() === new Date().getMonth())
+          .reduce((a, p) => a + p.amount, 0),
       });
+    } catch (err) {
+      console.error("Failed to fetch data:", err);
+      showErrorMessage("Data Fetch Error", "Failed to load dashboard data.");
+    } finally { setDataLoading(false); }
+  }, [fetchProducts, fetchCSREvents]);
 
-      if (response.ok) {
-        showSuccessMessage("Success", "Product updated successfully!");
-        fetchProducts();
-      } else {
-        throw new Error('Failed to update product');
-      }
-    } catch (error) {
-      showErrorMessage("Error", "Failed to update product");
-    }
+  // ─── Event handlers ────────────────────────────────────────────────────────
+  const resetEventForm = () => {
+    setNewEvent({ name: '', description: '', event_date: '', location: '', price: '',
+      member_discount: '5', max_attendees: '', image_url: '', is_active: true, status: 'upcoming' });
+    setEventImageFile(null);
+    setEventImagePreview('');
+    setEditingEvent(null);
+    setShowEventForm(false);
   };
 
-  // Delete product
-  const handleDeleteProduct = async (productId: string) => {
-    showConfirmation(
-      "Delete Product",
-      "Are you sure you want to deactivate this product? This action cannot be undone.",
-      async () => {
-        try {
-          const token = await getSessionToken();
-          if (!token) return;
-
-          const response = await fetch(`/api/admin/merchandise/${productId}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            }
-          });
-
-          if (response.ok) {
-            showSuccessMessage("Success", "Product deactivated successfully!");
-            fetchProducts();
-          } else {
-            throw new Error('Failed to delete product');
-          }
-        } catch (error) {
-          showErrorMessage("Error", "Failed to delete product");
-        }
-      }
-    );
-  };
-
-  // Add variant to product
-  const handleAddVariant = () => {
-    if (!newVariant.color_name || !newVariant.size || !newVariant.sku) {
-      showErrorMessage("Validation Error", "Please fill in all variant fields");
-      return;
-    }
-
-    setNewProduct({
-      ...newProduct,
-      variants: [
-        ...newProduct.variants,
-        {
-          id: Date.now().toString(),
-          product_id: '',
-          ...newVariant,
-          price_adjustment: parseFloat(newVariant.price_adjustment),
-          stock_quantity: parseInt(newVariant.stock_quantity)
-        }
-      ]
-    });
-
-    setNewVariant({
-      color_name: '',
-      color_hex: '#2B4C73',
-      size: '',
-      sku: '',
-      price_adjustment: '0',
-      stock_quantity: '0',
-      is_available: true,
-      image_url: ''
-    });
-  };
-
-  // Remove variant
-  const handleRemoveVariant = (index: number) => {
-    const updatedVariants = [...newProduct.variants];
-    updatedVariants.splice(index, 1);
-    setNewProduct({ ...newProduct, variants: updatedVariants });
-  };
-
-
-const handleCreateEvent = async (e: React.FormEvent) => {
-  e.preventDefault(); 
-  setCreatingEvent(true);
-  
-  try {
-    const token = await getSessionToken();
-    if (!token) throw new Error('No session');
-    
-    const response = await fetch('/api/admin/events', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        ...newEvent,
-        price: parseFloat(newEvent.price),
-        member_discount: parseInt(newEvent.member_discount),
-        max_attendees: newEvent.max_attendees ? parseInt(newEvent.max_attendees) : null
-      })
-    });
-    
-    if (response.ok) {
-      // Close the modal
-      setShowEventForm(false);
-      setEditingEvent(null);
-      
-      // Reset form
-      setNewEvent({
-        name: '',
-        description: '',
-        event_date: '',
-        location: '',
-        price: '',
-        member_discount: '5',
-        max_attendees: '',
-        image_url: '',
-        is_active: true,
-        status: 'upcoming'
-      });
-      
-      // Show success message
-      showSuccessMessage("Success", "Event created successfully!");
-      
-      // Refresh data
-      await fetchData();
-    } else {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to create event');
-    }
-  } catch (error: any) {
-    showErrorMessage("Error", error.message || 'Failed to create event');
-  } finally {
-    setCreatingEvent(false);
-  }
-};
-
-const handleEditEvent = async (e: React.FormEvent) => {
-  e.preventDefault(); 
-  if (!editingEvent) return;
-  
-  setCreatingEvent(true);
-  
-  try {
-    const token = await getSessionToken();
-    if (!token) throw new Error('No session');
-    
-    const response = await fetch(`/api/admin/events/${editingEvent.id}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        ...newEvent,
-        price: parseFloat(newEvent.price),
-        member_discount: parseInt(newEvent.member_discount),
-        max_attendees: newEvent.max_attendees ? parseInt(newEvent.max_attendees) : null
-      })
-    });
-    
-    if (response.ok) {
-      // Close the modal first
-      setShowEventForm(false);
-      setEditingEvent(null);
-      
-      // Reset form
-      setNewEvent({
-        name: '',
-        description: '',
-        event_date: '',
-        location: '',
-        price: '',
-        member_discount: '5',
-        max_attendees: '',
-        image_url: '',
-        is_active: true,
-        status: 'upcoming'
-      });
-      
-      // Show success message
-      showSuccessMessage("Success", "Event updated successfully!");
-      
-      // Refresh data
-      await fetchData();
-    } else {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to update event');
-    }
-  } catch (error: any) {
-    showErrorMessage("Error", error.message || 'Failed to update event');
-  } finally {
-    setCreatingEvent(false);
-  }
-};
-  // Delete event
-  const handleDeleteEvent = async (eventId: string) => {
-    showConfirmation(
-      "Delete Event",
-      "Are you sure you want to deactivate this event? This action cannot be undone.",
-      async () => {
-        try {
-          const token = await getSessionToken();
-          if (!token) return;
-          
-          const response = await fetch(`/api/admin/events/${eventId}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            }
-          });
-          
-          if (response.ok) {
-            showSuccessMessage("Success", "Event deactivated successfully!");
-            fetchData();
-          } else {
-            throw new Error('Failed to delete event');
-          }
-        } catch (error) {
-          showErrorMessage("Error", "Failed to delete event");
-        }
-      }
-    );
-  };
-
-  // Update payment status
-  const updatePaymentStatus = async (paymentId: string, status: 'confirmed' | 'failed') => {
-    showConfirmation(
-      `Mark Payment as ${status === 'confirmed' ? 'Confirmed' : 'Failed'}`,
-      `Are you sure you want to mark this payment as ${status}?`,
-      async () => {
-        try {
-          const token = await getSessionToken();
-          if (!token) return;
-
-          const response = await fetch(`/api/admin/payments/${paymentId}`, {
-            method: "PATCH",
-            headers: { 
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify({ status }),
-          });
-
-          if (response.ok) {
-            fetchData();
-            showSuccessMessage("Success", `Payment marked as ${status}!`);
-          } else {
-            throw new Error('Failed to update payment');
-          }
-        } catch (error) {
-          showErrorMessage("Error", "Failed to update payment status");
-        }
-      }
-    );
-  };
-
-  // Update order status
-  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingEvent(true);
     try {
       const token = await getSessionToken();
-      if (!token) return;
+      if (!token) throw new Error('No session');
 
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
-        method: "PATCH",
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({ status }),
-      });
-
-      if (response.ok) {
-        fetchData();
-        showSuccessMessage("Success", `Order status updated to ${status}!`);
-      } else {
-        throw new Error('Failed to update order');
+      let imageUrl = newEvent.image_url;
+      if (eventImageFile) {
+        setUploadingFiles(true);
+        imageUrl = await uploadFile(eventImageFile, 'events', `events/${Date.now()}`);
+        setUploadingFiles(false);
       }
-    } catch (error) {
-      showErrorMessage("Error", "Failed to update order status");
-    }
-  };
 
-  // Fetch CSR events
-  const fetchCSREvents = async () => {
-    try {
-      const token = await getSessionToken();
-      if (!token) return;
-
-      const response = await fetch('/api/admin/csr-events', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCSREvents(data.events || []);
-      }
-    } catch (error) {
-      console.error('Error fetching CSR events:', error);
-      showErrorMessage("CSR Events Error", "Failed to load CSR events");
-    }
-  };
-
- // Create CSR event - FIXED VERSION
-const handleCreateCSREvent = async (e: React.FormEvent) => {
-  e.preventDefault(); // Add this
-  setDataLoading(true);
-  setUploadingFiles(true);
-
-  try {
-    const token = await getSessionToken();
-    if (!token) throw new Error('No session');
-
-    let mainImageUrl = newCSREvent.main_image_url;
-    if (csrMainImage) {
-      mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `events/${Date.now()}`);
-    }
-
-    const response = await fetch('/api/admin/csr-events', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        ...newCSREvent,
-        main_image_url: mainImageUrl
-      })
-    });
-
-    if (!response.ok) throw new Error('Failed to create CSR event');
-    
-    const event = await response.json();
-
-    if (csrPhotoFiles.length > 0) {
-      const uploadPromises = csrPhotoFiles.map(async (file, index) => {
-        const imageUrl = await uploadFile(file, 'csr-events', `events/${event.id}/photos`);
-        return {
-          image_url: imageUrl,
-          caption: `Photo ${index + 1}`,
-          display_order: index
-        };
-      });
-
-      const photos = await Promise.all(uploadPromises);
-
-      await fetch(`/api/admin/csr-events/${event.id}/photos`, {
+      const res = await fetch('/api/admin/events', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ photos })
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newEvent, image_url: imageUrl,
+          price: parseFloat(newEvent.price),
+          member_discount: parseInt(newEvent.member_discount),
+          max_attendees: newEvent.max_attendees ? parseInt(newEvent.max_attendees) : null
+        })
       });
-    }
 
-    // Close modal and reset form
-    resetCsrForm();
-    showSuccessMessage("Success", "CSR Event created successfully!");
-    await fetchCSREvents();
-  } catch (error: any) {
-    showErrorMessage("Error", error.message || 'Failed to create CSR event');
-  } finally {
-    setDataLoading(false);
-    setUploadingFiles(false);
-  }
-};
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Failed to create event'); }
+      resetEventForm();
+      showSuccessMessage("Success", "Event created successfully!");
+      // Refresh only events — no full page reload
+      const token2 = await getSessionToken();
+      const evRes = await fetch('/api/admin/events', { headers: { 'Authorization': `Bearer ${token2}` } });
+      if (evRes.ok) { const d = await evRes.json(); setEvents(d.events || []); }
+    } catch (err: any) {
+      showErrorMessage("Error", err.message || 'Failed to create event');
+    } finally { setCreatingEvent(false); setUploadingFiles(false); }
+  };
 
-// Update CSR event - FIXED VERSION
-const handleUpdateCSREvent = async (e: React.FormEvent) => {
-  e.preventDefault(); // Add this
-  if (!editingCSREvent) return;
+  const handleEditEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent) return;
+    setCreatingEvent(true);
+    try {
+      const token = await getSessionToken();
+      if (!token) throw new Error('No session');
 
-  setDataLoading(true);
-  try {
-    const token = await getSessionToken();
-    if (!token) throw new Error('No session');
+      let imageUrl = newEvent.image_url;
+      if (eventImageFile) {
+        setUploadingFiles(true);
+        imageUrl = await uploadFile(eventImageFile, 'events', `events/${Date.now()}`);
+        setUploadingFiles(false);
+      }
 
-    const response = await fetch(`/api/admin/csr-events/${editingCSREvent.id}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(newCSREvent)
+      const res = await fetch(`/api/admin/events/${editingEvent.id}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newEvent, image_url: imageUrl,
+          price: parseFloat(newEvent.price),
+          member_discount: parseInt(newEvent.member_discount),
+          max_attendees: newEvent.max_attendees ? parseInt(newEvent.max_attendees) : null
+        })
+      });
+
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Failed to update event'); }
+      // Close modal FIRST, then show success, then refresh data
+      resetEventForm();
+      showSuccessMessage("Success", "Event updated successfully!");
+      const token2 = await getSessionToken();
+      const evRes = await fetch('/api/admin/events', { headers: { 'Authorization': `Bearer ${token2}` } });
+      if (evRes.ok) { const d = await evRes.json(); setEvents(d.events || []); }
+    } catch (err: any) {
+      showErrorMessage("Error", err.message || 'Failed to update event');
+    } finally { setCreatingEvent(false); setUploadingFiles(false); }
+  };
+
+  const handleDeleteEvent = (eventId: string) => {
+    showConfirmation("Delete Event", "Are you sure you want to deactivate this event?", async () => {
+      const token = await getSessionToken();
+      if (!token) return;
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setEvents(prev => prev.filter(e => e.id !== eventId));
+        showSuccessMessage("Success", "Event deactivated successfully!");
+      } else { showErrorMessage("Error", "Failed to delete event"); }
     });
+  };
 
-    if (response.ok) {
+  // ─── CSR handlers ──────────────────────────────────────────────────────────
+  const resetCsrForm = () => {
+    setNewCSREvent({ event_type: 'tree_planting', title: '', description: '',
+      event_date: '', location: '', main_image_url: '', is_published: true });
+    setCsrMainImage(null); setCsrMainImagePreview('');
+    setCsrPhotoFiles([]); setCsrPhotoPreviews([]);
+    setShowCSREventForm(false); setEditingCSREvent(null);
+  };
+
+  const handleCreateCSREvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCsrLoading(true);
+    try {
+      const token = await getSessionToken();
+      if (!token) throw new Error('No session');
+
+      let mainImageUrl = newCSREvent.main_image_url;
+      if (csrMainImage) {
+        mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `main/${Date.now()}`);
+      }
+
+      const res = await fetch('/api/admin/csr-events', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newCSREvent, main_image_url: mainImageUrl })
+      });
+
+      if (!res.ok) throw new Error('Failed to create CSR event');
+      const event = await res.json();
+
+      if (csrPhotoFiles.length > 0) {
+        const photos = await Promise.all(csrPhotoFiles.map(async (file, i) => ({
+          image_url: await uploadFile(file, 'csr-events', `photos/${event.id}`),
+          caption: `Photo ${i + 1}`, display_order: i
+        })));
+        await fetch(`/api/admin/csr-events/${event.id}/photos`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ photos })
+        });
+      }
+
+      resetCsrForm();
+      showSuccessMessage("Success", "CSR Event created successfully!");
+      await fetchCSREvents();
+    } catch (err: any) {
+      showErrorMessage("Error", err.message || 'Failed to create CSR event');
+    } finally { setCsrLoading(false); }
+  };
+
+  const handleUpdateCSREvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCSREvent) return;
+    setCsrLoading(true);
+    try {
+      const token = await getSessionToken();
+      if (!token) throw new Error('No session');
+
+      let mainImageUrl = newCSREvent.main_image_url;
+      if (csrMainImage) {
+        mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `main/${Date.now()}`);
+      }
+
+      const res = await fetch(`/api/admin/csr-events/${editingCSREvent.id}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newCSREvent, main_image_url: mainImageUrl })
+      });
+
+      if (!res.ok) throw new Error('Failed to update CSR event');
       resetCsrForm();
       showSuccessMessage("Success", "CSR Event updated successfully!");
       await fetchCSREvents();
-    } else {
-      throw new Error('Failed to update CSR event');
-    }
-  } catch (error: any) {
-    showErrorMessage("Error", error.message || 'Failed to update CSR event');
-  } finally {
-    setDataLoading(false);
-  }
-};
-
-  // Delete CSR event
-  const handleDeleteCSREvent = async (eventId: string) => {
-    showConfirmation(
-      "Delete CSR Event",
-      "Are you sure you want to delete this CSR event? This will also delete all associated photos.",
-      async () => {
-        try {
-          const token = await getSessionToken();
-          if (!token) return;
-
-          const response = await fetch(`/api/admin/csr-events/${eventId}`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            }
-          });
-
-          if (response.ok) {
-            showSuccessMessage("Success", "CSR Event deleted successfully!");
-            fetchCSREvents();
-          } else {
-            throw new Error('Failed to delete CSR event');
-          }
-        } catch (error) {
-          showErrorMessage("Error", "Failed to delete CSR event");
-        }
-      }
-    );
+    } catch (err: any) {
+      showErrorMessage("Error", err.message || 'Failed to update CSR event');
+    } finally { setCsrLoading(false); }
   };
 
-  // Helper functions
-  const getEventTypeLabel = (type: CSREvent['event_type']) => {
-    const labels = {
-      tree_planting: 'Tree Planting',
-      community_service: 'Community Service',
-      charity_drive: 'Charity Drive',
-      educational: 'Educational',
-      health_campaign: 'Health Campaign',
-      other: 'Other'
-    };
-    return labels[type] || type;
+  const handleDeleteCSREvent = (eventId: string) => {
+    showConfirmation("Delete CSR Event", "Are you sure? This will also delete all associated photos.", async () => {
+      const token = await getSessionToken();
+      if (!token) return;
+      const res = await fetch(`/api/admin/csr-events/${eventId}`, {
+        method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setCSREvents(prev => prev.filter(e => e.id !== eventId));
+        showSuccessMessage("Success", "CSR Event deleted successfully!");
+      } else { showErrorMessage("Error", "Failed to delete CSR event"); }
+    });
   };
 
   const openCSREventEdit = (event: CSREvent) => {
     setEditingCSREvent(event);
     setNewCSREvent({
-      event_type: event.event_type,
-      title: event.title,
-      description: event.description,
-      event_date: event.event_date,
-      location: event.location,
-      main_image_url: event.main_image_url || '',
-      is_published: event.is_published
+      event_type: event.event_type, title: event.title, description: event.description,
+      event_date: event.event_date, location: event.location,
+      main_image_url: event.main_image_url || '', is_published: event.is_published
     });
+    setCsrMainImagePreview(event.main_image_url || '');
     setShowCSREventForm(true);
   };
 
-  const openPhotoUpload = (eventId: string) => {
-    setSelectedCSREventId(eventId);
-    setShowPhotoUploadModal(true);
-  };
-
-  // Upload photos to event
   const handleUploadPhotos = async () => {
     if (!selectedCSREventId || csrPhotoFiles.length === 0) {
       showErrorMessage("Validation Error", "Please add at least one photo");
       return;
     }
-
-    setDataLoading(true);
+    setCsrLoading(true);
     try {
       const token = await getSessionToken();
       if (!token) throw new Error('No session');
-
-      const uploadPromises = csrPhotoFiles.map(async (file, index) => {
-        const imageUrl = await uploadFile(file, 'csr-events', `events/${selectedCSREventId}/photos`);
-        return {
-          image_url: imageUrl,
-          caption: `Photo ${index + 1}`,
-          display_order: index
-        };
-      });
-
-      const photos = await Promise.all(uploadPromises);
-
-      const response = await fetch(`/api/admin/csr-events/${selectedCSREventId}/photos`, {
+      const photos = await Promise.all(csrPhotoFiles.map(async (file, i) => ({
+        image_url: await uploadFile(file, 'csr-events', `photos/${selectedCSREventId}`),
+        caption: `Photo ${i + 1}`, display_order: i
+      })));
+      const res = await fetch(`/api/admin/csr-events/${selectedCSREventId}/photos`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ photos })
       });
-
-      if (response.ok) {
+      if (res.ok) {
         showSuccessMessage("Success", "Photos uploaded successfully!");
-        setCsrPhotoFiles([]);
-        setCsrPhotoPreviews([]);
-        setShowPhotoUploadModal(false);
-        setSelectedCSREventId(null);
-        fetchCSREvents();
-      } else {
-        throw new Error('Failed to upload photos');
-      }
-    } catch (error: any) {
-      showErrorMessage("Error", error.message || 'Failed to upload photos');
-    } finally {
-      setDataLoading(false);
-    }
+        setCsrPhotoFiles([]); setCsrPhotoPreviews([]);
+        setShowPhotoUploadModal(false); setSelectedCSREventId(null);
+        await fetchCSREvents();
+      } else { throw new Error('Failed to upload photos'); }
+    } catch (err: any) {
+      showErrorMessage("Error", err.message || 'Failed to upload photos');
+    } finally { setCsrLoading(false); }
   };
 
-  // Update user status
-  const updateUserStatus = async (userId: string, status: string) => {
-    showConfirmation(
-      `Mark User as ${status === 'active' ? 'Active' : 'Inactive'}`,
-      `Are you sure you want to ${status === 'active' ? 'activate' : 'deactivate'} this user?`,
-      async () => {
-        try {
-          const token = await getSessionToken();
-          if (!token) return;
-
-          const response = await fetch(`/api/admin/users/${userId}`, {
-            method: "PATCH",
-            headers: { 
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify({ status }),
-          });
-
-          if (response.ok) {
-            fetchData();
-            showSuccessMessage("Success", `User ${status}!`);
-          } else {
-            throw new Error('Failed to update user');
-          }
-        } catch (error) {
-          showErrorMessage("Error", "Failed to update user status");
-        }
-      }
-    );
-  };
-
-  // Filter functions
-  const filteredEvents = events.filter(event => {
-    return event.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           event.description.toLowerCase().includes(searchQuery.toLowerCase());
-  });
-
-  const filteredPayments = payments.filter(payment => {
-    const searchLower = paymentSearch.toLowerCase();
-    return (
-      payment.description?.toLowerCase().includes(searchLower) ||
-      payment.profiles?.full_name?.toLowerCase().includes(searchLower) ||
-      payment.phone_number?.includes(paymentSearch) ||
-      payment.account_reference?.includes(paymentSearch) ||
-      payment.status.includes(paymentSearch.toLowerCase())
-    );
-  });
-
-  const filteredOrders = orders.filter(order => {
-    const searchLower = orderSearch.toLowerCase();
-    return (
-      order.customer_name?.toLowerCase().includes(searchLower) ||
-      order.customer_email?.toLowerCase().includes(searchLower) ||
-      order.customer_phone?.includes(orderSearch) ||
-      order.status.includes(orderSearch.toLowerCase()) ||
-      order.profiles?.full_name?.toLowerCase().includes(searchLower)
-    );
-  });
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  // ─── Payment / Order / User handlers ──────────────────────────────────────
+  const updatePaymentStatus = (paymentId: string, status: 'confirmed' | 'failed') => {
+    showConfirmation(`Mark as ${status}`, `Mark this payment as ${status}?`, async () => {
+      const token = await getSessionToken();
+      if (!token) return;
+      const res = await fetch(`/api/admin/payments/${paymentId}`, {
+        method: "PATCH",
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        setPayments(prev => prev.map(p => p.id === paymentId ? { ...p, status } : p));
+        showSuccessMessage("Success", `Payment marked as ${status}!`);
+      } else { showErrorMessage("Error", "Failed to update payment status"); }
     });
   };
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return `Ksh ${amount.toLocaleString()}`;
+  const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+    const token = await getSessionToken();
+    if (!token) return;
+    const res = await fetch(`/api/admin/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (res.ok) {
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+      showSuccessMessage("Success", `Order updated to ${status}!`);
+    } else { showErrorMessage("Error", "Failed to update order status"); }
   };
 
-  // Export to CSV
+  const updateUserStatus = (userId: string, status: string) => {
+    showConfirmation(`Mark User as ${status}`, `${status === 'active' ? 'Activate' : 'Deactivate'} this user?`, async () => {
+      const token = await getSessionToken();
+      if (!token) return;
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
+        showSuccessMessage("Success", `User ${status}!`);
+      } else { showErrorMessage("Error", "Failed to update user status"); }
+    });
+  };
+
+  // ─── Product handlers ──────────────────────────────────────────────────────
+  const resetProductForm = () => {
+    setNewProduct({ name: '', description: '', base_price: '', category: 'tshirt',
+      featured_image_url: '', is_active: true, is_out_of_stock: false, variants: [], images: [] });
+    setProductMainImage(null); setProductMainImagePreview('');
+    setVariantImageFiles(new Map()); setShowProductForm(false); setEditingProduct(null);
+  };
+
+  const handleCreateProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProductLoading(true);
+    try {
+      const token = await getSessionToken();
+      if (!token) throw new Error('No session');
+      let mainImageUrl = newProduct.featured_image_url;
+      if (productMainImage) mainImageUrl = await uploadFile(productMainImage, 'merchandise', `products/${Date.now()}`);
+      const variants = await Promise.all(newProduct.variants.map(async v => {
+        let imgUrl = v.image_url;
+        const vFile = variantImageFiles.get(v.id);
+        if (vFile) imgUrl = await uploadFile(vFile, 'product-variants', `variants/${Date.now()}`);
+        return { ...v, price_adjustment: parseFloat(v.price_adjustment.toString()),
+          stock_quantity: parseInt(v.stock_quantity.toString()), image_url: imgUrl };
+      }));
+      const res = await fetch('/api/admin/merchandise', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newProduct, base_price: parseFloat(newProduct.base_price), featured_image_url: mainImageUrl, variants })
+      });
+      if (res.ok) { resetProductForm(); showSuccessMessage("Success", "Product created!"); await fetchProducts(); }
+      else { const err = await res.json(); throw new Error(err.error || 'Failed to create product'); }
+    } catch (err: any) { showErrorMessage("Error", err.message); }
+    finally { setProductLoading(false); }
+  };
+
+  const handleUpdateProduct = async (productId: string, updates: Partial<Product>) => {
+    const token = await getSessionToken();
+    if (!token) return;
+    const res = await fetch(`/api/admin/merchandise/${productId}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    if (res.ok) { showSuccessMessage("Success", "Product updated!"); fetchProducts(); }
+    else { showErrorMessage("Error", "Failed to update product"); }
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    showConfirmation("Delete Product", "Deactivate this product?", async () => {
+      const token = await getSessionToken();
+      if (!token) return;
+      const res = await fetch(`/api/admin/merchandise/${productId}`, {
+        method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) { showSuccessMessage("Success", "Product deactivated!"); fetchProducts(); }
+      else { showErrorMessage("Error", "Failed to delete product"); }
+    });
+  };
+
+  const handleAddVariant = () => {
+    if (!newVariant.color_name || !newVariant.size || !newVariant.sku) {
+      showErrorMessage("Validation Error", "Please fill in all variant fields"); return;
+    }
+    setNewProduct({ ...newProduct, variants: [...newProduct.variants, {
+      id: Date.now().toString(), product_id: '', ...newVariant,
+      price_adjustment: parseFloat(newVariant.price_adjustment),
+      stock_quantity: parseInt(newVariant.stock_quantity)
+    }]});
+    setNewVariant({ color_name: '', color_hex: '#2B4C73', size: '', sku: '',
+      price_adjustment: '0', stock_quantity: '0', is_available: true, image_url: '' });
+  };
+
+  // ─── Filter helpers ────────────────────────────────────────────────────────
+  const filteredEvents = events.filter(e =>
+    e.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    e.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredPayments = payments.filter(p => {
+    const s = paymentSearch.toLowerCase();
+    return p.description?.toLowerCase().includes(s) || p.profiles?.full_name?.toLowerCase().includes(s) ||
+      p.phone_number?.includes(paymentSearch) || p.account_reference?.includes(paymentSearch);
+  });
+  const filteredOrders = orders.filter(o => {
+    const s = orderSearch.toLowerCase();
+    return o.customer_name?.toLowerCase().includes(s) || o.customer_email?.toLowerCase().includes(s) ||
+      o.profiles?.full_name?.toLowerCase().includes(s);
+  });
+
   const exportToCSV = (data: any[], filename: string) => {
-    if (data.length === 0) {
-      showErrorMessage("Export Error", "No data to export");
-      return;
-    }
-
+    if (!data.length) { showErrorMessage("Export Error", "No data to export"); return; }
     const headers = Object.keys(data[0]);
-    
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => 
-        headers.map(header => {
-          const value = row[header];
-          if (value === null || value === undefined) return '';
-          if (typeof value === 'object') return JSON.stringify(value);
-          const stringValue = String(value);
-          if (stringValue.includes(',') || stringValue.includes('"')) {
-            return `"${stringValue.replace(/"/g, '""')}"`;
-          }
-          return stringValue;
-        }).join(',')
-      )
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const csv = [headers.join(','), ...data.map(row =>
+      headers.map(h => { const v = row[h]; if (!v) return ''; const s = String(v);
+        return (s.includes(',') || s.includes('"')) ? `"${s.replace(/"/g, '""')}"` : s; }).join(',')
+    )].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    a.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   };
 
-  // Handle logout
-  const handleLogout = async () => {
-    await logout();
-    router.push("/");
-  };
+  const handleLogout = async () => { await logout(); router.push("/"); };
 
+  // ─── Auth effect — runs ONCE ───────────────────────────────────────────────
   useEffect(() => {
-    if (authLoading) return;
-    
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+    if (authLoading || fetchedRef.current) return;
+    if (!user) { router.push("/login"); return; }
 
     const checkAndLoad = async () => {
-      if (user.user_metadata?.role === 'admin') {
-        await fetchData();
-        return;
-      }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
-
-      if (!profile || profile.role !== 'admin') {
-        router.push("/member/dashboard");
-        return;
-      }
-
+      fetchedRef.current = true;
+      if (user.user_metadata?.role === 'admin') { await fetchData(); return; }
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      if (!profile || profile.role !== 'admin') { router.push("/member/dashboard"); return; }
       await fetchData();
     };
-
     checkAndLoad();
-  }, [user, authLoading, router, fetchData]);
+  }, [user, authLoading]); // eslint-disable-line
 
-  // Loading state
-  if (authLoading || dataLoading) {
+  // ─── Loading ───────────────────────────────────────────────────────────────
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-[#F7F9FC] flex items-center justify-center">
         <div className="text-center">
@@ -1519,238 +832,160 @@ const handleUpdateCSREvent = async (e: React.FormEvent) => {
       </div>
     );
   }
+  if (!user) return null;
 
-  if (!user) {
-    return null;
-  }
-
+  // ─── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#F7F9FC] font-poppins flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-[#E7ECF3] sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-gradient-to-br from-[#2B4C73] to-[#FF7A00] rounded-xl flex items-center justify-center shadow-md">
               <Shield className="text-white" size={28} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-[#0B0F1A]">
-                Admin Dashboard
-              </h1>
-              <p className="text-[#6D7A8B] text-sm">Welcome, {user.email}</p>
+              <h1 className="text-2xl font-bold text-[#0B0F1A]">Admin Dashboard</h1>
+              <p className="text-[#6D7A8B] text-sm">{user.email}</p>
             </div>
           </div>
-          <div className="flex gap-3">
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg hover:opacity-90 transition flex items-center gap-2 font-medium shadow-sm"
-            >
-              <LogOut size={16} />
-              Logout
-            </button>
-          </div>
+          <button onClick={handleLogout}
+            className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg hover:opacity-90 flex items-center gap-2 font-medium">
+            <LogOut size={16} /> Logout
+          </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8 flex-1">
-        {/* Stats Overview */}
+      <div className="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-[#E8F4FD] rounded-lg">
-                <Users className="text-[#2B4C73]" size={24} />
-              </div>
-              <Activity className="text-[#FF7A00]" size={20} />
-            </div>
-            <div>
-              <p className="text-[#6D7A8B] text-sm mb-1 font-medium">Total Members</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-[#0B0F1A]">{stats.totalMembers}</span>
-                <span className="text-[#FF7A00] text-sm font-medium">({stats.activeMembers} active)</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-[#FFF0F0] rounded-lg">
-                <DollarSign className="text-[#E53E3E]" size={24} />
-              </div>
-              <BarChart className="text-[#2B4C73]" size={20} />
-            </div>
-            <div>
-              <p className="text-[#6D7A8B] text-sm mb-1 font-medium">Revenue</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-[#0B0F1A]">Ksh {stats.totalRevenue.toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-[#FFF4E6] rounded-lg">
-                <Calendar className="text-[#FF7A00]" size={24} />
-              </div>
-              <Ticket className="text-[#E53E3E]" size={20} />
-            </div>
-            <div>
-              <p className="text-[#6D7A8B] text-sm mb-1 font-medium">Events</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-[#0B0F1A]">{stats.totalEvents}</span>
-                <span className="text-[#FF7A00] text-sm font-medium">({stats.upcomingEvents} upcoming)</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 bg-[#E8F4FD] rounded-lg">
-                <ShoppingBag className="text-[#2B4C73]" size={24} />
-              </div>
-              <Clock className="text-[#FF7A00]" size={20} />
-            </div>
-            <div>
-              <p className="text-[#6D7A8B] text-sm mb-1 font-medium">Pending</p>
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-[#6D7A8B]">Payments:</span>
-                  <span className="text-[#FF7A00] font-semibold">{stats.pendingPayments}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#6D7A8B]">Orders:</span>
-                  <span className="text-[#FF7A00] font-semibold">{stats.pendingOrders}</span>
+          {[
+            { label: 'Total Members', value: stats.totalMembers, sub: `${stats.activeMembers} active`, icon: Users, bg: '#E8F4FD', color: '#2B4C73' },
+            { label: 'Revenue', value: `Ksh ${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, bg: '#FFF0F0', color: '#E53E3E' },
+            { label: 'Events', value: stats.totalEvents, sub: `${stats.upcomingEvents} upcoming`, icon: Calendar, bg: '#FFF4E6', color: '#FF7A00' },
+            { label: 'Pending', value: `Pay: ${stats.pendingPayments} / Orders: ${stats.pendingOrders}`, icon: Clock, bg: '#E8F4FD', color: '#2B4C73' },
+          ].map((s, i) => (
+            <div key={i} className="bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-3 rounded-lg" style={{ background: s.bg }}>
+                  <s.icon size={24} style={{ color: s.color }} />
                 </div>
               </div>
+              <p className="text-[#6D7A8B] text-sm font-medium">{s.label}</p>
+              <p className="text-xl font-bold text-[#0B0F1A] mt-1">{s.value}</p>
+              {s.sub && <p className="text-sm text-[#FF7A00]">{s.sub}</p>}
             </div>
-          </div>
+          ))}
         </div>
 
-        {/* Tabs Navigation */}
+        {/* Tabs */}
         <div className="flex flex-wrap gap-2 mb-6">
           {[
-            { id: "overview", label: "Overview", icon: Activity, color: COLORS.darkBlue },
-            { id: "members", label: "Members", icon: Users, color: COLORS.gold },
-            { id: "payments", label: "Payments", icon: DollarSign, color: COLORS.maroon },
-            { id: "orders", label: "Orders", icon: ShoppingBag, color: COLORS.darkBlue },
-            { id: "events", label: "Events", icon: Calendar, color: COLORS.gold },
-            { id: "merchandise", label: "Merchandise", icon: Tag, color: COLORS.maroon },
-            { id: "csr", label: "CSR Events", icon: Heart, color: COLORS.maroon }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+            { id: "overview", label: "Overview", icon: Activity },
+            { id: "members", label: "Members", icon: Users },
+            { id: "payments", label: "Payments", icon: DollarSign },
+            { id: "orders", label: "Orders", icon: ShoppingBag },
+            { id: "events", label: "Events", icon: Calendar },
+            { id: "merchandise", label: "Merchandise", icon: Tag },
+            { id: "csr", label: "CSR Events", icon: Heart },
+          ].map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`px-5 py-3 font-medium rounded-lg transition-all flex items-center gap-2 ${
                 activeTab === tab.id
-                  ? `text-white shadow-md`
-                  : "bg-white text-[#6D7A8B] hover:bg-[#F7F9FC] border border-[#E7ECF3]"
-              }`}
-              style={{
-                background: activeTab === tab.id 
-                  ? `linear-gradient(135deg, ${tab.color}, ${tab.color === COLORS.darkBlue ? '#1E3A5F' : tab.color === COLORS.gold ? '#FF8C00' : '#F56565'})`
-                  : 'white'
-              }}
-            >
-              <tab.icon size={18} />
-              {tab.label}
+                  ? 'bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white shadow-md'
+                  : 'bg-white text-[#6D7A8B] hover:bg-[#F7F9FC] border border-[#E7ECF3]'}`}>
+              <tab.icon size={18} />{tab.label}
             </button>
           ))}
         </div>
 
-        {/* Content Area */}
+        {/* Content */}
         <div className="bg-white rounded-xl border border-[#E7ECF3] p-6 shadow-sm">
-          
-          {/* Members Tab */}
+
+          {/* ── OVERVIEW TAB ── */}
+          {activeTab === "overview" && (
+            <div className="space-y-8">
+              <h2 className="text-2xl font-bold text-[#0B0F1A]">Recent Activity</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-[#F7F9FC] rounded-xl p-5 border border-[#E7ECF3]">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-semibold text-[#0B0F1A] flex items-center gap-2">
+                      <DollarSign size={20} className="text-[#FF7A00]" /> Recent Payments
+                    </h3>
+                    <button onClick={() => setActiveTab("payments")} className="text-sm text-[#2B4C73] flex items-center gap-1">
+                      View all <ChevronRight size={14} />
+                    </button>
+                  </div>
+                  {payments.slice(0, 5).map(p => (
+                    <div key={p.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-[#E7ECF3] mb-2">
+                      <div><p className="text-[#0B0F1A] font-medium">{p.description || "Payment"}</p>
+                        <p className="text-sm text-[#6D7A8B]">{p.profiles?.full_name}</p></div>
+                      <div className="text-right">
+                        <p className="font-bold">Ksh {p.amount.toLocaleString()}</p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          p.status === "confirmed" ? "bg-[#E8F4FD] text-[#2B4C73]" :
+                          p.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" : "bg-[#FFF0F0] text-[#E53E3E]"}`}>
+                          {p.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-[#F7F9FC] rounded-xl p-5 border border-[#E7ECF3]">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-semibold text-[#0B0F1A] flex items-center gap-2">
+                      <UserPlus size={20} className="text-[#2B4C73]" /> Recent Members
+                    </h3>
+                    <button onClick={() => setActiveTab("members")} className="text-sm text-[#2B4C73] flex items-center gap-1">
+                      View all <ChevronRight size={14} />
+                    </button>
+                  </div>
+                  {users.slice(0, 5).map(u => (
+                    <div key={u.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-[#E7ECF3] mb-2">
+                      <div><p className="text-[#0B0F1A] font-medium">{u.full_name}</p>
+                        <p className="text-sm text-[#6D7A8B]">{u.email}</p></div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        u.status === "active" ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#FFF4E6] text-[#FF7A00]"}`}>
+                        {u.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── MEMBERS TAB ── */}
           {activeTab === "members" && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-[#0B0F1A]">
-                  Member Management ({users.length})
-                </h2>
-                <button
-                  onClick={() => {
-                    const exportData = users.map(u => ({
-                      Name: u.full_name,
-                      Email: u.email,
-                      Phone: u.phone_number || '',
-                      'Membership Number': u.membership_number || '',
-                      Status: u.status,
-                      Role: u.role,
-                      County: u.county || '',
-                      'Graduation Year': u.graduation_year || '',
-                      Course: u.course || ''
-                    }));
-                    exportToCSV(exportData, 'members');
-                  }}
-                  className="px-4 py-2 bg-[#E8F4FD] text-[#2B4C73] rounded-lg hover:bg-[#d4e9fa] flex items-center gap-2 border border-[#2B4C73]/20 font-medium"
-                >
-                  <Download size={16} />
-                  Export CSV
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">Members ({users.length})</h2>
+                <button onClick={() => exportToCSV(users.map(u => ({ Name: u.full_name, Email: u.email, Phone: u.phone_number || '', 'Membership #': u.membership_number || '', Status: u.status })), 'members')}
+                  className="px-4 py-2 bg-[#E8F4FD] text-[#2B4C73] rounded-lg flex items-center gap-2 border border-[#2B4C73]/20">
+                  <Download size={16} /> Export CSV
                 </button>
               </div>
               <div className="overflow-x-auto rounded-lg border border-[#E7ECF3]">
                 <table className="w-full">
-                  <thead>
-                    <tr className="text-left text-[#6D7A8B] border-b border-[#E7ECF3]">
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Member</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Contact</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Membership</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Status</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Actions</th>
-                    </tr>
-                  </thead>
+                  <thead><tr className="text-left text-[#6D7A8B] border-b border-[#E7ECF3] bg-[#F7F9FC]">
+                    {['Member','Contact','Membership','Status','Actions'].map(h => (
+                      <th key={h} className="pb-3 px-4 font-semibold">{h}</th>))}
+                  </tr></thead>
                   <tbody>
-                    {users.map((member) => (
-                      <tr key={member.id} className="border-b border-[#F7F9FC] hover:bg-[#F7F9FC]">
+                    {users.map(m => (
+                      <tr key={m.id} className="border-b border-[#F7F9FC] hover:bg-[#F7F9FC]">
+                        <td className="py-4 px-4"><p className="font-medium">{m.full_name}</p><p className="text-sm text-[#6D7A8B]">{m.email}</p></td>
+                        <td className="py-4 px-4"><p>{m.phone_number || "N/A"}</p><p className="text-sm text-[#6D7A8B]">{m.county || "N/A"}</p></td>
+                        <td className="py-4 px-4"><p className="font-mono">{m.membership_number || "None"}</p><p className="text-sm text-[#6D7A8B]">{m.course || "N/A"}</p></td>
                         <td className="py-4 px-4">
-                          <div>
-                            <p className="text-[#0B0F1A] font-medium">{member.full_name}</p>
-                            <p className="text-sm text-[#6D7A8B]">{member.email}</p>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <p className="text-[#0B0F1A]">{member.phone_number || "N/A"}</p>
-                          <p className="text-sm text-[#6D7A8B]">{member.county || "N/A"}</p>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div>
-                            <p className="text-[#0B0F1A] font-mono">{member.membership_number || "No membership"}</p>
-                            <p className="text-sm text-[#6D7A8B]">{member.course || "N/A"}</p>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex flex-col gap-1">
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm w-fit font-medium ${
-                              member.status === "active" ? "bg-[#E8F4FD] text-[#2B4C73]" :
-                              member.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" :
-                              "bg-[#FFF0F0] text-[#E53E3E]"
-                            }`}>
-                              {member.status}
-                            </span>
-                            <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm w-fit font-medium ${
-                              member.role === "admin" ? "bg-[#E8F4FD] text-[#2B4C73]" :
-                              "bg-[#FFF4E6] text-[#FF7A00]"
-                            }`}>
-                              {member.role}
-                            </span>
-                          </div>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${m.status === "active" ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#FFF0F0] text-[#E53E3E]"}`}>{m.status}</span>
                         </td>
                         <td className="py-4 px-4">
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => updateUserStatus(member.id, "active")}
-                              className="px-3 py-1 bg-[#2B4C73] text-white rounded text-sm hover:bg-[#1E3A5F] disabled:opacity-50"
-                              disabled={member.status === "active"}
-                            >
-                              Activate
-                            </button>
-                            <button
-                              onClick={() => updateUserStatus(member.id, "inactive")}
-                              className="px-3 py-1 bg-[#E53E3E] text-white rounded text-sm hover:bg-[#C53030] disabled:opacity-50"
-                              disabled={member.status === "inactive"}
-                            >
-                              Deactivate
-                            </button>
+                            <button onClick={() => updateUserStatus(m.id, "active")} disabled={m.status === "active"}
+                              className="px-3 py-1 bg-[#2B4C73] text-white rounded text-sm hover:bg-[#1E3A5F] disabled:opacity-40">Activate</button>
+                            <button onClick={() => updateUserStatus(m.id, "inactive")} disabled={m.status === "inactive"}
+                              className="px-3 py-1 bg-[#E53E3E] text-white rounded text-sm hover:bg-[#C53030] disabled:opacity-40">Deactivate</button>
                           </div>
                         </td>
                       </tr>
@@ -1758,1137 +993,254 @@ const handleUpdateCSREvent = async (e: React.FormEvent) => {
                   </tbody>
                 </table>
               </div>
-              
-              {users.length === 0 && (
-                <div className="text-center py-12">
-                  <Users className="mx-auto text-[#E7ECF3] mb-4" size={48} />
-                  <p className="text-[#6D7A8B] font-medium">No members found</p>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Payments Tab */}
+          {/* ── PAYMENTS TAB ── */}
           {activeTab === "payments" && (
             <div>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-[#0B0F1A]">
-                  Payment Management ({payments.length})
-                </h2>
-                <div className="flex gap-4">
+              <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">Payments ({payments.length})</h2>
+                <div className="flex gap-3">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6D7A8B]" size={18} />
-                    <input
-                      type="text"
-                      placeholder="Search payments..."
-                      value={paymentSearch}
-                      onChange={(e) => setPaymentSearch(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={18} />
+                    <input type="text" placeholder="Search..." value={paymentSearch} onChange={e => setPaymentSearch(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-[#E7ECF3] rounded-lg bg-white" />
                   </div>
-                  <button
-                    onClick={() => {
-                      const exportData = filteredPayments.map(p => ({
-                        ID: p.id,
-                        User: p.profiles?.full_name || 'N/A',
-                        Email: p.profiles?.email || '',
-                        Phone: p.phone_number || '',
-                        Type: p.payment_type,
-                        Amount: p.amount,
-                        Status: p.status,
-                        Reference: p.account_reference || '',
-                        Description: p.description || '',
-                        Date: new Date(p.created_at).toLocaleString()
-                      }));
-                      exportToCSV(exportData, 'payments');
-                    }}
-                    className="px-4 py-2 bg-[#E8F4FD] text-[#2B4C73] rounded-lg hover:bg-[#d4e9fa] flex items-center gap-2 border border-[#2B4C73]/20 font-medium"
-                  >
-                    <Download size={16} />
-                    Export
+                  <button onClick={() => exportToCSV(filteredPayments.map(p => ({ User: p.profiles?.full_name, Amount: p.amount, Status: p.status, Type: p.payment_type, Date: p.created_at })), 'payments')}
+                    className="px-4 py-2 bg-[#E8F4FD] text-[#2B4C73] rounded-lg flex items-center gap-2 border border-[#2B4C73]/20">
+                    <Download size={16} /> Export
                   </button>
                 </div>
               </div>
-              
               <div className="overflow-x-auto rounded-lg border border-[#E7ECF3]">
                 <table className="w-full">
-                  <thead>
-                    <tr className="text-left text-[#6D7A8B] border-b border-[#E7ECF3]">
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Transaction</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">User</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Amount</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Date</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Status</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Actions</th>
-                    </tr>
-                  </thead>
+                  <thead><tr className="text-left text-[#6D7A8B] bg-[#F7F9FC] border-b border-[#E7ECF3]">
+                    {['Transaction','User','Amount','Date','Status','Actions'].map(h => (
+                      <th key={h} className="pb-3 px-4 font-semibold">{h}</th>))}
+                  </tr></thead>
                   <tbody>
-                    {filteredPayments.map((payment) => (
-                      <tr key={payment.id} className="border-b border-[#F7F9FC] hover:bg-[#F7F9FC]">
+                    {filteredPayments.map(p => (
+                      <tr key={p.id} className="border-b border-[#F7F9FC] hover:bg-[#F7F9FC]">
+                        <td className="py-4 px-4"><p className="font-medium">{p.description || "Payment"}</p><p className="text-sm text-[#6D7A8B]">{p.payment_type}</p></td>
+                        <td className="py-4 px-4"><p className="font-medium">{p.profiles?.full_name || "N/A"}</p><p className="text-sm text-[#6D7A8B]">{p.phone_number}</p></td>
+                        <td className="py-4 px-4"><p className="font-bold">{formatCurrency(p.amount)}</p></td>
+                        <td className="py-4 px-4"><p className="text-[#6D7A8B]">{formatDate(p.created_at)}</p></td>
                         <td className="py-4 px-4">
-                          <div>
-                            <p className="text-[#0B0F1A] font-medium">{payment.description || "Payment"}</p>
-                            <p className="text-sm text-[#6D7A8B]">{payment.payment_type}</p>
-                            {payment.account_reference && (
-                              <p className="text-xs text-[#6D7A8B]">Ref: {payment.account_reference}</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div>
-                            <p className="text-[#0B0F1A] font-medium">{payment.profiles?.full_name || "N/A"}</p>
-                            <p className="text-sm text-[#6D7A8B]">{payment.phone_number || payment.profiles?.email}</p>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <p className="text-[#0B0F1A] font-bold">{formatCurrency(payment.amount)}</p>
-                        </td>
-                        <td className="py-4 px-4">
-                          <p className="text-[#6D7A8B]">{formatDate(payment.created_at)}</p>
-                        </td>
-                        <td className="py-4 px-4">
-                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-                            payment.status === "confirmed" ? "bg-[#E8F4FD] text-[#2B4C73]" :
-                            payment.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" :
-                            payment.status === "processing" ? "bg-[#FFF0F0] text-[#E53E3E]" :
-                            "bg-[#F7F9FC] text-[#6D7A8B]"
-                          }`}>
-                            {payment.status === "pending" && <Clock size={12} />}
-                            {payment.status === "confirmed" && <CheckCircle size={12} />}
-                            {payment.status === "failed" && <XCircle size={12} />}
-                            {payment.status}
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            p.status === "confirmed" ? "bg-[#E8F4FD] text-[#2B4C73]" :
+                            p.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" : "bg-[#FFF0F0] text-[#E53E3E]"}`}>
+                            {p.status}
                           </span>
                         </td>
                         <td className="py-4 px-4">
-                          <div className="flex gap-2">
-                            {payment.status === "pending" && (
-                              <>
-                                <button
-                                  onClick={() => updatePaymentStatus(payment.id, "confirmed")}
-                                  className="px-3 py-1 bg-[#2B4C73] text-white rounded text-sm hover:bg-[#1E3A5F] flex items-center gap-1"
-                                >
-                                  <CheckCircle size={12} />
-                                  Confirm
-                                </button>
-                                <button
-                                  onClick={() => updatePaymentStatus(payment.id, "failed")}
-                                  className="px-3 py-1 bg-[#E53E3E] text-white rounded text-sm hover:bg-[#C53030] flex items-center gap-1"
-                                >
-                                  <XCircle size={12} />
-                                  Reject
-                                </button>
-                              </>
-                            )}
-                          </div>
+                          {p.status === "pending" && (
+                            <div className="flex gap-2">
+                              <button onClick={() => updatePaymentStatus(p.id, "confirmed")}
+                                className="px-3 py-1 bg-[#2B4C73] text-white rounded text-sm hover:bg-[#1E3A5F]">Confirm</button>
+                              <button onClick={() => updatePaymentStatus(p.id, "failed")}
+                                className="px-3 py-1 bg-[#E53E3E] text-white rounded text-sm hover:bg-[#C53030]">Reject</button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              
-              {filteredPayments.length === 0 && (
-                <div className="text-center py-12">
-                  <CreditCard className="mx-auto text-[#E7ECF3] mb-4" size={48} />
-                  <p className="text-[#6D7A8B] font-medium">No payments found</p>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Orders Tab */}
+          {/* ── ORDERS TAB ── */}
           {activeTab === "orders" && (
             <div>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-[#0B0F1A]">
-                  Order Management ({orders.length})
-                </h2>
-                <div className="flex gap-4">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6D7A8B]" size={18} />
-                    <input
-                      type="text"
-                      placeholder="Search orders..."
-                      value={orderSearch}
-                      onChange={(e) => setOrderSearch(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                    />
-                  </div>
-                  <button
-                    onClick={() => {
-                      const exportData = filteredOrders.map(o => ({
-                        'Order ID': o.id,
-                        Customer: o.customer_name || o.profiles?.full_name || '',
-                        Email: o.customer_email || o.profiles?.email || '',
-                        Phone: o.customer_phone || '',
-                        Items: o.items?.length || 0,
-                        Total: o.total,
-                        Status: o.status,
-                        Address: o.shipping_address || '',
-                        Date: new Date(o.created_at).toLocaleString()
-                      }));
-                      exportToCSV(exportData, 'orders');
-                    }}
-                    className="px-4 py-2 bg-[#E8F4FD] text-[#2B4C73] rounded-lg hover:bg-[#d4e9fa] flex items-center gap-2 border border-[#2B4C73]/20 font-medium"
-                  >
-                    <Download size={16} />
-                    Export
-                  </button>
+              <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">Orders ({orders.length})</h2>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={18} />
+                  <input type="text" placeholder="Search..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-[#E7ECF3] rounded-lg bg-white" />
                 </div>
               </div>
-              
               <div className="overflow-x-auto rounded-lg border border-[#E7ECF3]">
                 <table className="w-full">
-                  <thead>
-                    <tr className="text-left text-[#6D7A8B] border-b border-[#E7ECF3]">
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Order ID</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Customer</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Items</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Total</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Date</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Status</th>
-                      <th className="pb-3 px-4 font-semibold bg-[#F7F9FC]">Actions</th>
-                    </tr>
-                  </thead>
+                  <thead><tr className="text-left text-[#6D7A8B] bg-[#F7F9FC] border-b border-[#E7ECF3]">
+                    {['Customer','Items','Total','Date','Status','Actions'].map(h => (
+                      <th key={h} className="pb-3 px-4 font-semibold">{h}</th>))}
+                  </tr></thead>
                   <tbody>
-                    {filteredOrders.map((order) => (
-                      <tr key={order.id} className="border-b border-[#F7F9FC] hover:bg-[#F7F9FC]">
+                    {filteredOrders.map(o => (
+                      <tr key={o.id} className="border-b border-[#F7F9FC] hover:bg-[#F7F9FC]">
+                        <td className="py-4 px-4"><p className="font-medium">{o.customer_name || o.profiles?.full_name}</p>
+                          <p className="text-sm text-[#6D7A8B]">{o.customer_email || o.profiles?.email}</p></td>
+                        <td className="py-4 px-4">{o.items?.length || 0} items</td>
+                        <td className="py-4 px-4 font-bold">{formatCurrency(o.total)}</td>
+                        <td className="py-4 px-4 text-[#6D7A8B]">{formatDate(o.created_at)}</td>
                         <td className="py-4 px-4">
-                          <p className="text-[#0B0F1A] font-mono text-sm">{order.id.slice(0, 8)}...</p>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div>
-                            <p className="text-[#0B0F1A] font-medium">{order.customer_name || order.profiles?.full_name}</p>
-                            <p className="text-sm text-[#6D7A8B]">{order.customer_email || order.profiles?.email}</p>
-                            {order.customer_phone && (
-                              <p className="text-xs text-[#6D7A8B]">{order.customer_phone}</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <p className="text-[#6D7A8B]">{order.items?.length || 0} items</p>
-                        </td>
-                        <td className="py-4 px-4">
-                          <p className="text-[#0B0F1A] font-bold">{formatCurrency(order.total)}</p>
-                        </td>
-                        <td className="py-4 px-4">
-                          <p className="text-[#6D7A8B]">{formatDate(order.created_at)}</p>
-                        </td>
-                        <td className="py-4 px-4">
-                          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
-                            order.status === "delivered" ? "bg-[#E8F4FD] text-[#2B4C73]" :
-                            order.status === "shipped" ? "bg-[#FFF4E6] text-[#FF7A00]" :
-                            order.status === "processing" ? "bg-[#FFF0F0] text-[#E53E3E]" :
-                            order.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" :
-                            "bg-[#F7F9FC] text-[#6D7A8B]"
-                          }`}>
-                            {order.status}
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            o.status === "delivered" ? "bg-[#E8F4FD] text-[#2B4C73]" :
+                            o.status === "shipped" ? "bg-[#FFF4E6] text-[#FF7A00]" : "bg-[#FFF0F0] text-[#E53E3E]"}`}>
+                            {o.status}
                           </span>
                         </td>
                         <td className="py-4 px-4">
-                          <div className="flex flex-wrap gap-2">
-                            <select
-                              value={order.status}
-                              onChange={(e) => updateOrderStatus(order.id, e.target.value as Order['status'])}
-                              className="px-2 py-1 border border-[#E7ECF3] rounded text-sm bg-white text-[#0B0F1A] focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent"
-                            >
-                              <option value="pending">Pending</option>
-                              <option value="processing">Processing</option>
-                              <option value="shipped">Shipped</option>
-                              <option value="delivered">Delivered</option>
-                              <option value="cancelled">Cancelled</option>
-                            </select>
-                            <button
-                              onClick={() => {/* View order details */}}
-                              className="px-2 py-1 bg-[#6D7A8B] text-white rounded text-sm hover:bg-[#5A6575] flex items-center gap-1"
-                            >
-                              <Eye size={12} />
-                              View
-                            </button>
-                          </div>
+                          <select value={o.status} onChange={e => updateOrderStatus(o.id, e.target.value as Order['status'])}
+                            className="px-2 py-1 border border-[#E7ECF3] rounded text-sm bg-white">
+                            {['pending','processing','shipped','delivered','cancelled'].map(s => (
+                              <option key={s} value={s}>{s}</option>))}
+                          </select>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              
-              {filteredOrders.length === 0 && (
-                <div className="text-center py-12">
-                  <Package className="mx-auto text-[#E7ECF3] mb-4" size={48} />
-                  <p className="text-[#6D7A8B] font-medium">No orders found</p>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Events Tab */}
+          {/* ── EVENTS TAB ── */}
           {activeTab === "events" && (
             <div>
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-[#0B0F1A]">
-                  Event Management ({events.length})
-                </h2>
-                <div className="flex gap-4">
+              <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">Events ({events.length})</h2>
+                <div className="flex gap-3">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#6D7A8B]" size={18} />
-                    <input
-                      type="text"
-                      placeholder="Search events..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                    />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={18} />
+                    <input type="text" placeholder="Search events..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-[#E7ECF3] rounded-lg bg-white" />
                   </div>
-                  <button
-                    onClick={() => setShowEventForm(true)}
-                    className="px-4 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 transition hover:shadow-md flex items-center gap-2"
-                  >
-                    <Plus size={16} />
-                    Create Event
+                  <button onClick={() => { resetEventForm(); setShowEventForm(true); }}
+                    className="px-4 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg flex items-center gap-2">
+                    <Plus size={16} /> Create Event
                   </button>
                 </div>
               </div>
-
-              {/* Events Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredEvents.map((event) => (
-                  <div key={event.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition hover:-translate-y-1">
+                {filteredEvents.map(event => (
+                  <div key={event.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition">
+                    {event.image_url && (
+                      <div className="h-40 overflow-hidden">
+                        <img src={event.image_url} alt={event.name} className="w-full h-full object-cover" />
+                      </div>
+                    )}
                     <div className="p-5">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-[#0B0F1A] mb-1">{event.name}</h3>
-                          <p className="text-sm text-[#6D7A8B] mb-2">{event.description.substring(0, 100)}...</p>
-                        </div>
-                        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
-                          event.status === "upcoming" ? "bg-[#E8F4FD] text-[#2B4C73]" :
-                          event.status === "ongoing" ? "bg-[#FFF0F0] text-[#E53E3E]" :
-                          "bg-[#F7F9FC] text-[#6D7A8B]"
-                        }`}>
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="text-lg font-semibold text-[#0B0F1A]">{event.name}</h3>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          event.status === "upcoming" ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#F7F9FC] text-[#6D7A8B]"}`}>
                           {event.status}
                         </span>
                       </div>
-                      
-                      <div className="space-y-3 mb-4">
-                        <div className="flex items-center gap-2 text-[#6D7A8B]">
-                          <Calendar size={14} />
-                          <span className="text-sm">{event.event_date ? formatDate(event.event_date) : "Date TBD"}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[#6D7A8B]">
-                          <MapPin size={14} />
-                          <span className="text-sm">{event.location || "Location TBD"}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[#6D7A8B]">
-                          <UsersIcon size={14} />
-                          <span className="text-sm">{event.current_attendees} / {event.max_attendees || '∞'} attendees</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[#6D7A8B]">
-                          <Ticket size={14} />
-                          <span className="text-sm">Ksh {event.price} (Members: Ksh {event.price - event.member_discount})</span>
-                        </div>
+                      <p className="text-sm text-[#6D7A8B] mb-3">{event.description?.substring(0, 80)}...</p>
+                      <div className="space-y-1 mb-4 text-sm text-[#6D7A8B]">
+                        <div className="flex items-center gap-2"><Calendar size={13} />{event.event_date ? formatDate(event.event_date) : "TBD"}</div>
+                        <div className="flex items-center gap-2"><MapPin size={13} />{event.location || "TBD"}</div>
+                        <div className="flex items-center gap-2"><UsersIcon size={13} />{event.current_attendees} / {event.max_attendees || '∞'}</div>
+                        <div className="flex items-center gap-2"><Ticket size={13} />Ksh {event.price} (Members -Ksh {event.member_discount})</div>
                       </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          event.is_active ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#FFF0F0] text-[#E53E3E]"
-                        }`}>
-                          {event.is_active ? "Active" : "Inactive"}
-                        </span>
-                        <div className="flex gap-2">
-<button
-  onClick={() => {
-    setEditingEvent(event);
-    setNewEvent({
-      name: event.name,
-      description: event.description,
-      event_date: event.event_date || '',
-      location: event.location || '',
-      price: event.price.toString(),
-      member_discount: event.member_discount.toString(),
-      max_attendees: event.max_attendees?.toString() || '',
-      image_url: event.image_url || '',
-      is_active: event.is_active,
-      status: event.status
-    });
-    setShowEventForm(true);
-  }}
-  className="px-3 py-1 bg-[#2B4C73] text-white rounded text-sm hover:bg-[#1E3A5F]"
->
-  Edit
-</button>
-                          <button
-                            onClick={() => handleDeleteEvent(event.id)}
-                            className="px-3 py-1 bg-[#E53E3E] text-white rounded text-sm hover:bg-[#C53030]"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => {
+                          setEditingEvent(event);
+                          setNewEvent({ name: event.name, description: event.description, event_date: event.event_date || '',
+                            location: event.location || '', price: event.price.toString(),
+                            member_discount: event.member_discount.toString(),
+                            max_attendees: event.max_attendees?.toString() || '',
+                            image_url: event.image_url || '', is_active: event.is_active, status: event.status });
+                          setEventImagePreview(event.image_url || '');
+                          setShowEventForm(true);
+                        }} className="flex-1 px-3 py-2 bg-[#2B4C73] text-white rounded text-sm hover:bg-[#1E3A5F]">Edit</button>
+                        <button onClick={() => handleDeleteEvent(event.id)}
+                          className="px-3 py-2 bg-[#E53E3E] text-white rounded text-sm hover:bg-[#C53030]">Delete</button>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-              
               {filteredEvents.length === 0 && (
                 <div className="text-center py-12">
                   <Calendar className="mx-auto text-[#E7ECF3] mb-4" size={48} />
-                  <p className="text-[#6D7A8B] font-medium">No events found</p>
-                </div>
-              )}
-
-              {/* Event Form Modal */}
-              {showEventForm && (
-                <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-                  <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <div className="p-6">
-                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-bold text-[#0B0F1A]">{editingEvent ? "Edit Event" : "Create New Event"}</h3>
-                        <button
-                          onClick={() => {
-                            setShowEventForm(false);
-                            setEditingEvent(null);
-                            setNewEvent({
-                              name: '',
-                              description: '',
-                              event_date: '',
-                              location: '',
-                              price: '',
-                              member_discount: '5',
-                              max_attendees: '',
-                              image_url: '',
-                              is_active: true,
-                              status: 'upcoming'
-                            });
-                          }}
-                          className="text-[#6D7A8B] hover:text-[#0B0F1A]"
-                        >
-                          <X size={20} />
-                        </button>
-                      </div>
-                      <form onSubmit={editingEvent ? handleEditEvent : handleCreateEvent} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Name</label>
-                            <input
-                              type="text"
-                              value={newEvent.name}
-                              onChange={(e) => setNewEvent({...newEvent, name: e.target.value})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Status</label>
-                            <select
-                              value={newEvent.status}
-                              onChange={(e) => setNewEvent({...newEvent, status: e.target.value})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                            >
-                              <option value="upcoming">Upcoming</option>
-                              <option value="ongoing">Ongoing</option>
-                              <option value="completed">Completed</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Date</label>
-                            <input
-                              type="datetime-local"
-                              value={newEvent.event_date}
-                              onChange={(e) => setNewEvent({...newEvent, event_date: e.target.value})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Location</label>
-                            <input
-                              type="text"
-                              value={newEvent.location}
-                              onChange={(e) => setNewEvent({...newEvent, location: e.target.value})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Price (Ksh)</label>
-                            <input
-                              type="number"
-                              value={newEvent.price}
-                              onChange={(e) => setNewEvent({...newEvent, price: e.target.value})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Member Discount (Ksh)</label>
-                            <input
-                              type="number"
-                              value={newEvent.member_discount}
-                              onChange={(e) => setNewEvent({...newEvent, member_discount: e.target.value})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Max Attendees</label>
-                            <input
-                              type="number"
-                              value={newEvent.max_attendees}
-                              onChange={(e) => setNewEvent({...newEvent, max_attendees: e.target.value})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Image URL</label>
-                            <input
-                              type="text"
-                              value={newEvent.image_url}
-                              onChange={(e) => setNewEvent({...newEvent, image_url: e.target.value})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Description</label>
-                          <textarea
-                            value={newEvent.description}
-                            onChange={(e) => setNewEvent({...newEvent, description: e.target.value})}
-                            className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                            rows={4}
-                            required
-                          />
-                        </div>
-                        <div className="flex gap-4 pt-4">
-                          <button
-                            type="submit"
-                            disabled={creatingEvent}
-                            className="px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 transition hover:shadow-md flex items-center gap-2 disabled:opacity-50"
-                          >
-                            {creatingEvent && <Loader2 className="animate-spin" size={16} />}
-                            {creatingEvent ? "Saving..." : editingEvent ? "Update Event" : "Create Event"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowEventForm(false);
-                              setEditingEvent(null);
-                              setNewEvent({
-                                name: '',
-                                description: '',
-                                event_date: '',
-                                location: '',
-                                price: '',
-                                member_discount: '5',
-                                max_attendees: '',
-                                image_url: '',
-                                is_active: true,
-                                status: 'upcoming'
-                              });
-                            }}
-                            className="px-6 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3] transition"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
+                  <p className="text-[#6D7A8B]">No events found</p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Merchandise Tab */}
+          {/* ── MERCHANDISE TAB ── */}
           {activeTab === "merchandise" && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-[#0B0F1A]">
-                  Product Management ({products.length})
-                </h2>
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => setShowProductForm(true)}
-                    className="px-4 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-lg hover:opacity-90 transition hover:shadow-md flex items-center gap-2"
-                  >
-                    <Plus size={16} />
-                    Add Product
-                  </button>
-                </div>
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">Products ({products.length})</h2>
+                <button onClick={() => setShowProductForm(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-lg flex items-center gap-2">
+                  <Plus size={16} /> Add Product
+                </button>
               </div>
-
-              {/* Products Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.map((product) => (
-                  <div key={product.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition hover:-translate-y-1">
-                    <div className="p-5">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-lg font-semibold text-[#0B0F1A] mb-1">{product.name}</h3>
-                          <p className="text-sm text-[#6D7A8B] mb-2">{product.description.substring(0, 80)}...</p>
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            product.is_active ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#FFF0F0] text-[#E53E3E]"
-                          }`}>
-                            {product.is_active ? "Active" : "Inactive"}
-                          </span>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            product.is_out_of_stock ? "bg-[#FFF0F0] text-[#E53E3E]" : "bg-[#E8F4FD] text-[#2B4C73]"
-                          }`}>
-                            {product.is_out_of_stock ? "Out of Stock" : "In Stock"}
-                          </span>
-                        </div>
+                {products.map(p => (
+                  <div key={p.id} className="bg-white border border-[#E7ECF3] rounded-xl p-5 hover:shadow-md transition">
+                    {p.featured_image_url && (
+                      <div className="h-36 rounded-lg overflow-hidden mb-3">
+                        <img src={p.featured_image_url} alt={p.name} className="w-full h-full object-cover" />
                       </div>
-                      
-                      <div className="space-y-2 mb-4">
-                        <div className="flex justify-between">
-                          <span className="text-[#6D7A8B]">Category:</span>
-                          <span className="font-medium text-[#0B0F1A]">{product.category}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[#6D7A8B]">Base Price:</span>
-                          <span className="font-bold text-[#0B0F1A]">{formatCurrency(product.base_price)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[#6D7A8B]">Variants:</span>
-                          <span className="font-medium text-[#0B0F1A]">{product.product_variants?.length || 0} variants</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-[#6D7A8B]">Created: {formatDate(product.created_at)}</span>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setEditingProduct(product);
-                              setNewProduct({
-                                name: product.name,
-                                description: product.description,
-                                base_price: product.base_price.toString(),
-                                category: product.category,
-                                featured_image_url: product.featured_image_url || '',
-                                is_active: product.is_active,
-                                is_out_of_stock: product.is_out_of_stock,
-                                variants: product.product_variants || [],
-                                images: product.product_images || []
-                              });
-                              setShowProductForm(true);
-                            }}
-                            className="px-3 py-1 bg-[#2B4C73] text-white rounded text-sm hover:bg-[#1E3A5F]"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="px-3 py-1 bg-[#E53E3E] text-white rounded text-sm hover:bg-[#C53030]"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
+                    )}
+                    <h3 className="font-semibold text-[#0B0F1A] mb-1">{p.name}</h3>
+                    <p className="text-sm text-[#6D7A8B] mb-3">{p.description?.substring(0, 60)}...</p>
+                    <div className="text-sm mb-4">
+                      <div className="flex justify-between"><span className="text-[#6D7A8B]">Price:</span><span className="font-bold">{formatCurrency(p.base_price)}</span></div>
+                      <div className="flex justify-between"><span className="text-[#6D7A8B]">Category:</span><span>{p.category}</span></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { setEditingProduct(p); setNewProduct({ name: p.name, description: p.description, base_price: p.base_price.toString(), category: p.category, featured_image_url: p.featured_image_url || '', is_active: p.is_active, is_out_of_stock: p.is_out_of_stock, variants: p.product_variants || [], images: p.product_images || [] }); setProductMainImagePreview(p.featured_image_url || ''); setShowProductForm(true); }}
+                        className="flex-1 px-3 py-2 bg-[#2B4C73] text-white rounded text-sm hover:bg-[#1E3A5F]">Edit</button>
+                      <button onClick={() => handleDeleteProduct(p.id)}
+                        className="px-3 py-2 bg-[#E53E3E] text-white rounded text-sm hover:bg-[#C53030]">Delete</button>
                     </div>
                   </div>
                 ))}
               </div>
-              
-              {products.length === 0 && (
-                <div className="text-center py-12">
-                  <Package className="mx-auto text-[#E7ECF3] mb-4" size={48} />
-                  <p className="text-[#6D7A8B] font-medium">No products found</p>
-                  <button
-                    onClick={() => setShowProductForm(true)}
-                    className="mt-4 px-4 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-lg hover:opacity-90 transition hover:shadow-md flex items-center gap-2 mx-auto"
-                  >
-                    <Plus size={16} />
-                    Add Your First Product
-                  </button>
-                </div>
-              )}
-
-              {/* Product Form Modal */}
-              {(showProductForm || editingProduct) && (
-                <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-                  <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                    <div className="p-6">
-                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-bold text-[#0B0F1A]">
-                          {editingProduct ? "Edit Product" : "Create New Product"}
-                        </h3>
-                        <button
-                          onClick={resetProductForm}
-                          className="text-[#6D7A8B] hover:text-[#0B0F1A]"
-                        >
-                          <X size={20} />
-                        </button>
-                      </div>
-                      <form onSubmit={editingProduct ? (e) => {
-                        e.preventDefault();
-                        handleUpdateProduct(editingProduct.id, {
-                          ...newProduct,
-                          base_price: parseFloat(newProduct.base_price)
-                        });
-                      } : handleCreateProduct} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Product Name</label>
-                            <input
-                              type="text"
-                              value={newProduct.name}
-                              onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Category</label>
-                            <select
-                              value={newProduct.category}
-                              onChange={(e) => setNewProduct({...newProduct, category: e.target.value as any})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                              required
-                            >
-                              <option value="tshirt">T-Shirt</option>
-                              <option value="polo">Polo</option>
-                              <option value="hoodie">Hoodie</option>
-                              <option value="accessory">Accessory</option>
-                              <option value="other">Other</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Base Price (Ksh)</label>
-                            <input
-                              type="number"
-                              value={newProduct.base_price}
-                              onChange={(e) => setNewProduct({...newProduct, base_price: e.target.value})}
-                              className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                              required
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Product Image</label>
-                            <div className="space-y-3">
-                              {productMainImagePreview && (
-                                <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-[#E7ECF3]">
-                                  <img 
-                                    src={productMainImagePreview} 
-                                    alt="Preview" 
-                                    className="w-full h-full object-cover"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setProductMainImage(null);
-                                      setProductMainImagePreview('');
-                                    }}
-                                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                </div>
-                              )}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleProductMainImageChange}
-                                className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Description</label>
-                          <textarea
-                            value={newProduct.description}
-                            onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-                            className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent bg-white"
-                            rows={3}
-                            required
-                          />
-                        </div>
-                        
-                        {/* Variants Section */}
-                        <div className="border-t border-[#E7ECF3] pt-6">
-                          <h4 className="text-lg font-semibold text-[#0B0F1A] mb-4">Product Variants</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                              <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Color Name</label>
-                              <input
-                                type="text"
-                                value={newVariant.color_name}
-                                onChange={(e) => setNewVariant({...newVariant, color_name: e.target.value})}
-                                className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white"
-                                placeholder="e.g., Navy Blue"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Color</label>
-                              <div className="flex items-center gap-3">
-                                <input
-                                  type="color"
-                                  value={newVariant.color_hex}
-                                  onChange={(e) => setNewVariant({...newVariant, color_hex: e.target.value})}
-                                  className="w-10 h-10 p-1 border border-[#E7ECF3] rounded-lg"
-                                />
-                                <span className="text-sm text-[#6D7A8B]">{newVariant.color_hex}</span>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Size</label>
-                              <input
-                                type="text"
-                                value={newVariant.size}
-                                onChange={(e) => setNewVariant({...newVariant, size: e.target.value})}
-                                className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white"
-                                placeholder="e.g., M, L, XL"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-[#6D7A8B] mb-1">SKU</label>
-                              <input
-                                type="text"
-                                value={newVariant.sku}
-                                onChange={(e) => setNewVariant({...newVariant, sku: e.target.value})}
-                                className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white"
-                                placeholder="Unique SKU"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Price Adjustment (Ksh)</label>
-                              <input
-                                type="number"
-                                value={newVariant.price_adjustment}
-                                onChange={(e) => setNewVariant({...newVariant, price_adjustment: e.target.value})}
-                                className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Stock Quantity</label>
-                              <input
-                                type="number"
-                                value={newVariant.stock_quantity}
-                                onChange={(e) => setNewVariant({...newVariant, stock_quantity: e.target.value})}
-                                className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white"
-                              />
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleAddVariant}
-                            className="px-4 py-2 bg-[#6D7A8B] text-white rounded-lg hover:bg-[#5A6575] transition flex items-center gap-2"
-                          >
-                            <Plus size={16} />
-                            Add Variant
-                          </button>
-                          
-                          {/* Display added variants */}
-                          {newProduct.variants.length > 0 && (
-                            <div className="mt-4">
-                              <h5 className="text-sm font-medium text-[#6D7A8B] mb-2">Added Variants:</h5>
-                              <div className="space-y-2">
-                                {newProduct.variants.map((variant, index) => (
-                                  <div key={index} className="flex items-center justify-between p-3 bg-[#F7F9FC] rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                      <div 
-                                        className="w-8 h-8 rounded border border-[#E7ECF3] shadow-sm"
-                                        style={{ backgroundColor: variant.color_hex }}
-                                      />
-                                      <div className="flex-1">
-                                        <p className="text-sm font-medium text-[#0B0F1A]">{variant.color_name} - {variant.size}</p>
-                                        <p className="text-xs text-[#6D7A8B]">SKU: {variant.sku} | Stock: {variant.stock_quantity}</p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => handleVariantImageChange(variant.id, e)}
-                                        className="text-xs"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => handleRemoveVariant(index)}
-                                        className="text-[#E53E3E] hover:text-[#C53030]"
-                                      >
-                                        <Trash2 size={16} />
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
-                          <label className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={newProduct.is_active}
-                              onChange={(e) => setNewProduct({...newProduct, is_active: e.target.checked})}
-                              className="rounded border-[#E7ECF3] text-[#FF7A00] focus:ring-[#FF7A00]"
-                            />
-                            <span className="text-sm text-[#6D7A8B]">Active Product</span>
-                          </label>
-                          <label className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={newProduct.is_out_of_stock}
-                              onChange={(e) => setNewProduct({...newProduct, is_out_of_stock: e.target.checked})}
-                              className="rounded border-[#E7ECF3] text-[#FF7A00] focus:ring-[#FF7A00]"
-                            />
-                            <span className="text-sm text-[#6D7A8B]">Out of Stock</span>
-                          </label>
-                        </div>
-                        
-                        <div className="flex gap-4 pt-6 border-t border-[#E7ECF3]">
-                          <button
-                            type="submit"
-                            disabled={productLoading || uploadingFiles}
-                            className="px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 transition hover:shadow-md flex items-center gap-2 disabled:opacity-50"
-                          >
-                            {(productLoading || uploadingFiles) && <Loader2 className="animate-spin" size={16} />}
-                            {productLoading || uploadingFiles ? "Saving..." : editingProduct ? "Update Product" : "Create Product"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={resetProductForm}
-                            className="px-6 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3] transition"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Overview Tab */}
-          {activeTab === "overview" && (
-            <div className="space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold text-[#0B0F1A] mb-4">Recent Activity</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Recent Payments */}
-                  <div className="bg-[#F7F9FC] rounded-xl p-5 border border-[#E7ECF3]">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-[#0B0F1A] flex items-center gap-2">
-                        <DollarSign size={20} className="text-[#FF7A00]" />
-                        Recent Payments
-                      </h3>
-                      <button
-                        onClick={() => setActiveTab("payments")}
-                        className="text-sm text-[#2B4C73] hover:text-[#1E3A5F] flex items-center gap-1 font-medium"
-                      >
-                        View all <ChevronRight size={14} />
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {payments.slice(0, 5).map((payment) => (
-                        <div key={payment.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-[#E7ECF3] hover:shadow-sm transition">
-                          <div>
-                            <p className="text-[#0B0F1A] font-medium">{payment.description || "Payment"}</p>
-                            <p className="text-sm text-[#6D7A8B]">{payment.profiles?.full_name}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-[#0B0F1A] font-bold">Ksh {payment.amount.toLocaleString()}</p>
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              payment.status === "confirmed" ? "bg-[#E8F4FD] text-[#2B4C73]" :
-                              payment.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" :
-                              "bg-[#FFF0F0] text-[#E53E3E]"
-                            }`}>
-                              {payment.status}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Recent Members */}
-                  <div className="bg-[#F7F9FC] rounded-xl p-5 border border-[#E7ECF3]">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-[#0B0F1A] flex items-center gap-2">
-                        <UserPlus size={20} className="text-[#2B4C73]" />
-                        Recent Members
-                      </h3>
-                      <button
-                        onClick={() => setActiveTab("members")}
-                        className="text-sm text-[#2B4C73] hover:text-[#1E3A5F] flex items-center gap-1 font-medium"
-                      >
-                        View all <ChevronRight size={14} />
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {users.slice(0, 5).map((user) => (
-                        <div key={user.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-[#E7ECF3] hover:shadow-sm transition">
-                          <div>
-                            <p className="text-[#0B0F1A] font-medium">{user.full_name}</p>
-                            <p className="text-sm text-[#6D7A8B]">{user.email}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-[#6D7A8B]">{user.membership_number || "No membership"}</p>
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                              user.status === "active" ? "bg-[#E8F4FD] text-[#2B4C73]" :
-                              "bg-[#FFF4E6] text-[#FF7A00]"
-                            }`}>
-                              {user.status}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Quick Actions */}
-              <div>
-                <h2 className="text-2xl font-bold text-[#0B0F1A] mb-4">Quick Actions</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <button
-                    onClick={() => setActiveTab("events")}
-                    className="p-4 bg-white border border-[#E7ECF3] rounded-xl hover:shadow-md transition hover:-translate-y-1 flex items-center gap-3 group"
-                  >
-                    <div className="w-12 h-12 bg-[#FFF4E6] rounded-lg flex items-center justify-center group-hover:scale-110 transition">
-                      <Calendar className="text-[#FF7A00]" size={24} />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-[#0B0F1A]">Create Event</p>
-                      <p className="text-sm text-[#6D7A8B]">Organize a new event</p>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("merchandise")}
-                    className="p-4 bg-white border border-[#E7ECF3] rounded-xl hover:shadow-md transition hover:-translate-y-1 flex items-center gap-3 group"
-                  >
-                    <div className="w-12 h-12 bg-[#FFF0F0] rounded-lg flex items-center justify-center group-hover:scale-110 transition">
-                      <Tag className="text-[#E53E3E]" size={24} />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-[#0B0F1A]">Add Product</p>
-                      <p className="text-sm text-[#6D7A8B]">Add new merchandise</p>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("members")}
-                    className="p-4 bg-white border border-[#E7ECF3] rounded-xl hover:shadow-md transition hover:-translate-y-1 flex items-center gap-3 group"
-                  >
-                    <div className="w-12 h-12 bg-[#E8F4FD] rounded-lg flex items-center justify-center group-hover:scale-110 transition">
-                      <Users className="text-[#2B4C73]" size={24} />
-                    </div>
-                    <div className="text-left">
-                      <p className="font-medium text-[#0B0F1A]">Manage Members</p>
-                      <p className="text-sm text-[#6D7A8B]">View all members</p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-               {/* CSR Events Tab - MOVED INSIDE */}
+          {/* ── CSR TAB ── */}
           {activeTab === "csr" && (
             <div>
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-[#0B0F1A]">
-                  CSR Event Management ({csrEvents.length})
-                </h2>
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => {
-                      setEditingCSREvent(null);
-                      setShowCSREventForm(true); 
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg hover:opacity-90 transition hover:shadow-md flex items-center gap-2"
-                  >
-                    <Plus size={16} />
-                    Add CSR Event
-                  </button>
-                </div>
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">CSR Events ({csrEvents.length})</h2>
+                <button onClick={() => { resetCsrForm(); setShowCSREventForm(true); }}
+                  className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg flex items-center gap-2">
+                  <Plus size={16} /> Add CSR Event
+                </button>
               </div>
-
-              {/* CSR Events Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {csrEvents.map((event) => (
-                  <div key={event.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition hover:-translate-y-1">
+                {csrEvents.map(event => (
+                  <div key={event.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition">
                     {event.main_image_url && (
-                      <div className="h-48 overflow-hidden bg-[#F7F9FC]">
-                        <img 
-                          src={event.main_image_url} 
-                          alt={event.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x300?text=No+Image';
-                          }}
-                        />
-                      </div>
+                      <div className="h-48 overflow-hidden"><img src={event.main_image_url} alt={event.title} className="w-full h-full object-cover" /></div>
                     )}
-                    
                     <div className="p-5">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              event.event_type === 'tree_planting' ? 'bg-green-100 text-green-700' :
-                              event.event_type === 'community_service' ? 'bg-blue-100 text-blue-700' :
-                              event.event_type === 'charity_drive' ? 'bg-purple-100 text-purple-700' :
-                              event.event_type === 'educational' ? 'bg-yellow-100 text-yellow-700' :
-                              event.event_type === 'health_campaign' ? 'bg-red-100 text-red-700' :
-                              'bg-gray-100 text-gray-700'
-                            }`}>
-                              {getEventTypeLabel(event.event_type)}
-                            </span>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              event.is_published ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#FFF0F0] text-[#E53E3E]"
-                            }`}>
-                              {event.is_published ? "Published" : "Draft"}
-                            </span>
-                          </div>
-                          <h3 className="text-lg font-semibold text-[#0B0F1A] mb-1">{event.title}</h3>
-                          <p className="text-sm text-[#6D7A8B] mb-2 line-clamp-2">{event.description}</p>
-                        </div>
+                      <div className="flex gap-2 mb-2">
+                        <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">{getEventTypeLabel(event.event_type)}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs ${event.is_published ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#FFF0F0] text-[#E53E3E]"}`}>
+                          {event.is_published ? "Published" : "Draft"}
+                        </span>
                       </div>
-                      
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center gap-2 text-[#6D7A8B]">
-                          <Calendar size={14} />
-                          <span className="text-sm">{new Date(event.event_date).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[#6D7A8B]">
-                          <MapPin size={14} />
-                          <span className="text-sm">{event.location}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[#6D7A8B]">
-                          <ImageIcon size={14} />
-                          <span className="text-sm">{event.photos?.length || 0} photos</span>
-                        </div>
+                      <h3 className="font-semibold text-[#0B0F1A] mb-1">{event.title}</h3>
+                      <p className="text-sm text-[#6D7A8B] mb-3 line-clamp-2">{event.description}</p>
+                      <div className="text-sm text-[#6D7A8B] space-y-1 mb-4">
+                        <div className="flex items-center gap-2"><Calendar size={13} />{new Date(event.event_date).toLocaleDateString()}</div>
+                        <div className="flex items-center gap-2"><MapPin size={13} />{event.location}</div>
+                        <div className="flex items-center gap-2"><ImageIcon size={13} />{event.photos?.length || 0} photos</div>
                       </div>
-                      
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          onClick={() => openCSREventEdit(event)}
-                          className="flex-1 px-3 py-2 bg-[#2B4C73] text-white rounded-lg text-sm hover:bg-[#1E3A5F] flex items-center justify-center gap-1"
-                        >
-                          <Edit size={14} />
-                          Edit
+                      <div className="flex gap-2">
+                        <button onClick={() => openCSREventEdit(event)} className="flex-1 px-3 py-2 bg-[#2B4C73] text-white rounded-lg text-sm flex items-center justify-center gap-1">
+                          <Edit size={14} /> Edit
                         </button>
-                        <button
-                          onClick={() => openPhotoUpload(event.id)}
-                          className="flex-1 px-3 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-lg text-sm hover:opacity-90 flex items-center justify-center gap-1"
-                        >
-                          <ImageIcon size={14} />
-                          Photos
+                        <button onClick={() => { setSelectedCSREventId(event.id); setCsrPhotoFiles([]); setCsrPhotoPreviews([]); setShowPhotoUploadModal(true); }}
+                          className="flex-1 px-3 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-lg text-sm flex items-center justify-center gap-1">
+                          <ImageIcon size={14} /> Photos
                         </button>
-                        <button
-                          onClick={() => handleDeleteCSREvent(event.id)}
-                          className="px-3 py-2 bg-[#E53E3E] text-white rounded-lg text-sm hover:bg-[#C53030] flex items-center justify-center"
-                        >
+                        <button onClick={() => handleDeleteCSREvent(event.id)}
+                          className="px-3 py-2 bg-[#E53E3E] text-white rounded-lg text-sm">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -2896,106 +1248,328 @@ const handleUpdateCSREvent = async (e: React.FormEvent) => {
                   </div>
                 ))}
               </div>
-              
               {csrEvents.length === 0 && (
                 <div className="text-center py-12">
                   <Heart className="mx-auto text-[#E7ECF3] mb-4" size={48} />
-                  <p className="text-[#6D7A8B] font-medium mb-4">No CSR events found</p>
-                  <button
-                    onClick={() => {
-                      setEditingCSREvent(null);
-                      setShowCSREventForm(true);
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg hover:opacity-90 transition hover:shadow-md flex items-center gap-2 mx-auto"
-                  >
-                    <Plus size={16} />
-                    Add Your First CSR Event
+                  <p className="text-[#6D7A8B] mb-4">No CSR events yet</p>
+                  <button onClick={() => { resetCsrForm(); setShowCSREventForm(true); }}
+                    className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg flex items-center gap-2 mx-auto">
+                    <Plus size={16} /> Add First CSR Event
                   </button>
                 </div>
               )}
             </div>
           )}
-        
+        </div>
+      </div>
 
-      {/* Modals should REMAIN HERE - they use fixed positioning */}
-      {/* CSR Event Form Modal */}
+      {/* ════════════════════════════════════════════════════════════════════
+          ALL MODALS — rendered at root level with z-[200]
+      ════════════════════════════════════════════════════════════════════ */}
+
+      {/* ── Event Form Modal ── */}
+      {showEventForm && (
+        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+             onClick={e => { if (e.target === e.currentTarget) resetEventForm(); }}>
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+               onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-[#0B0F1A]">{editingEvent ? "Edit Event" : "Create New Event"}</h3>
+                <button onClick={resetEventForm} className="text-[#6D7A8B] hover:text-[#0B0F1A]"><X size={20} /></button>
+              </div>
+              <form onSubmit={editingEvent ? handleEditEvent : handleCreateEvent} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Name *</label>
+                    <input type="text" required value={newEvent.name} onChange={e => setNewEvent({...newEvent, name: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Status</label>
+                    <select value={newEvent.status} onChange={e => setNewEvent({...newEvent, status: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]">
+                      <option value="upcoming">Upcoming</option>
+                      <option value="ongoing">Ongoing</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Date</label>
+                    <input type="datetime-local" value={newEvent.event_date} onChange={e => setNewEvent({...newEvent, event_date: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Location</label>
+                    <input type="text" value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Price (Ksh) *</label>
+                    <input type="number" required value={newEvent.price} onChange={e => setNewEvent({...newEvent, price: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Member Discount (Ksh)</label>
+                    <input type="number" value={newEvent.member_discount} onChange={e => setNewEvent({...newEvent, member_discount: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Max Attendees</label>
+                    <input type="number" value={newEvent.max_attendees} onChange={e => setNewEvent({...newEvent, max_attendees: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                  </div>
+                  <div className="md:col-span-1">
+                    <ImageUploadField
+                      label="Event Image"
+                      preview={eventImagePreview}
+                      onFileChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f, setEventImageFile, setEventImagePreview); }}
+                      onClear={() => { setEventImageFile(null); setEventImagePreview(''); setNewEvent({...newEvent, image_url: ''}); }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Description *</label>
+                  <textarea required rows={4} value={newEvent.description} onChange={e => setNewEvent({...newEvent, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button type="submit" disabled={creatingEvent || uploadingFiles}
+                    className="px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 flex items-center gap-2 disabled:opacity-50">
+                    {(creatingEvent || uploadingFiles) && <Loader2 className="animate-spin" size={16} />}
+                    {creatingEvent || uploadingFiles ? "Saving..." : editingEvent ? "Update Event" : "Create Event"}
+                  </button>
+                  <button type="button" onClick={resetEventForm}
+                    className="px-6 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3]">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CSR Event Form Modal ── */}
       {showCSREventForm && (
-        <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-          {/* ... modal content ... */}
+        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+             onClick={e => { if (e.target === e.currentTarget) resetCsrForm(); }}>
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+               onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-[#0B0F1A]">{editingCSREvent ? "Edit CSR Event" : "Add CSR Event"}</h3>
+                <button onClick={resetCsrForm} className="text-[#6D7A8B] hover:text-[#0B0F1A]"><X size={20} /></button>
+              </div>
+              <form onSubmit={editingCSREvent ? handleUpdateCSREvent : handleCreateCSREvent} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Type *</label>
+                    <select required value={newCSREvent.event_type} onChange={e => setNewCSREvent({...newCSREvent, event_type: e.target.value as CSREvent['event_type']})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]">
+                      <option value="tree_planting">Tree Planting</option>
+                      <option value="community_service">Community Service</option>
+                      <option value="charity_drive">Charity Drive</option>
+                      <option value="educational">Educational</option>
+                      <option value="health_campaign">Health Campaign</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Title *</label>
+                    <input type="text" required value={newCSREvent.title} onChange={e => setNewCSREvent({...newCSREvent, title: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Date *</label>
+                    <input type="date" required value={newCSREvent.event_date} onChange={e => setNewCSREvent({...newCSREvent, event_date: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Location *</label>
+                    <input type="text" required value={newCSREvent.location} onChange={e => setNewCSREvent({...newCSREvent, location: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <ImageUploadField
+                      label="Main Image"
+                      preview={csrMainImagePreview}
+                      onFileChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f, setCsrMainImage, setCsrMainImagePreview); }}
+                      onClear={() => { setCsrMainImage(null); setCsrMainImagePreview(''); }}
+                    />
+                  </div>
+                  {!editingCSREvent && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Photos (optional)</label>
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[#E7ECF3] rounded-lg cursor-pointer hover:border-[#FF7A00] hover:bg-[#FFF4E6] transition">
+                        <Upload className="text-[#6D7A8B] mb-1" size={20} />
+                        <span className="text-sm text-[#6D7A8B]">Upload multiple photos</span>
+                        <input type="file" accept="image/*" multiple onChange={handleCsrPhotoFilesChange} className="hidden" />
+                      </label>
+                      {csrPhotoPreviews.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {csrPhotoPreviews.map((preview, i) => (
+                            <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#E7ECF3]">
+                              <img src={preview} alt={`Photo ${i+1}`} className="w-full h-full object-cover" />
+                              <button type="button" onClick={() => { setCsrPhotoFiles(prev => prev.filter((_, idx) => idx !== i)); setCsrPhotoPreviews(prev => prev.filter((_, idx) => idx !== i)); }}
+                                className="absolute top-0.5 right-0.5 p-0.5 bg-red-500 text-white rounded-full">
+                                <X size={10} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Description *</label>
+                  <textarea required rows={4} value={newCSREvent.description} onChange={e => setNewCSREvent({...newCSREvent, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="is_published" checked={newCSREvent.is_published}
+                    onChange={e => setNewCSREvent({...newCSREvent, is_published: e.target.checked})}
+                    className="rounded border-[#E7ECF3]" />
+                  <label htmlFor="is_published" className="text-sm text-[#6D7A8B]">Publish immediately</label>
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button type="submit" disabled={csrLoading}
+                    className="px-6 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg hover:opacity-90 flex items-center gap-2 disabled:opacity-50">
+                    {csrLoading && <Loader2 className="animate-spin" size={16} />}
+                    {csrLoading ? "Saving..." : editingCSREvent ? "Update Event" : "Create Event"}
+                  </button>
+                  <button type="button" onClick={resetCsrForm}
+                    className="px-6 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3]">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Photo Upload Modal */}
+      {/* ── Photo Upload Modal ── */}
       {showPhotoUploadModal && (
-        <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4 backdrop-blur-sm">
-          {/* ... modal content ... */}
+        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+             onClick={e => { if (e.target === e.currentTarget) setShowPhotoUploadModal(false); }}>
+          <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-[#0B0F1A]">Upload Photos</h3>
+                <button onClick={() => { setShowPhotoUploadModal(false); setCsrPhotoFiles([]); setCsrPhotoPreviews([]); }}
+                  className="text-[#6D7A8B] hover:text-[#0B0F1A]"><X size={20} /></button>
+              </div>
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#E7ECF3] rounded-lg cursor-pointer hover:border-[#FF7A00] hover:bg-[#FFF4E6] transition mb-4">
+                <Upload className="text-[#6D7A8B] mb-2" size={24} />
+                <span className="text-sm text-[#6D7A8B]">Click to select photos</span>
+                <input type="file" accept="image/*" multiple onChange={handleCsrPhotoFilesChange} className="hidden" />
+              </label>
+              {csrPhotoPreviews.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {csrPhotoPreviews.map((preview, i) => (
+                    <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#E7ECF3]">
+                      <img src={preview} alt={`Photo ${i+1}`} className="w-full h-full object-cover" />
+                      <button onClick={() => { setCsrPhotoFiles(prev => prev.filter((_, idx) => idx !== i)); setCsrPhotoPreviews(prev => prev.filter((_, idx) => idx !== i)); }}
+                        className="absolute top-0.5 right-0.5 p-0.5 bg-red-500 text-white rounded-full">
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-sm text-[#6D7A8B] mb-4">{csrPhotoFiles.length} photo(s) selected</p>
+              <div className="flex gap-3">
+                <button onClick={handleUploadPhotos} disabled={csrLoading || csrPhotoFiles.length === 0}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-lg hover:opacity-90 flex items-center justify-center gap-2 disabled:opacity-50">
+                  {csrLoading && <Loader2 className="animate-spin" size={16} />}
+                  {csrLoading ? "Uploading..." : "Upload Photos"}
+                </button>
+                <button onClick={() => { setShowPhotoUploadModal(false); setCsrPhotoFiles([]); setCsrPhotoPreviews([]); }}
+                  className="px-4 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3]">Cancel</button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Success Modal */}
-      <StatusModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        type="success"
-        title={modalTitle}
-        message={modalMessage}
-      />
+      {/* ── Product Form Modal ── */}
+      {showProductForm && (
+        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+             onClick={e => { if (e.target === e.currentTarget) resetProductForm(); }}>
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+               onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-[#0B0F1A]">{editingProduct ? "Edit Product" : "Add Product"}</h3>
+                <button onClick={resetProductForm} className="text-[#6D7A8B] hover:text-[#0B0F1A]"><X size={20} /></button>
+              </div>
+              <form onSubmit={editingProduct ? (e) => { e.preventDefault(); handleUpdateProduct(editingProduct.id, { ...newProduct, base_price: parseFloat(newProduct.base_price) }); } : handleCreateProduct} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Product Name *</label>
+                    <input type="text" required value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Category *</label>
+                    <select required value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value as any})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]">
+                      {['tshirt','polo','hoodie','accessory','other'].map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Base Price (Ksh) *</label>
+                    <input type="number" required value={newProduct.base_price} onChange={e => setNewProduct({...newProduct, base_price: e.target.value})}
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                  </div>
+                  <div>
+                    <ImageUploadField
+                      label="Product Image"
+                      preview={productMainImagePreview}
+                      onFileChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f, setProductMainImage, setProductMainImagePreview); }}
+                      onClear={() => { setProductMainImage(null); setProductMainImagePreview(''); }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Description *</label>
+                  <textarea required rows={3} value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})}
+                    className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                </div>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={newProduct.is_active} onChange={e => setNewProduct({...newProduct, is_active: e.target.checked})} className="rounded" />
+                    <span className="text-sm text-[#6D7A8B]">Active</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={newProduct.is_out_of_stock} onChange={e => setNewProduct({...newProduct, is_out_of_stock: e.target.checked})} className="rounded" />
+                    <span className="text-sm text-[#6D7A8B]">Out of Stock</span>
+                  </label>
+                </div>
+                <div className="flex gap-4 pt-4 border-t border-[#E7ECF3]">
+                  <button type="submit" disabled={productLoading}
+                    className="px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 flex items-center gap-2 disabled:opacity-50">
+                    {productLoading && <Loader2 className="animate-spin" size={16} />}
+                    {productLoading ? "Saving..." : editingProduct ? "Update Product" : "Create Product"}
+                  </button>
+                  <button type="button" onClick={resetProductForm}
+                    className="px-6 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3]">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Error Modal */}
-      <StatusModal
-        isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
-        type="error"
-        title={modalTitle}
-        message={modalMessage}
-      />
+      {/* Status Modals */}
+      <StatusModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} type="success" title={modalTitle} message={modalMessage} />
+      <StatusModal isOpen={showErrorModal} onClose={() => setShowErrorModal(false)} type="error" title={modalTitle} message={modalMessage} />
+      <ConfirmationModal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)}
+        onConfirm={confirmAction || (async () => {})} title={modalTitle} message={modalMessage} />
 
-      {/* Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        onConfirm={confirmAction || (async () => {})}
-        title={modalTitle}
-        message={modalMessage}
-      />
-
-      {/* Add global font style */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-        
-        .font-poppins {
-          font-family: 'Poppins', sans-serif;
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        @keyframes zoomIn {
-          from {
-            transform: scale(0.95);
-          }
-          to {
-            transform: scale(1);
-          }
-        }
-
-        .animate-in {
-          animation: fadeIn 0.2s ease-out;
-        }
-
-        .zoom-in-95 {
-          animation: zoomIn 0.2s ease-out;
-        }
+        .font-poppins { font-family: 'Poppins', sans-serif; }
       `}</style>
-      
+
       <Footer />
     </div>
   );

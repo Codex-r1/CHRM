@@ -147,13 +147,6 @@ export default function ContactPage() {
                 />
               </div>
               <div className="relative z-10">
-                <motion.div
-                  variants={fadeUp}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-[#2B4C73]/10 to-[#FF7A00]/10 px-6 py-3 rounded-full mb-6"
-                >
-                  <div className="w-3 h-3 bg-[#2B4C73] rounded-full animate-pulse" />
-                  <span className="text-[#2B4C73] font-semibold">Contact CHRMAA</span>
-                </motion.div>
                 
                 <motion.h1
                   variants={fadeUp}
