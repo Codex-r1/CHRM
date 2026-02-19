@@ -211,14 +211,10 @@ export default function HomePage() {
               >
                 Welcome to the{" "}
                 <span className="relative inline-block">
-                  <span className="relative z-10">CHRM Alumni</span>
-                  <motion.span
-                    animate={glowAnimation}
-                    className="absolute inset-0 bg-gradient-to-r from-[#2B4C73] to-[#1A3557] opacity-20 blur-lg"
-                  />
+                  <span className="relative z-10">CHRM Alumni</span>  
                 </span>
                 <br />
-                <span className="bg-gradient-to-r from-[#2B4C73] via-[#FF7A00] to-[#E53E3E] bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#2B4C73]  bg-clip-text ">
                   Association
                 </span>
               </motion.h1>

@@ -5,6 +5,9 @@ import { Mail, Phone, MapPin, Clock, User, MessageSquare, ArrowRight, CreditCard
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
+import { useState } from "react";
+import { Loader2, Send, AlertTriangle, CheckCircle } from "lucide-react";
+
 
 // Animation Variants
 const fadeUp: Variants = {
@@ -123,6 +126,50 @@ export default function ContactPage() {
       gradient: "from-[#2B4C73] to-[#1A3557]"
     }
   ];
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+  });
+
+  const [sending, setSending] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const onChange = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setForm(prev => ({ ...prev, [k]: e.target.value }));
+  };
+
+  const handleSubmitMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedback(null);
+
+    // quick client validation (keep it minimal)
+    if (!form.name.trim() || !form.email.trim() || !form.subject.trim() || !form.message.trim()) {
+      setFeedback({ type: "error", text: "Please fill in Name, Email, Subject, and Message." });
+      return;
+    }
+
+    setSending(true);
+    try {
+      const res = await fetch("/api/contact-messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Failed to send message");
+
+      setFeedback({ type: "success", text: "Message sent! The administrator will get back to you soon." });
+      setForm({ name: "", email: "", phone: "", subject: "", message: "" });
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err.message || "Something went wrong. Please try again." });
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F7F9FC] to-white flex flex-col">
@@ -243,6 +290,115 @@ export default function ContactPage() {
               </motion.div>
             ))}
           </motion.div>
+{/* SEND MESSAGE */}
+<motion.section
+  initial="hidden"
+  whileInView="visible"
+  viewport={{ once: true }}
+  variants={scaleIn}
+  className="bg-white rounded-2xl p-8 border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300"
+>
+  <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+    <div>
+      <h2 className="text-2xl font-bold text-[#0B0F1A] font-poppins">Send a Message</h2>
+      <p className="text-[#6D7A8B] mt-1">
+        Have a question or request? Send it directly to the CHRMAA administrator.
+      </p>
+    </div>
+
+    <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#E8F4FD] to-[#FFF4E6] px-4 py-2 rounded-xl border border-[#2B4C73]/10">
+      <MessageSquare className="text-[#2B4C73]" size={18} />
+      <span className="text-sm font-semibold text-[#2B4C73]">Direct Inbox</span>
+    </div>
+  </div>
+
+  {feedback && (
+    <div
+      className={`mb-6 p-4 rounded-xl border flex items-start gap-3 ${
+        feedback.type === "success"
+          ? "bg-[#E8F4FD] border-[#2B4C73]/20"
+          : "bg-[#FFF4E6] border-[#FF7A00]/30"
+      }`}
+    >
+      {feedback.type === "success" ? (
+        <CheckCircle className="text-[#2B4C73] mt-0.5" size={18} />
+      ) : (
+        <AlertTriangle className="text-[#FF7A00] mt-0.5" size={18} />
+      )}
+      <p className={`text-sm ${feedback.type === "success" ? "text-[#2B4C73]" : "text-[#6D7A8B]"}`}>
+        {feedback.text}
+      </p>
+    </div>
+  )}
+
+  <form onSubmit={handleSubmitMessage} className="space-y-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Full Name *</label>
+        <input
+          value={form.name}
+          onChange={onChange("name")}
+          className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]"
+          placeholder="Your name"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Email *</label>
+        <input
+          type="email"
+          value={form.email}
+          onChange={onChange("email")}
+          className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]"
+          placeholder="you@example.com"
+          required
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Phone (optional)</label>
+        <input
+          value={form.phone}
+          onChange={onChange("phone")}
+          className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]"
+          placeholder="07xx xxx xxx"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Subject *</label>
+        <input
+          value={form.subject}
+          onChange={onChange("subject")}
+          className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]"
+          placeholder="Membership, events, payments, etc."
+          required
+        />
+      </div>
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Message *</label>
+      <textarea
+        value={form.message}
+        onChange={onChange("message")}
+        rows={5}
+        className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]"
+        placeholder="Type your message here..."
+        required
+      />
+    </div>
+
+    <div className="flex items-center justify-end pt-2">
+      <button
+        type="submit"
+        disabled={sending}
+        className="px-6 py-3 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-xl hover:opacity-90 transition flex items-center gap-2 font-bold disabled:opacity-50"
+      >
+        {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+        {sending ? "Sending..." : "Send Message"}
+      </button>
+    </div>
+  </form>
+</motion.section>
 
           {/* PAYMENT INFO */}
           <motion.section

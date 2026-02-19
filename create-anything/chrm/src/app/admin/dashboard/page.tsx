@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Users, DollarSign, ShoppingBag, Calendar, CheckCircle, XCircle, Clock,
-  Plus, Edit, Heart, Trash2, Eye, Download, Search, BarChart, Activity,
+  Plus, Edit, Heart, Trash2, Eye, Download, Search, Activity,
   UserPlus, Ticket, MapPin, Users as UsersIcon, Tag, Image as ImageIcon,
-  Shield, Package, CreditCard, ChevronRight, LogOut, AlertCircle,
-  AlertTriangle, Info, X, Loader2, Upload,
+  Shield, ChevronRight, LogOut, AlertCircle,
+  AlertTriangle, Info, X, Loader2, Upload,MessageSquare, Mail
 } from "lucide-react";
 import { useAuth } from "../../context/auth";
 import Footer from "@/app/components/Footer";
@@ -20,6 +20,7 @@ type User = {
   course?: string; county?: string; created_at: string;
   memberships?: { start_date: string; expiry_date: string; is_active: boolean }[];
 };
+
 type Payment = {
   id: string; user_id: string; payment_type: string; amount: number;
   status: 'pending' | 'processing' | 'confirmed' | 'failed';
@@ -27,6 +28,7 @@ type Payment = {
   description?: string; created_at: string; updated_at: string;
   profiles?: { full_name: string; email: string; membership_number: string };
 };
+
 type Order = {
   id: string; user_id: string; items: any[]; total: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
@@ -34,17 +36,20 @@ type Order = {
   shipping_address?: string; created_at: string;
   profiles?: { full_name: string; email: string };
 };
+
 type Event = {
   id: string; name: string; description: string; event_date?: string;
   location?: string; price: number; member_discount: number;
   max_attendees?: number; current_attendees: number; is_active: boolean;
   created_at: string; image_url?: string; status: string;
 };
+
 type Stats = {
   totalMembers: number; activeMembers: number; pendingPayments: number;
   totalRevenue: number; pendingOrders: number; totalEvents: number;
   upcomingEvents: number; monthlyRevenue: number;
 };
+
 type Product = {
   id: string; name: string; slug: string; description: string;
   base_price: number; category: 'tshirt' | 'polo' | 'hoodie' | 'accessory' | 'other';
@@ -52,14 +57,17 @@ type Product = {
   sort_order: number; created_at: string;
   product_variants?: ProductVariant[]; product_images?: ProductImage[];
 };
+
 type ProductVariant = {
   id: string; product_id: string; color_name: string; color_hex: string;
   size: string; sku: string; price_adjustment: number; stock_quantity: number;
   is_available: boolean; image_url?: string;
 };
+
 type ProductImage = {
   id: string; product_id: string; image_url: string; is_primary: boolean; sort_order: number;
 };
+
 type CSREvent = {
   id: string;
   event_type: 'tree_planting' | 'community_service' | 'charity_drive' | 'educational' | 'health_campaign' | 'other';
@@ -67,11 +75,33 @@ type CSREvent = {
   main_image_url?: string; is_published: boolean; created_at: string; updated_at: string;
   photos?: CSREventPhoto[];
 };
+
 type CSREventPhoto = {
   id: string; csr_event_id: string; image_url: string; caption?: string;
   display_order: number; created_at: string;
 };
 
+type Official = {
+  id: string;
+  name: string;
+  position: string;
+  image_url: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
+};
+type ContactMessage = {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  subject: string;
+  message: string;
+  status: 'unread' | 'read' | 'replied' | 'archived';
+  user_id?: string;
+  created_at: string;
+  updated_at: string;
+};
 // ─── Modal Components ─────────────────────────────────────────────────────────
 const Modal = ({
   isOpen, onClose, title, children, type = 'info', size = 'md'
@@ -79,7 +109,6 @@ const Modal = ({
   isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode;
   type?: 'success' | 'error' | 'warning' | 'info' | 'confirm'; size?: 'sm' | 'md' | 'lg' | 'xl';
 }) => {
-  // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = '';
@@ -292,6 +321,27 @@ export default function AdminDashboard() {
   const [productMainImagePreview, setProductMainImagePreview] = useState<string>('');
   const [variantImageFiles, setVariantImageFiles] = useState<Map<string, File>>(new Map());
 
+  // Officials state
+  const [officials, setOfficials] = useState<Official[]>([]);
+  const [showOfficialForm, setShowOfficialForm] = useState(false);
+  const [editingOfficial, setEditingOfficial] = useState<Official | null>(null);
+  const [officialLoading, setOfficialLoading] = useState(false);
+  const [newOfficial, setNewOfficial] = useState({
+    name: '',
+    position: '',
+    image_url: '',
+    display_order: 0,
+    is_active: true
+  });
+  const [officialImageFile, setOfficialImageFile] = useState<File | null>(null);
+  const [officialImagePreview, setOfficialImagePreview] = useState<string>('');
+const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
+const [messagesLoading, setMessagesLoading] = useState(false);
+const [messageSearch, setMessageSearch] = useState("");
+const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
+const [showMessageModal, setShowMessageModal] = useState(false);
+const [replyText, setReplyText] = useState("");
+const [replying, setReplying] = useState(false);
   // ─── Helpers ───────────────────────────────────────────────────────────────
   const getSessionToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -355,6 +405,39 @@ export default function AdminDashboard() {
   };
 
   // ─── Data fetching ─────────────────────────────────────────────────────────
+  const fetchOfficials = useCallback(async () => {
+    try {
+      const token = await getSessionToken();
+      if (!token) return;
+      const res = await fetch('/api/admin/officials', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOfficials(data.officials || []);
+      }
+    } catch (err) {
+      console.error('Officials fetch error:', err);
+    }
+  }, []);
+const fetchContactMessages = useCallback(async () => {
+  try {
+    setMessagesLoading(true);
+    const token = await getSessionToken();
+    if (!token) return;
+    const res = await fetch('/api/admin/contact-messages', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setContactMessages(data.messages || []);
+    }
+  } catch (err) {
+    console.error('Error fetching contact messages:', err);
+  } finally {
+    setMessagesLoading(false);
+  }
+}, []);
   const fetchCSREvents = useCallback(async () => {
     try {
       const token = await getSessionToken();
@@ -406,7 +489,7 @@ export default function AdminDashboard() {
       if (ordersRes.ok) { const d = await ordersRes.json(); fetchedOrders = d.orders || []; setOrders(fetchedOrders); }
       if (eventsRes.ok) { const d = await eventsRes.json(); fetchedEvents = d.events || []; setEvents(fetchedEvents); }
 
-      await Promise.all([fetchProducts(), fetchCSREvents()]);
+      await Promise.all([fetchProducts(), fetchCSREvents(), fetchOfficials()]);
 
       setStats({
         totalMembers: fetchedUsers.length,
@@ -424,7 +507,7 @@ export default function AdminDashboard() {
       console.error("Failed to fetch data:", err);
       showErrorMessage("Data Fetch Error", "Failed to load dashboard data.");
     } finally { setDataLoading(false); }
-  }, [fetchProducts, fetchCSREvents]);
+  }, [fetchProducts, fetchCSREvents, fetchOfficials]);
 
   // ─── Event handlers ────────────────────────────────────────────────────────
   const resetEventForm = () => {
@@ -464,7 +547,6 @@ export default function AdminDashboard() {
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Failed to create event'); }
       resetEventForm();
       showSuccessMessage("Success", "Event created successfully!");
-      // Refresh only events — no full page reload
       const token2 = await getSessionToken();
       const evRes = await fetch('/api/admin/events', { headers: { 'Authorization': `Bearer ${token2}` } });
       if (evRes.ok) { const d = await evRes.json(); setEvents(d.events || []); }
@@ -500,7 +582,6 @@ export default function AdminDashboard() {
       });
 
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Failed to update event'); }
-      // Close modal FIRST, then show success, then refresh data
       resetEventForm();
       showSuccessMessage("Success", "Event updated successfully!");
       const token2 = await getSessionToken();
@@ -560,11 +641,16 @@ export default function AdminDashboard() {
           image_url: await uploadFile(file, 'csr-events', `photos/${event.id}`),
           caption: `Photo ${i + 1}`, display_order: i
         })));
-        await fetch(`/api/admin/csr-events/${event.id}/photos`, {
+        
+        const photoRes = await fetch(`/api/admin/csr-events/${event.id}/photos`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ photos })
         });
+        
+        if (!photoRes.ok) {
+          console.error('Failed to upload photos, but event was created');
+        }
       }
 
       resetCsrForm();
@@ -637,24 +723,125 @@ export default function AdminDashboard() {
     try {
       const token = await getSessionToken();
       if (!token) throw new Error('No session');
+      
       const photos = await Promise.all(csrPhotoFiles.map(async (file, i) => ({
         image_url: await uploadFile(file, 'csr-events', `photos/${selectedCSREventId}`),
-        caption: `Photo ${i + 1}`, display_order: i
+        caption: `Photo ${i + 1}`, 
+        display_order: i
       })));
+      
       const res = await fetch(`/api/admin/csr-events/${selectedCSREventId}/photos`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ photos })
       });
+      
       if (res.ok) {
         showSuccessMessage("Success", "Photos uploaded successfully!");
-        setCsrPhotoFiles([]); setCsrPhotoPreviews([]);
-        setShowPhotoUploadModal(false); setSelectedCSREventId(null);
+        // Clear the files AFTER successful upload
+        setCsrPhotoFiles([]);
+        setCsrPhotoPreviews([]);
+        setShowPhotoUploadModal(false);
+        setSelectedCSREventId(null);
         await fetchCSREvents();
-      } else { throw new Error('Failed to upload photos'); }
+      } else { 
+        throw new Error('Failed to upload photos'); 
+      }
     } catch (err: any) {
       showErrorMessage("Error", err.message || 'Failed to upload photos');
-    } finally { setCsrLoading(false); }
+    } finally { 
+      setCsrLoading(false); 
+    }
+  };
+
+  // ─── Official handlers ─────────────────────────────────────────────────────
+  const resetOfficialForm = () => {
+    setNewOfficial({
+      name: '',
+      position: '',
+      image_url: '',
+      display_order: 0,
+      is_active: true
+    });
+    setOfficialImageFile(null);
+    setOfficialImagePreview('');
+    setEditingOfficial(null);
+    setShowOfficialForm(false);
+  };
+
+  const handleCreateOfficial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOfficialLoading(true);
+    try {
+      const token = await getSessionToken();
+      if (!token) throw new Error('No session');
+
+      let imageUrl = newOfficial.image_url;
+      if (officialImageFile) {
+        imageUrl = await uploadFile(officialImageFile, 'officials', `officials/${Date.now()}`);
+      }
+
+      const res = await fetch('/api/admin/officials', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newOfficial, image_url: imageUrl })
+      });
+
+      if (!res.ok) throw new Error('Failed to create official');
+      resetOfficialForm();
+      showSuccessMessage("Success", "Official added successfully!");
+      await fetchOfficials();
+    } catch (err: any) {
+      showErrorMessage("Error", err.message);
+    } finally {
+      setOfficialLoading(false);
+    }
+  };
+
+  const handleUpdateOfficial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOfficial) return;
+    setOfficialLoading(true);
+    try {
+      const token = await getSessionToken();
+      if (!token) throw new Error('No session');
+
+      let imageUrl = newOfficial.image_url;
+      if (officialImageFile) {
+        imageUrl = await uploadFile(officialImageFile, 'officials', `officials/${Date.now()}`);
+      }
+
+      const res = await fetch(`/api/admin/officials/${editingOfficial.id}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newOfficial, image_url: imageUrl })
+      });
+
+      if (!res.ok) throw new Error('Failed to update official');
+      resetOfficialForm();
+      showSuccessMessage("Success", "Official updated successfully!");
+      await fetchOfficials();
+    } catch (err: any) {
+      showErrorMessage("Error", err.message);
+    } finally {
+      setOfficialLoading(false);
+    }
+  };
+
+  const handleDeleteOfficial = (officialId: string) => {
+    showConfirmation("Delete Official", "Are you sure you want to delete this official?", async () => {
+      const token = await getSessionToken();
+      if (!token) return;
+      const res = await fetch(`/api/admin/officials/${officialId}`, {
+        method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setOfficials(prev => prev.filter(o => o.id !== officialId));
+        showSuccessMessage("Success", "Official deleted successfully!");
+      } else {
+        showErrorMessage("Error", "Failed to delete official");
+      }
+    });
   };
 
   // ─── Payment / Order / User handlers ──────────────────────────────────────
@@ -888,6 +1075,7 @@ export default function AdminDashboard() {
             { id: "events", label: "Events", icon: Calendar },
             { id: "merchandise", label: "Merchandise", icon: Tag },
             { id: "csr", label: "CSR Events", icon: Heart },
+            { id: "officials", label: "Officials", icon: UsersIcon },
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`px-5 py-3 font-medium rounded-lg transition-all flex items-center gap-2 ${
@@ -1260,9 +1448,150 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
+
+          {/* ── OFFICIALS TAB ── */}
+          {activeTab === "officials" && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-[#0B0F1A]">Officials ({officials.length})</h2>
+                <button onClick={() => { resetOfficialForm(); setShowOfficialForm(true); }}
+                  className="px-4 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg flex items-center gap-2">
+                  <Plus size={16} /> Add Official
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {officials.map(official => (
+                  <div key={official.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition">
+                    <div className="h-64 overflow-hidden">
+                      <img src={official.image_url} alt={official.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-bold text-[#0B0F1A] text-lg">{official.name}</h3>
+                      <p className="text-[#2B4C73] font-semibold text-sm mb-3">{official.position}</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => {
+                          setEditingOfficial(official);
+                          setNewOfficial({
+                            name: official.name,
+                            position: official.position,
+                            image_url: official.image_url,
+                            display_order: official.display_order,
+                            is_active: official.is_active
+                          });
+                          setOfficialImagePreview(official.image_url);
+                          setShowOfficialForm(true);
+                        }} className="flex-1 px-3 py-2 bg-[#2B4C73] text-white rounded text-sm hover:bg-[#1E3A5F]">
+                          <Edit size={14} className="inline mr-1" /> Edit
+                        </button>
+                        <button onClick={() => handleDeleteOfficial(official.id)}
+                          className="px-3 py-2 bg-[#E53E3E] text-white rounded text-sm hover:bg-[#C53030]">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {officials.length === 0 && (
+                <div className="text-center py-12">
+                  <Users className="mx-auto text-[#E7ECF3] mb-4" size={48} />
+                  <p className="text-[#6D7A8B] mb-4">No officials added yet</p>
+                  <button onClick={() => { resetOfficialForm(); setShowOfficialForm(true); }}
+                    className="px-4 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg flex items-center gap-2 mx-auto">
+                    <Plus size={16} /> Add First Official
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+{/* ── CONTACT MESSAGES TAB ── */}
+{activeTab === "messages" && (
+  <div>
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-2xl font-bold text-[#0B0F1A]">
+        Contact Messages ({contactMessages.filter(m => m.status === 'unread').length} unread)
+      </h2>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={18} />
+        <input
+          type="text"
+          placeholder="Search messages..."
+          value={messageSearch}
+          onChange={e => setMessageSearch(e.target.value)}
+          className="pl-10 pr-4 py-2 border border-[#E7ECF3] rounded-lg bg-white"
+        />
+      </div>
+    </div>
 
+    <div className="overflow-x-auto rounded-lg border border-[#E7ECF3]">
+      <table className="w-full">
+        <thead>
+          <tr className="text-left text-[#6D7A8B] bg-[#F7F9FC] border-b border-[#E7ECF3]">
+            {['Name', 'Subject', 'Email', 'Date', 'Status', 'Actions'].map(h => (
+              <th key={h} className="pb-3 px-4 font-semibold">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {contactMessages
+            .filter(m => 
+              m.name.toLowerCase().includes(messageSearch.toLowerCase()) ||
+              m.email.toLowerCase().includes(messageSearch.toLowerCase()) ||
+              m.subject.toLowerCase().includes(messageSearch.toLowerCase())
+            )
+            .map(message => (
+              <tr key={message.id} className="border-b border-[#F7F9FC] hover:bg-[#F7F9FC]">
+                <td className="py-4 px-4">
+                  <p className="font-medium">{message.name}</p>
+                  {message.phone && <p className="text-xs text-[#6D7A8B]">{message.phone}</p>}
+                </td>
+                <td className="py-4 px-4">
+                  <p className="font-medium">{message.subject}</p>
+                  <p className="text-xs text-[#6D7A8B] truncate max-w-[200px]">{message.message}</p>
+                </td>
+                <td className="py-4 px-4">
+                  <p className="text-sm">{message.email}</p>
+                </td>
+                <td className="py-4 px-4">
+                  <p className="text-sm text-[#6D7A8B]">{formatDate(message.created_at)}</p>
+                </td>
+                <td className="py-4 px-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    message.status === 'unread' ? 'bg-[#FFF4E6] text-[#FF7A00]' :
+                    message.status === 'read' ? 'bg-[#E8F4FD] text-[#2B4C73]' :
+                    message.status === 'replied' ? 'bg-green-100 text-green-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {message.status}
+                  </span>
+                </td>
+                <td className="py-4 px-4">
+                  <button
+                    onClick={() => {
+                      setSelectedMessage(message);
+                      setShowMessageModal(true);
+                    }}
+                    className="px-3 py-1 bg-[#2B4C73] text-white rounded text-sm hover:bg-[#1E3A5F] flex items-center gap-1"
+                  >
+                    <Eye size={14} /> View
+                  </button>
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </div>
+
+    {contactMessages.length === 0 && (
+      <div className="text-center py-12">
+        <MessageSquare className="mx-auto text-[#E7ECF3] mb-4" size={48} />
+        <p className="text-[#6D7A8B]">No messages yet</p>
+      </div>
+    )}
+  </div>
+)}
       {/* ════════════════════════════════════════════════════════════════════
           ALL MODALS — rendered at root level with z-[200]
       ════════════════════════════════════════════════════════════════════ */}
@@ -1283,7 +1612,7 @@ export default function AdminDashboard() {
                   <div>
                     <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Name *</label>
                     <input type="text" required value={newEvent.name} onChange={e => setNewEvent({...newEvent, name: e.target.value})}
-                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00] focus:border-transparent" />
+                      className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Status</label>
@@ -1445,7 +1774,100 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+{/* ── Message View Modal ── */}
+{showMessageModal && selectedMessage && (
+  <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+       onClick={e => { if (e.target === e.currentTarget) setShowMessageModal(false); }}>
+    <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+         onClick={e => e.stopPropagation()}>
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold text-[#0B0F1A]">Message Details</h3>
+          <button onClick={() => setShowMessageModal(false)} className="text-[#6D7A8B] hover:text-[#0B0F1A]">
+            <X size={20} />
+          </button>
+        </div>
 
+        <div className="space-y-4">
+          <div className="bg-[#F7F9FC] p-4 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div>
+                <p className="text-xs text-[#6D7A8B]">Name</p>
+                <p className="font-medium">{selectedMessage.name}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#6D7A8B]">Date</p>
+                <p className="font-medium">{formatDate(selectedMessage.created_at)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#6D7A8B]">Email</p>
+                <a href={`mailto:${selectedMessage.email}`} className="font-medium text-[#2B4C73] hover:underline">
+                  {selectedMessage.email}
+                </a>
+              </div>
+              {selectedMessage.phone && (
+                <div>
+                  <p className="text-xs text-[#6D7A8B]">Phone</p>
+                  <a href={`tel:${selectedMessage.phone}`} className="font-medium text-[#2B4C73] hover:underline">
+                    {selectedMessage.phone}
+                  </a>
+                </div>
+              )}
+            </div>
+            <div className="mb-3">
+              <p className="text-xs text-[#6D7A8B]">Subject</p>
+              <p className="font-medium">{selectedMessage.subject}</p>
+            </div>
+            <div>
+              <p className="text-xs text-[#6D7A8B] mb-1">Message</p>
+              <p className="text-gray-700 whitespace-pre-wrap bg-white p-3 rounded-lg border border-[#E7ECF3]">
+                {selectedMessage.message}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <select
+              value={selectedMessage.status}
+              onChange={async (e) => {
+                const newStatus = e.target.value as ContactMessage['status'];
+                const token = await getSessionToken();
+                if (!token) return;
+                
+                const res = await fetch(`/api/admin/contact-messages/${selectedMessage.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: newStatus })
+                });
+                
+                if (res.ok) {
+                  setContactMessages(prev => prev.map(m => 
+                    m.id === selectedMessage.id ? { ...m, status: newStatus } : m
+                  ));
+                  setSelectedMessage({ ...selectedMessage, status: newStatus });
+                  showSuccessMessage("Success", "Status updated!");
+                }
+              }}
+              className="px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white"
+            >
+              <option value="unread">Unread</option>
+              <option value="read">Read</option>
+              <option value="replied">Replied</option>
+              <option value="archived">Archived</option>
+            </select>
+
+            <button
+              onClick={() => window.location.href = `mailto:${selectedMessage.email}?subject=Re: ${selectedMessage.subject}`}
+              className="px-4 py-2 bg-[#2B4C73] text-white rounded-lg hover:bg-[#1E3A5F] flex items-center gap-2"
+            >
+              <Mail size={16} /> Reply via Email
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       {/* ── Photo Upload Modal ── */}
       {showPhotoUploadModal && (
         <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
@@ -1485,6 +1907,60 @@ export default function AdminDashboard() {
                 <button onClick={() => { setShowPhotoUploadModal(false); setCsrPhotoFiles([]); setCsrPhotoPreviews([]); }}
                   className="px-4 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3]">Cancel</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Official Form Modal ── */}
+      {showOfficialForm && (
+        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+             onClick={e => { if (e.target === e.currentTarget) resetOfficialForm(); }}>
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+               onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-[#0B0F1A]">{editingOfficial ? "Edit Official" : "Add Official"}</h3>
+                <button onClick={resetOfficialForm} className="text-[#6D7A8B] hover:text-[#0B0F1A]"><X size={20} /></button>
+              </div>
+              <form onSubmit={editingOfficial ? handleUpdateOfficial : handleCreateOfficial} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Name *</label>
+                  <input type="text" required value={newOfficial.name} onChange={e => setNewOfficial({...newOfficial, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Position *</label>
+                  <input type="text" required value={newOfficial.position} onChange={e => setNewOfficial({...newOfficial, position: e.target.value})}
+                    className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Display Order</label>
+                  <input type="number" value={newOfficial.display_order} onChange={e => setNewOfficial({...newOfficial, display_order: parseInt(e.target.value) || 0})}
+                    className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]" />
+                </div>
+                <ImageUploadField
+                  label="Official Photo *"
+                  preview={officialImagePreview}
+                  onFileChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f, setOfficialImageFile, setOfficialImagePreview); }}
+                  onClear={() => { setOfficialImageFile(null); setOfficialImagePreview(''); }}
+                />
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="official_active" checked={newOfficial.is_active}
+                    onChange={e => setNewOfficial({...newOfficial, is_active: e.target.checked})}
+                    className="rounded border-[#E7ECF3]" />
+                  <label htmlFor="official_active" className="text-sm text-[#6D7A8B]">Active (visible on site)</label>
+                </div>
+                <div className="flex gap-4 pt-4">
+                  <button type="submit" disabled={officialLoading}
+                    className="px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 flex items-center gap-2 disabled:opacity-50">
+                    {officialLoading && <Loader2 className="animate-spin" size={16} />}
+                    {officialLoading ? "Saving..." : editingOfficial ? "Update Official" : "Add Official"}
+                  </button>
+                  <button type="button" onClick={resetOfficialForm}
+                    className="px-6 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3]">Cancel</button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

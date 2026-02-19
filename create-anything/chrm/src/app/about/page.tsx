@@ -1,64 +1,42 @@
 "use client";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import {
-  ArrowLeft,
-  Mail,
-  Phone,
-  User,
   Users,
   Award,
   Target,
   Network,
-  Building,
   DollarSign,
   TrendingUp,
   Handshake,
-  Image as ImageIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { Variants } from "framer-motion";
 
-// Animation Variants - MOVED TO TOP
 const fadeUp: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 24,
-  },
+  hidden: { opacity: 0, y: 24 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: {
-      duration: 0.6,
-      ease: [0.16, 1, 0.3, 1],
-    },
+    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
   },
 };
 
 const fadeIn: Variants = {
-  hidden: {
-    opacity: 0,
-  },
+  hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      duration: 0.5,
-    },
+    transition: { duration: 0.5 },
   },
 };
 
 const scaleIn: Variants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.9,
-  },
+  hidden: { opacity: 0, scale: 0.9 },
   visible: {
     opacity: 1,
     scale: 1,
-    transition: {
-      duration: 0.6,
-      ease: [0.16, 1, 0.3, 1],
-    },
+    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
   },
 };
 
@@ -71,133 +49,58 @@ const staggerContainer: Variants = {
   },
 };
 
-const slideInFromLeft: Variants = {
-  hidden: {
-    opacity: 0,
-    x: -50,
-  },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: {
-      duration: 0.7,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-};
-
-const slideInFromRight: Variants = {
-  hidden: {
-    opacity: 0,
-    x: 50,
-  },
-  visible: {
-    opacity: 1,
-    x: 0,
-    transition: {
-      duration: 0.7,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-};
-
 const iconAnimation: Variants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.5,
-    rotate: -90,
-  },
+  hidden: { opacity: 0, scale: 0.5, rotate: -90 },
   visible: {
     opacity: 1,
     scale: 1,
     rotate: 0,
-    transition: {
-      type: "spring",
-      stiffness: 200,
-      damping: 15,
-    },
+    transition: { type: "spring", stiffness: 200, damping: 15 },
   },
   hover: {
     scale: 1.1,
     rotate: 10,
-    transition: {
-      type: "spring",
-      stiffness: 400,
-      damping: 10,
-    },
-  },
-};
-
-const cardHover: Variants = {
-  hover: {
-    scale: 1.05,
-    y: -8,
-    boxShadow: "0 20px 40px rgba(43, 76, 115, 0.15)",
-    transition: {
-      type: "spring",
-      stiffness: 300,
-      damping: 20,
-    },
+    transition: { type: "spring", stiffness: 400, damping: 10 },
   },
 };
 
 const statAnimation: Variants = {
-  hidden: {
-    scale: 0,
-  },
+  hidden: { scale: 0 },
   visible: {
     scale: 1,
-    transition: {
-      type: "spring",
-      stiffness: 100,
-      damping: 15,
-    },
+    transition: { type: "spring", stiffness: 100, damping: 15 },
   },
 };
 
-// Component function
-export default function AboutPage() {
-  const navigateHome = () => {
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
-  };
+type Official = {
+  id: string;
+  name: string;
+  position: string;
+  image_url: string;
+  display_order: number;
+};
 
-  // Updated officials data 
-  const officials = [
-    {
-      name: "Rev. Canon Stephine Opiyo Obong'o",
-      position: "Chair",
-    },
-    {
-      name: "Ms. Vivian Perose",
-      position: "Vice Chair",
-    },
-    {
-      name: "Mrs. Roselyn Mugavana",
-      position: "Honorary Secretary",
-    },
-    {
-      name: "Mr. Jeshurun Baraka",
-      position: "Member",
-    },
-    {
-      name: "Ms. Brenda Abwavo",
-      position: "Member",
-    },
-    {
-      name: "Ms. Loise Mugure",
-      position: "Member",
-    },
-    {
-      name: "Mr. Moses Maina",
-      position: "CHRM Head of Business Development",
-    },
-  ];
-  
+export default function AboutPage() {
+  const [officials, setOfficials] = useState<Official[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOfficials = async () => {
+      try {
+        const res = await fetch('/api/public/officials');
+        const data = await res.json();
+        setOfficials(data.officials || []);
+      } catch (error) {
+        console.error('Failed to fetch officials:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOfficials();
+  }, []);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -208,14 +111,14 @@ export default function AboutPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12 space-y-8">
         {/* Mission & Vision Section */}
-        <motion.section 
+        <motion.section
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeIn}
           className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
         >
-          <motion.div 
+          <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="visible"
@@ -233,25 +136,24 @@ export default function AboutPage() {
               transition={{ delay: 0.1 }}
               className="font-poppins text-lg text-[#000] dark:text-[#000] leading-relaxed max-w-4xl mx-auto transition-colors duration-200"
             >
-              CHRMAA was established to provide the Alumni/graduates a platform for 
+              CHRMAA was established to provide the Alumni/graduates a platform for
               networking and mentorship as well as promote the growth of the college.
             </motion.p>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             variants={staggerContainer}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-50px" }}
             className="grid md:grid-cols-3 gap-8"
           >
-            <motion.div 
+            <motion.div
               variants={scaleIn}
               whileHover="hover"
-              custom={0}
               className="text-center p-6 bg-[#E8F4FD] dark:bg-[#1A2F42] rounded-lg transition-colors duration-200"
             >
-              <motion.div 
+              <motion.div
                 variants={iconAnimation}
                 initial="hidden"
                 whileInView="visible"
@@ -278,18 +180,17 @@ export default function AboutPage() {
                 transition={{ delay: 0.1 }}
                 className="font-poppins text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
               >
-                "To establish and enhance mutually beneficial and enduring 
+                "To establish and enhance mutually beneficial and enduring
                 relationship between the alumni, students and college fraternity."
               </motion.p>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               variants={scaleIn}
               whileHover="hover"
-              custom={1}
               className="text-center p-6 bg-[#FFF4E6] dark:bg-[#3D2B1A] rounded-lg transition-colors duration-200"
             >
-              <motion.div 
+              <motion.div
                 variants={iconAnimation}
                 initial="hidden"
                 whileInView="visible"
@@ -320,13 +221,12 @@ export default function AboutPage() {
               </motion.p>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               variants={scaleIn}
               whileHover="hover"
-              custom={2}
               className="text-center p-6 bg-[#FFF0F0] dark:bg-[#3D1A1A] rounded-lg transition-colors duration-200"
             >
-              <motion.div 
+              <motion.div
                 variants={iconAnimation}
                 initial="hidden"
                 whileInView="visible"
@@ -361,15 +261,15 @@ export default function AboutPage() {
           </motion.div>
         </motion.section>
 
-        {/* Strategic Goals Section - NEW */}
-        <motion.section 
+        {/* Strategic Goals Section */}
+        <motion.section
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeIn}
           className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
         >
-          <motion.div 
+          <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="visible"
@@ -391,7 +291,7 @@ export default function AboutPage() {
             </motion.p>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             variants={staggerContainer}
             initial="hidden"
             whileInView="visible"
@@ -428,14 +328,13 @@ export default function AboutPage() {
                 iconColor: "bg-[#2B4C73]"
               }
             ].map((goal, index) => (
-              <motion.div 
+              <motion.div
                 key={index}
                 variants={scaleIn}
                 whileHover="hover"
-                custom={index}
                 className={`text-center p-6 ${goal.bgColor} rounded-lg transition-colors duration-200`}
               >
-                <motion.div 
+                <motion.div
                   variants={iconAnimation}
                   initial="hidden"
                   whileInView="visible"
@@ -470,14 +369,14 @@ export default function AboutPage() {
         </motion.section>
 
         {/* Core Values Section */}
-        <motion.section 
+        <motion.section
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeIn}
           className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
         >
-          <motion.div 
+          <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="visible"
@@ -500,7 +399,7 @@ export default function AboutPage() {
             </motion.p>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             variants={staggerContainer}
             initial="hidden"
             whileInView="visible"
@@ -537,14 +436,13 @@ export default function AboutPage() {
                 iconColor: "bg-[#2B4C73]"
               }
             ].map((value, index) => (
-              <motion.div 
+              <motion.div
                 key={index}
                 variants={scaleIn}
                 whileHover="hover"
-                custom={index}
                 className={`text-center p-6 ${value.bgColor} rounded-lg transition-colors duration-200`}
               >
-                <motion.div 
+                <motion.div
                   variants={iconAnimation}
                   initial="hidden"
                   whileInView="visible"
@@ -578,15 +476,15 @@ export default function AboutPage() {
           </motion.div>
         </motion.section>
 
-        {/* Officials Section */}
-        <motion.section 
+        {/* Officials Section - Now fetching from database */}
+        <motion.section
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
           variants={fadeIn}
           className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
         >
-          <motion.div 
+          <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="visible"
@@ -608,64 +506,69 @@ export default function AboutPage() {
             </motion.p>
           </motion.div>
 
-          <motion.div 
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-50px" }}
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
-          >
-            {officials.map((official, index) => (
-              <motion.div
-                key={index}
-                variants={scaleIn}
-                whileHover={"hover"}
-                custom={index}
-                className="bg-[#F8FAFC] dark:bg-[#2A2A2A] border border-[#E7ECF3] dark:border-[#3A3A3A] rounded-xl p-6 text-center transition-colors duration-200"
-              >
-                <motion.div 
-                  variants={iconAnimation}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  whileHover={{ scale: 1.1 }}
-                  className="w-20 h-20 bg-gradient-to-br from-[#2B4C73] to-[#FF7A00] rounded-full flex items-center justify-center mx-auto mb-4 text-white"
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2B4C73]"></div>
+            </div>
+          ) : (
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-50px" }}
+              className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+            >
+              {officials.map((official) => (
+                <motion.div
+                  key={official.id}
+                  variants={scaleIn}
+                  whileHover={{ scale: 1.03 }}
+                  className="flex flex-col items-center"
                 >
-                  <User size={28} />
+                  {/* Image Card */}
+                  <div className="relative w-full h-[320px] rounded-xl overflow-hidden shadow-lg">
+                    <img
+                      src={official.image_url}
+                      alt={official.name}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400?text=Photo+Not+Found';
+                      }}
+                    />
+                  </div>
+
+                  {/* Name + Position BELOW image */}
+                  <div className="mt-4 text-center">
+                    <h3 className="font-poppins font-bold text-lg text-[#0B0F1A]">
+                      {official.name}
+                    </h3>
+                    <p className="font-poppins text-sm text-[#2B4C73] font-semibold mt-1">
+                      {official.position}
+                    </p>
+                  </div>
                 </motion.div>
-                <motion.h3
-                  variants={fadeUp}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  className="font-poppins font-bold text-lg text-[#0B0F1A] dark:text-[#E5E7EB] mb-2 transition-colors duration-200"
-                >
-                  {official.name}
-                </motion.h3>
-                <motion.p
-                  variants={fadeUp}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.1 }}
-                  className="font-poppins font-semibold text-sm text-[#2B4C73] dark:text-[#4A6B8A] transition-colors duration-200"
-                >
-                  {official.position}
-                </motion.p>
-              </motion.div>
-            ))}
-          </motion.div>
+              ))}
+            </motion.div>
+          )}
+
+          {!loading && officials.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="mx-auto text-[#E7ECF3] mb-4" size={48} />
+              <p className="text-[#6D7A8B]">No officials found</p>
+            </div>
+          )}
         </motion.section>
 
         {/* Journey Section */}
-        <motion.section 
+        <motion.section
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeIn}
           className="bg-gradient-to-r from-[#fff] to-[#FFF] rounded-xl p-8 md:p-12 transition-colors duration-200"
         >
-          <motion.div 
+          <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="visible"
@@ -680,14 +583,14 @@ export default function AboutPage() {
             </motion.h2>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             variants={scaleIn}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
             className="max-w-4xl mx-auto"
           >
-            <motion.p 
+            <motion.p
               variants={fadeUp}
               initial="hidden"
               whileInView="visible"
@@ -702,7 +605,7 @@ export default function AboutPage() {
               various industries.
             </motion.p>
 
-            <motion.p 
+            <motion.p
               variants={fadeUp}
               initial="hidden"
               whileInView="visible"
@@ -717,7 +620,7 @@ export default function AboutPage() {
               management remains unwavering as we look toward the future.
             </motion.p>
 
-            <motion.div 
+            <motion.div
               variants={staggerContainer}
               initial="hidden"
               whileInView="visible"
@@ -735,10 +638,9 @@ export default function AboutPage() {
                   variants={scaleIn}
                   whileHover={{ scale: 1.05, y: -5 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  custom={index}
                   className="bg-white/50 dark:bg-black/20 p-6 rounded-lg"
                 >
-                  <motion.div 
+                  <motion.div
                     variants={statAnimation}
                     initial="hidden"
                     whileInView="visible"
@@ -755,7 +657,7 @@ export default function AboutPage() {
             </motion.div>
           </motion.div>
         </motion.section>
-        
+
         <Footer />
       </main>
 

@@ -18,7 +18,10 @@ import {
   CheckCircle,
   XCircle,
   Camera,
+  Upload,
+  Trash2,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 // CHRMAA Colors
@@ -106,8 +109,12 @@ export default function EditProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     full_name: "",
@@ -148,6 +155,7 @@ export default function EditProfilePage() {
           course: data.course || "",
           county: data.county || "",
         });
+        setAvatarUrl(data.avatar_url || null);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -163,8 +171,80 @@ export default function EditProfilePage() {
       ...prev,
       [name]: value
     }));
-    // Clear any previous errors when user starts typing
     if (error) setError(null);
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError("Please select an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image size should be less than 5MB");
+      return;
+    }
+
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeAvatar = () => {
+    setAvatarFile(null);
+    setAvatarPreview(null);
+  };
+
+  const uploadAvatar = async (): Promise<string | null> => {
+    if (!avatarFile || !user) return avatarUrl;
+
+    try {
+      setUploadingAvatar(true);
+
+      // Delete old avatar if exists
+      if (avatarUrl) {
+        const oldPath = avatarUrl.split('/').pop();
+        if (oldPath) {
+          await supabase.storage
+            .from('avatars')
+            .remove([`${user.id}/${oldPath}`]);
+        }
+      }
+
+      // Upload new avatar
+      const fileExt = avatarFile.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, avatarFile, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error: any) {
+      console.error('Avatar upload error:', error);
+      throw new Error('Failed to upload avatar: ' + error.message);
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const validateForm = () => {
@@ -176,7 +256,7 @@ export default function EditProfilePage() {
 
     if (!formData.phone_number.trim()) {
       errors.push("Phone number is required");
-    } else if (!/^(07|7|\+254|254)\d{8}$/.test(formData.phone_number)) {
+    } else if (!/^(07|7|\+254|254)\d{8}$/.test(formData.phone_number.replace(/\s/g, ''))) {
       errors.push("Please enter a valid Kenyan phone number (e.g., 0712345678)");
     }
 
@@ -214,8 +294,25 @@ export default function EditProfilePage() {
     }
 
     try {
+      // Upload avatar first if changed
+      let newAvatarUrl = avatarUrl;
+      if (avatarFile) {
+        newAvatarUrl = await uploadAvatar();
+      } else if (avatarPreview === null && avatarUrl) {
+        // User removed avatar - we'll set it to null
+        newAvatarUrl = null;
+        
+        // Delete from storage
+        const oldPath = avatarUrl.split('/').pop();
+        if (oldPath) {
+          await supabase.storage
+            .from('avatars')
+            .remove([`${user.id}/${oldPath}`]);
+        }
+      }
+
       // Prepare update data
-      const updateData = {
+      const updateData: any = {
         full_name: formData.full_name.trim(),
         phone_number: formData.phone_number.trim(),
         graduation_year: parseInt(formData.graduation_year),
@@ -223,6 +320,11 @@ export default function EditProfilePage() {
         county: formData.county.trim(),
         updated_at: new Date().toISOString(),
       };
+
+      // Only update avatar_url if it changed
+      if (newAvatarUrl !== avatarUrl) {
+        updateData.avatar_url = newAvatarUrl;
+      }
 
       // Update profile
       const { error: updateError } = await supabase
@@ -233,7 +335,6 @@ export default function EditProfilePage() {
       if (updateError) {
         console.error("Update error:", updateError);
         
-        // Handle specific errors
         if (updateError.message.includes("duplicate key")) {
           if (updateError.message.includes("phone_number")) {
             setError("This phone number is already registered. Please use a different number.");
@@ -244,14 +345,13 @@ export default function EditProfilePage() {
       } else {
         setSuccess(true);
         
-        // Show success message and redirect after delay
         setTimeout(() => {
           router.push("/member/dashboard");
         }, 2000);
       }
     } catch (error: any) {
       console.error("Unexpected error:", error);
-      setError("An unexpected error occurred while updating your profile");
+      setError(error.message || "An unexpected error occurred while updating your profile");
     } finally {
       setSaving(false);
     }
@@ -328,6 +428,76 @@ export default function EditProfilePage() {
         )}
 
         <div className="bg-white rounded-xl border border-[#E7ECF3] p-6 shadow-sm">
+          {/* Avatar Section */}
+          <div className="mb-8 pb-8 border-b border-[#E7ECF3]">
+            <h2 className="text-lg font-semibold text-[#0B0F1A] mb-4">Profile Photo</h2>
+            <div className="flex items-start gap-6">
+              {/* Avatar Preview */}
+              <div className="relative">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-[#F7F9FC] border-2 border-[#E7ECF3]">
+                  {(avatarPreview || avatarUrl) ? (
+                    <img
+                      src={avatarPreview || avatarUrl || ''}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#2B4C73] to-[#1E3A5F]">
+                      <User className="text-white" size={32} />
+                    </div>
+                  )}
+                </div>
+                {(avatarPreview || avatarUrl) && (
+                  <button
+                    type="button"
+                    onClick={removeAvatar}
+                    className="absolute -top-1 -right-1 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition shadow-md"
+                    title="Remove avatar"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Upload Controls */}
+              <div className="flex-1">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <label className="relative cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <div className="px-4 py-2 bg-[#F7F9FC] border border-[#E7ECF3] rounded-lg hover:bg-[#E8F4FD] hover:border-[#2B4C73] transition flex items-center gap-2 text-[#0B0F1A]">
+                      <Upload size={18} />
+                      {avatarFile ? 'Change Photo' : 'Upload Photo'}
+                    </div>
+                  </label>
+                  {avatarFile && (
+                    <button
+                      type="button"
+                      onClick={removeAvatar}
+                      className="px-4 py-2 bg-[#FFF0F0] border border-[#E53E3E]/20 rounded-lg hover:bg-[#FFE5E5] transition text-[#E53E3E] flex items-center gap-2"
+                    >
+                      <XCircle size={18} />
+                      Cancel
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-[#6D7A8B] mt-3">
+                  Recommended: Square image, at least 200x200px. Max size: 5MB (JPG, PNG, GIF)
+                </p>
+                {avatarFile && (
+                  <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                    <CheckCircle size={12} />
+                    New photo selected: {avatarFile.name}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Form Fields */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -434,14 +604,6 @@ export default function EditProfilePage() {
                     <option key={course} value={course}>{course}</option>
                   ))}
                 </select>
-                {formData.course === "Other" && (
-                  <input
-                    type="text"
-                    name="course_other"
-                    placeholder="Please specify your course"
-                    className="w-full mt-2 px-4 py-3 bg-[#F7F9FC] border border-[#E7ECF3] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2B4C73] focus:border-transparent transition"
-                  />
-                )}
               </div>
 
               {/* County */}
@@ -471,13 +633,13 @@ export default function EditProfilePage() {
             <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-[#E7ECF3]">
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || uploadingAvatar}
                 className="flex-1 px-6 py-3 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white font-semibold rounded-lg hover:opacity-90 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {saving ? (
+                {(saving || uploadingAvatar) ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving...
+                    {uploadingAvatar ? 'Uploading...' : 'Saving...'}
                   </>
                 ) : (
                   <>
@@ -511,7 +673,11 @@ export default function EditProfilePage() {
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="text-[#FF7A00] mt-0.5" size={16} />
-              <span>Profile updates may take a few moments to reflect across all systems</span>
+              <span>Profile photo must be less than 5MB in size</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <CheckCircle className="text-[#FF7A00] mt-0.5" size={16} />
+              <span>Supported image formats: JPG, PNG, GIF</span>
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="text-[#FF7A00] mt-0.5" size={16} />
@@ -543,6 +709,5 @@ export default function EditProfilePage() {
       `}</style>
       <Footer />
     </div>
-    
   );
 }
