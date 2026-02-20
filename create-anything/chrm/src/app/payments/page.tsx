@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, FormEvent, useEffect, useRef } from "react";
+import { useState, FormEvent, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { 
-  CheckCircle, Users, User, CreditCard, Shield, ArrowRight, Lock, Mail, Phone, 
+import {
+  CheckCircle, Users, User, CreditCard, Shield, ArrowRight, Lock, Mail, Phone,
   Calendar, BookOpen, Gift, Smartphone, Loader2, AlertCircle, Key, Eye, EyeOff,
-  X, Info
+  X, Info, MapPin, GraduationCap, Star, Sparkles, BadgeCheck
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Variants, Transition } from "framer-motion";
+import type { Variants } from "framer-motion";
 
-// Define types
+// ─── Types ────────────────────────────────────────────────────────────────────
 type FormData = {
   membership_number: string;
   full_name: string;
@@ -34,7 +34,6 @@ type PaybillInfo = {
   description: string;
 };
 
-// STK Push types
 type STKPushStatus = 'idle' | 'initiating' | 'pending' | 'success' | 'failed' | 'cancelled';
 type PaymentResponse = {
   success: boolean;
@@ -45,7 +44,6 @@ type PaymentResponse = {
   data?: any;
 };
 
-// Alert modal types
 type AlertType = 'error' | 'success' | 'info' | 'warning';
 type AlertModal = {
   show: boolean;
@@ -58,44 +56,47 @@ type AlertModal = {
   cancelText?: string;
 };
 
-// Animation Variants
+// ─── Fee Logic ────────────────────────────────────────────────────────────────
+/**
+ * Members who graduated in 2021 or later pay Ksh 1,000.
+ * Members who graduated before 2021 pay Ksh 1,500.
+ * Returns null if graduation year is not yet entered.
+ */
+const getRegistrationFee = (graduationYear: string): number | null => {
+  const year = parseInt(graduationYear, 10);
+  if (!graduationYear || isNaN(year)) return null;
+  return year >= 2021 ? 1000 : 1500;
+};
+
+const FEE_RENEWAL = 1000;
+
+// ─── Animation Variants ───────────────────────────────────────────────────────
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } },
 };
-
 const scaleIn: Variants = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
+  hidden: { opacity: 0, scale: 0.92 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
 };
-
 const staggerContainer: Variants = {
   hidden: {},
-  visible: { transition: { staggerChildren: 0.1 } },
+  visible: { transition: { staggerChildren: 0.08 } },
 };
-
 const buttonHover = {
-  scale: 1.02,
-  y: -2,
-  boxShadow: "0 10px 25px rgba(43, 76, 115, 0.3)",
+  scale: 1.02, y: -2,
+  boxShadow: "0 12px 28px rgba(43, 76, 115, 0.28)",
   transition: { type: "spring" as const, stiffness: 400, damping: 15 },
 };
-
-const buttonTap = { scale: 0.98 };
-
-const inputHover = {
-  scale: 1.01,
-  borderColor: "#2B4C73",
-  transition: { type: "spring" as const, stiffness: 300, damping: 20 },
-};
-
+const buttonTap = { scale: 0.97 };
 const inputFocus = {
-  scale: 1.02,
+  scale: 1.01,
   borderColor: "#2B4C73",
   boxShadow: "0 0 0 3px rgba(43, 76, 115, 0.1)",
   transition: { type: "spring" as const, stiffness: 400, damping: 15 },
 };
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function CombinedPaymentsPage() {
   const [paymentType, setPaymentType] = useState<"renewal" | "registration">("registration");
   const [formData, setFormData] = useState<FormData>({
@@ -124,98 +125,51 @@ export default function CombinedPaymentsPage() {
   const [paymentId, setPaymentId] = useState<string>('');
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  
-  // New alert modal state
   const [alertModal, setAlertModal] = useState<AlertModal>({
-    show: false,
-    type: 'error',
-    title: '',
-    message: '',
-    confirmText: 'OK',
-    cancelText: 'Cancel'
+    show: false, type: 'error', title: '', message: '',
+    confirmText: 'OK', cancelText: 'Cancel'
   });
-  
+
   const router = useRouter();
   const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Clean up polling on unmount
+  // ── Derived: registration fee updates live as graduation year changes ─────────
+  const registrationFee = useMemo(() => getRegistrationFee(formData.graduation_year), [formData.graduation_year]);
+  const feeLabel = registrationFee !== null ? `Ksh ${registrationFee.toLocaleString()}` : '—';
+  const feeGroup = registrationFee === null ? null : registrationFee === 1000 ? 'recent' : 'standard';
+
   useEffect(() => {
-    return () => {
-      if (pollingInterval) clearInterval(pollingInterval);
-    };
+    return () => { if (pollingInterval) clearInterval(pollingInterval); };
   }, [pollingInterval]);
 
-  // Cleanup alert timeout on unmount
   useEffect(() => {
-    return () => {
-      if (alertTimeoutRef.current) {
-        clearTimeout(alertTimeoutRef.current);
-      }
-    };
+    return () => { if (alertTimeoutRef.current) clearTimeout(alertTimeoutRef.current); };
   }, []);
 
-  // Show alert modal
+  // ─── Alert helpers ─────────────────────────────────────────────────────────
   const showAlert = (
-    type: AlertType,
-    title: string,
-    message: string,
-    options?: {
-      onConfirm?: () => void;
-      confirmText?: string;
-      onCancel?: () => void;
-      cancelText?: string;
-      autoClose?: number; // Auto close after milliseconds
-    }
+    type: AlertType, title: string, message: string,
+    options?: { onConfirm?: () => void; confirmText?: string; onCancel?: () => void; cancelText?: string; autoClose?: number; }
   ) => {
-    // Clear any existing timeout
-    if (alertTimeoutRef.current) {
-      clearTimeout(alertTimeoutRef.current);
-      alertTimeoutRef.current = null;
-    }
-
-    setAlertModal({
-      show: true,
-      type,
-      title,
-      message,
-      onConfirm: options?.onConfirm,
-      confirmText: options?.confirmText || 'OK',
-      onCancel: options?.onCancel,
-      cancelText: options?.cancelText || 'Cancel'
-    });
-
-    // Auto close if specified
+    if (alertTimeoutRef.current) { clearTimeout(alertTimeoutRef.current); alertTimeoutRef.current = null; }
+    setAlertModal({ show: true, type, title, message, onConfirm: options?.onConfirm, confirmText: options?.confirmText || 'OK', onCancel: options?.onCancel, cancelText: options?.cancelText || 'Cancel' });
     if (options?.autoClose) {
-      alertTimeoutRef.current = setTimeout(() => {
-        hideAlert();
-      }, options.autoClose);
+      alertTimeoutRef.current = setTimeout(() => hideAlert(), options.autoClose);
     }
   };
 
-  // Hide alert modal
   const hideAlert = () => {
-    if (alertTimeoutRef.current) {
-      clearTimeout(alertTimeoutRef.current);
-      alertTimeoutRef.current = null;
-    }
+    if (alertTimeoutRef.current) { clearTimeout(alertTimeoutRef.current); alertTimeoutRef.current = null; }
     setAlertModal(prev => ({ ...prev, show: false }));
   };
 
-  // Validate phone number format
+  // ─── Validation ────────────────────────────────────────────────────────────
   const validatePhoneNumber = (phone: string): boolean => {
     const phoneRegex = /^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$/;
     return phoneRegex.test(phone.replace(/\s/g, ''));
   };
 
-  // Format phone for M-PESA (2547...)
-  const formatPhoneForMpesa = (phone: string): string => {
-    const cleaned = phone.replace(/\s/g, '');
-    if (cleaned.startsWith('0')) return `254${cleaned.slice(1)}`;
-    if (cleaned.startsWith('7')) return `254${cleaned}`;
-    if (cleaned.startsWith('+254')) return cleaned.slice(1);
-    return cleaned;
-  };
-
+  // ─── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
@@ -223,31 +177,34 @@ export default function CombinedPaymentsPage() {
 
     try {
       if (paymentType === "registration") {
-        // Registration form validation
-        if (!formData.full_name || !formData.email || !formData.password || 
-            !formData.graduation_year || !formData.course || !formData.county) {
+        if (!formData.full_name || !formData.email || !formData.password ||
+          !formData.graduation_year || !formData.course || !formData.county) {
           showAlert('error', 'Missing Information', 'Please fill in all required fields');
           setLoading(false);
           return;
         }
-
-        // Validate phone for STK Push
         if (!formData.phone || !validatePhoneNumber(formData.phone)) {
           showAlert('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
           setLoading(false);
           return;
         }
 
-        const registrationFee = 1;
+        // ── FIX: compute actual fee from graduation year before proceeding ──
+        const fee = getRegistrationFee(formData.graduation_year);
+        if (!fee) {
+          showAlert('error', 'Invalid Graduation Year', 'Please enter a valid graduation year');
+          setLoading(false);
+          return;
+        }
+
         setPaybillInfo({
-          amount: registrationFee,
-          account_number: "PENDING", // Will be updated after registration
+          amount: fee,
+          account_number: "PENDING",
           payment_type: "registration",
           description: `New Member Registration - ${formData.full_name}`,
         });
 
-        // Create user first, then initiate STK Push
-        await handleRegistrationAndPayment();
+        await handleRegistrationAndPayment(fee);
         return;
       }
 
@@ -257,14 +214,11 @@ export default function CombinedPaymentsPage() {
           setLoading(false);
           return;
         }
-
         if (!validatePhoneNumber(formData.phone)) {
           showAlert('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
           setLoading(false);
           return;
         }
-
-        // Validate membership number format (100XXX)
         if (!/^100\d{3}$/.test(formData.membership_number)) {
           showAlert('error', 'Invalid Membership Number', 'Membership number must be in format 100XXX (e.g., 100121)');
           setLoading(false);
@@ -272,64 +226,49 @@ export default function CombinedPaymentsPage() {
         }
 
         try {
-          // Lookup user by membership number
           const lookupRes = await fetch(`/api/users/lookup?membership_number=${formData.membership_number}`);
-          let userId = null;
-          let userEmail = formData.email;
-          let userName = formData.full_name;
-
-          if (lookupRes.ok) {
-            const lookupData = await lookupRes.json();
-            userId = lookupData.user.id;
-            userEmail = lookupData.user.email;
-            userName = lookupData.user.full_name;
-            
-            // Verify email matches
-            if (lookupData.user.email.toLowerCase() !== formData.email.toLowerCase()) {
-              showAlert('error', 'Email Mismatch', 'Email address does not match our records for this membership number');
-              setLoading(false);
-              return;
-            }
-          } else {
-            // User not found - show error
+          if (!lookupRes.ok) {
             showAlert('error', 'Member Not Found', 'Membership number not found. Please check and try again.');
+            setLoading(false);
+            return;
+          }
+          const lookupData = await lookupRes.json();
+          const userId = lookupData.user.id;
+          if (lookupData.user.email.toLowerCase() !== formData.email.toLowerCase()) {
+            showAlert('error', 'Email Mismatch', 'Email address does not match our records for this membership number');
             setLoading(false);
             return;
           }
 
           setPaybillInfo({
-            amount: 1,
+            amount: FEE_RENEWAL,
             account_number: formData.membership_number,
             payment_type: "renewal",
             description: `Membership Renewal - ${formData.renewal_year}`,
           });
 
-          // Initiate STK Push for renewal with user ID
-          await initiateSTKPush(1, 'renewal', userId, {
+          await initiateSTKPush(FEE_RENEWAL, 'renewal', userId, {
             membership_number: formData.membership_number,
             renewal_year: formData.renewal_year,
             full_name: formData.full_name,
             email: formData.email
           });
-          
-        } catch (lookupError) {
-          console.error('User lookup error:', lookupError);
+        } catch {
           showAlert('error', 'Verification Failed', 'Failed to verify membership. Please try again.');
           setLoading(false);
         }
       }
     } catch (err) {
-      console.error('Payment initiation error:', err);
       showAlert('error', 'Payment Error', err instanceof Error ? err.message : "Payment initiation failed");
       setLoading(false);
     }
   };
 
-  const handleRegistrationAndPayment = async () => {
+  // ─── Registration + Payment ────────────────────────────────────────────────
+  // FIX: accept fee as a parameter so we use the computed value, not a hardcoded one
+  const handleRegistrationAndPayment = async (fee: number) => {
     try {
       setLoading(true);
-      
-      // Step 1: Call /api/auth/register - this creates a PENDING payment record, NOT a user
       const registrationResponse = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -340,56 +279,50 @@ export default function CombinedPaymentsPage() {
           graduation_year: formData.graduation_year,
           course: formData.course,
           county: formData.county,
-          password: formData.password
+          password: formData.password,
+          // Pass the computed fee so the backend can store the correct amount
+          registration_fee: fee,
         })
       });
 
       const registrationData = await registrationResponse.json();
-      
-      if (!registrationResponse.ok) {
-        throw new Error(registrationData.error || 'Registration failed');
-      }
+      if (!registrationResponse.ok) throw new Error(registrationData.error || 'Registration failed');
 
-      // We now have a payment_id - the registration data is stored in the payment metadata
-      // NO user account has been created yet
-      
       const payment_id = registrationData.payment_id;
-      const phoneNumber = registrationData.phone_number;
-      const amount = registrationData.amount;
 
-      // Step 2: Initiate STK Push with the payment_id
-      await initiateSTKPush(amount, 'registration', undefined, {
+      // ── FIX: use our locally-computed fee, NOT whatever the API returns ──
+      // This ensures the STK Push requests the correct amount based on grad year
+      await initiateSTKPush(fee, 'registration', undefined, {
         graduation_year: formData.graduation_year,
         course: formData.course,
         county: formData.county,
-      }, payment_id); 
+      }, payment_id);
 
     } catch (err) {
-      console.error('Registration error:', err);
       showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
       setLoading(false);
       throw err;
     }
   };
 
+  // ─── STK Push ──────────────────────────────────────────────────────────────
   const initiateSTKPush = async (
-    amount: number, 
-    paymentType: 'registration' | 'renewal', 
+    amount: number,
+    type: 'registration' | 'renewal',
     userId?: string,
     metadata?: any,
-    payment_id?: string 
+    payment_id?: string
   ) => {
     try {
       setStkStatus('initiating');
-      
       const response = await fetch('/api/payments/stk-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phoneNumber: formData.phone,
-          amount: amount,
-          paymentType: paymentType,
-          userId: userId,
+          amount,                // ← correct amount passed here
+          paymentType: type,
+          userId,
           userEmail: formData.email,
           userName: formData.full_name,
           metadata: metadata || {
@@ -399,34 +332,27 @@ export default function CombinedPaymentsPage() {
             membership_number: formData.membership_number,
             renewal_year: formData.renewal_year
           },
-          payment_id: payment_id  // Pass payment_id for registration
+          payment_id,
         })
       });
 
       const data: PaymentResponse = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to initiate payment');
-      }
+      if (!response.ok) throw new Error(data.message || 'Failed to initiate payment');
 
       if (data.success && data.checkoutRequestID) {
-        showAlert('success', 'Payment Request Sent', 
+        showAlert('success', 'Payment Request Sent',
           'Please check your phone for the M-PESA prompt and enter your PIN to complete the payment.',
           { autoClose: 5000 }
         );
-        
         setCheckoutRequestID(data.checkoutRequestID);
         setPaymentId(data.paymentId || '');
         setStkStatus('pending');
         setStep(2);
-        
-        // Start polling for payment status
         startPaymentPolling(data.checkoutRequestID);
       } else {
         throw new Error(data.message || 'Payment initiation failed');
       }
     } catch (err) {
-      console.error('STK Push error:', err);
       setStkStatus('failed');
       showAlert('error', 'Payment Failed', err instanceof Error ? err.message : 'Failed to initiate payment');
       throw err;
@@ -435,140 +361,60 @@ export default function CombinedPaymentsPage() {
     }
   };
 
+  // ─── Polling ───────────────────────────────────────────────────────────────
   const startPaymentPolling = async (checkoutID: string) => {
     let pollCount = 0;
-    const maxPolls = 60; // Poll for max 3 minutes (60 * 3 seconds)
-    
+    const maxPolls = 60;
     const interval = setInterval(async () => {
       try {
         pollCount++;
-        
-        // Stop polling after max attempts
         if (pollCount > maxPolls) {
-          clearInterval(interval);
-          setPollingInterval(null);
-          setStkStatus('failed');
-          showAlert('error', 'Timeout', 
-            'Payment verification timed out. Please check your M-PESA messages and contact support if payment was deducted.',
-            { autoClose: 5000 }
-          );
+          clearInterval(interval); setPollingInterval(null); setStkStatus('failed');
+          showAlert('error', 'Timeout', 'Payment verification timed out. Please check your M-PESA messages and contact support if payment was deducted.', { autoClose: 5000 });
           return;
         }
-        
-        // Check payment status
         const response = await fetch(`/api/payments/${checkoutID}?verify_user=true`);
         const data = await response.json();
-        
-        console.log(`Polling attempt ${pollCount}:`, data);
-        
-        if (data.status === 'confirmed' && data.user_created === true && data.user_id) {
-          setStkStatus('success');
-          clearInterval(interval);
-          setPollingInterval(null);
-          
-          if (data.membership_number) {
-            setFormData(prev => ({ 
-              ...prev, 
-              membership_number: data.membership_number 
-            }));
-          }
-           // Handle registration vs renewal differently
-  if (paymentType === 'registration') {
-    if (data.membership_number) {
-      setFormData(prev => ({ 
-        ...prev, 
-        membership_number: data.membership_number 
-      }));
-    }
-    
-    showAlert('success', 'Welcome to CHRMAA!', 
-      `Your account has been created! ${data.membership_number ? `Membership Number: ${data.membership_number}.` : ''} Redirecting to login...`,
-      { autoClose: 3000 }
-    );
-    
-    setTimeout(() => {
-      router.push('/login');
-    }, 3000);
-    
-  } else if (paymentType === 'renewal') {
-    // Renewal success
-    showAlert('success', 'Renewal Successful!', 
-      `Your membership has been renewed! Your membership now expires on December 31st. Redirecting to dashboard...`,
-      { autoClose: 3000 }
-    );
-    
-    setTimeout(() => {
-      router.push('/member/dashboard');
-    }, 3000);
-  }
-          
-          
-        } else if (data.status === 'confirmed' && data.user_created === false) {
-          clearInterval(interval);
-          setPollingInterval(null);
-          setStkStatus('failed');
-          
-          showAlert('error', 'Account Creation Failed', 
-            'Payment was received but account creation failed. Please contact the admin with your M-PESA receipt.',
-            { autoClose: 6000 }
-          );
-          
-        } else if (data.status === 'confirmed' && data.user_created === undefined) {
-          console.log('Payment confirmed, waiting for user creation...');
-          // Keep polling
-          
-        } else if (data.status === 'failed') {
-          clearInterval(interval);
-          setPollingInterval(null);
-          setStkStatus('failed');
-          
-          showAlert('error', 'Payment Failed', 
-            'The payment was not completed. Please try again.'
-          );
-          
-        } else if (data.status === 'cancelled') {
-    
-          clearInterval(interval);
-          setPollingInterval(null);
-          setStkStatus('cancelled');
-          
-          showAlert('warning', 'Payment Cancelled', 
-            'The payment was cancelled.'
-          );
-          
-        } else {
-          // ⏳ Still pending
-          console.log('Payment still pending...');
-        }
-        
-      } catch (err) {
-        console.error('Polling error:', err);
-      }
-    }, 3000); // Poll every 3 seconds
 
+        if (data.status === 'confirmed' && data.user_created === true && data.user_id) {
+          setStkStatus('success'); clearInterval(interval); setPollingInterval(null);
+          if (data.membership_number) setFormData(prev => ({ ...prev, membership_number: data.membership_number }));
+
+          if (paymentType === 'registration') {
+            if (data.membership_number) setFormData(prev => ({ ...prev, membership_number: data.membership_number }));
+            showAlert('success', 'Welcome to CHRMAA!',
+              `Your account has been created! ${data.membership_number ? `Membership Number: ${data.membership_number}.` : ''} Redirecting to login...`,
+              { autoClose: 3000 }
+            );
+            setTimeout(() => router.push('/login'), 3000);
+          } else {
+            showAlert('success', 'Renewal Successful!',
+              'Your membership has been renewed! Redirecting to dashboard...',
+              { autoClose: 3000 }
+            );
+            setTimeout(() => router.push('/member/dashboard'), 3000);
+          }
+        } else if (data.status === 'confirmed' && data.user_created === false) {
+          clearInterval(interval); setPollingInterval(null); setStkStatus('failed');
+          showAlert('error', 'Account Creation Failed', 'Payment was received but account creation failed. Please contact the admin with your M-PESA receipt.', { autoClose: 6000 });
+        } else if (data.status === 'failed') {
+          clearInterval(interval); setPollingInterval(null); setStkStatus('failed');
+          showAlert('error', 'Payment Failed', 'The payment was not completed. Please try again.');
+        } else if (data.status === 'cancelled') {
+          clearInterval(interval); setPollingInterval(null); setStkStatus('cancelled');
+          showAlert('warning', 'Payment Cancelled', 'The payment was cancelled.');
+        }
+      } catch (err) { console.error('Polling error:', err); }
+    }, 3000);
     setPollingInterval(interval);
   };
 
   const cancelPayment = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-    }
-    setStkStatus('cancelled');
-    setStep(1);
-    
-    showAlert('info', 'Payment Cancelled', 'You can restart the payment process when ready.',
-      { autoClose: 3000 }
-    );
+    if (pollingInterval) { clearInterval(pollingInterval); setPollingInterval(null); }
+    setStkStatus('cancelled'); setStep(1);
+    showAlert('info', 'Payment Cancelled', 'You can restart the payment process when ready.', { autoClose: 3000 });
   };
 
-  const paymentSteps = [
-    "Check your phone for a prompt",
-    "Enter your M-PESA PIN",
-    "Wait for payment confirmation"
-  ];
-
-  // Fixed TypeScript error: Added 'idle' to the object
   const stkStatusMessages: Record<STKPushStatus, string> = {
     idle: "Ready to initiate payment",
     initiating: "Initiating payment request...",
@@ -578,125 +424,44 @@ export default function CombinedPaymentsPage() {
     cancelled: "Payment cancelled."
   };
 
-  // Success messages based on payment type
-  const successMessages = {
-    registration: {
-      title: "Welcome to CHRMAA!",
-      message: "Your account has been created and payment confirmed successfully! You can now log in and access your dashboard with full member benefits.",
-      membershipNumber: (paymentType === "registration" && formData.membership_number) ? formData.membership_number : ''
-    },
-    renewal: {
-      title: "Renewal Successful!",
-      message: "Your membership renewal payment has been confirmed. Your membership is now active for the selected year."
-    }
-  };
-
-  // Alert Modal Component
+  // ─── Alert Modal ───────────────────────────────────────────────────────────
   const AlertModalComponent = () => {
-    const getAlertStyles = () => {
-      switch (alertModal.type) {
-        case 'error':
-          return {
-            bg: 'bg-gradient-to-br from-[#FFF0F0] to-pink-50',
-            border: 'border-[#E53E3E]/30',
-            icon: <AlertCircle className="text-[#E53E3E]" size={32} />,
-            buttonBg: 'bg-gradient-to-r from-[#E53E3E] to-[#CC3636] hover:from-[#E53E3E] hover:to-[#CC3636]',
-            titleColor: 'text-[#E53E3E]',
-            messageColor: 'text-[#E53E3E]/90'
-          };
-        case 'success':
-          return {
-            bg: 'bg-gradient-to-br from-[#E8F4FD] to-emerald-50',
-            border: 'border-[#2B4C73]/30',
-            icon: <CheckCircle className="text-[#2B4C73]" size={32} />,
-            buttonBg: 'bg-gradient-to-r from-[#2B4C73] to-[#1A3557] hover:from-[#2B4C73] hover:to-[#1A3557]',
-            titleColor: 'text-[#2B4C73]',
-            messageColor: 'text-[#2B4C73]/90'
-          };
-        case 'warning':
-          return {
-            bg: 'bg-gradient-to-br from-[#FFF4E6] to-yellow-50',
-            border: 'border-[#FF7A00]/30',
-            icon: <AlertCircle className="text-[#FF7A00]" size={32} />,
-            buttonBg: 'bg-gradient-to-r from-[#FF7A00] to-[#E56B00] hover:from-[#FF7A00] hover:to-[#E56B00]',
-            titleColor: 'text-[#FF7A00]',
-            messageColor: 'text-[#FF7A00]/90'
-          };
-        case 'info':
-          return {
-            bg: 'bg-gradient-to-br from-[#E8F4FD] to-indigo-50',
-            border: 'border-[#2B4C73]/30',
-            icon: <Info className="text-[#2B4C73]" size={32} />,
-            buttonBg: 'bg-gradient-to-r from-[#2B4C73] to-[#1A3557] hover:from-[#2B4C73] hover:to-[#1A3557]',
-            titleColor: 'text-[#2B4C73]',
-            messageColor: 'text-[#2B4C73]/90'
-          };
-      }
-    };
-
-    const styles = getAlertStyles();
+    const styles = {
+      error: { bg: 'bg-white', border: 'border-[#E53E3E]', iconBg: 'bg-[#FFF0F0]', icon: <AlertCircle className="text-[#E53E3E]" size={28} />, btnBg: 'bg-[#E53E3E] hover:bg-[#C53030]', titleColor: 'text-[#E53E3E]' },
+      success: { bg: 'bg-white', border: 'border-[#2B4C73]', iconBg: 'bg-[#E8F4FD]', icon: <CheckCircle className="text-[#2B4C73]" size={28} />, btnBg: 'bg-[#2B4C73] hover:bg-[#1E3A5F]', titleColor: 'text-[#2B4C73]' },
+      warning: { bg: 'bg-white', border: 'border-[#FF7A00]', iconBg: 'bg-[#FFF4E6]', icon: <AlertCircle className="text-[#FF7A00]" size={28} />, btnBg: 'bg-[#FF7A00] hover:bg-[#E56B00]', titleColor: 'text-[#FF7A00]' },
+      info: { bg: 'bg-white', border: 'border-[#2B4C73]', iconBg: 'bg-[#E8F4FD]', icon: <Info className="text-[#2B4C73]" size={28} />, btnBg: 'bg-[#2B4C73] hover:bg-[#1E3A5F]', titleColor: 'text-[#2B4C73]' },
+    }[alertModal.type];
 
     return (
       <AnimatePresence>
         {alertModal.show && (
           <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={hideAlert}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
-            />
-            
-            {/* Modal */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={hideAlert} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                initial={{ opacity: 0, scale: 0.9, y: 16 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                exit={{ opacity: 0, scale: 0.9, y: 16 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 className={`${styles.bg} border-2 ${styles.border} rounded-2xl shadow-2xl max-w-md w-full overflow-hidden`}
               >
                 <div className="p-6">
-                  <div className="flex items-start gap-4 mb-6">
-                    <div className="flex-shrink-0">
-                      {styles.icon}
-                    </div>
+                  <div className="flex items-start gap-4 mb-5">
+                    <div className={`${styles.iconBg} p-3 rounded-xl flex-shrink-0`}>{styles.icon}</div>
                     <div className="flex-1">
-                      <h3 className={`text-xl font-bold font-poppins mb-2 ${styles.titleColor}`}>
-                        {alertModal.title}
-                      </h3>
-                      <p className={`${styles.messageColor} leading-relaxed`}>
-                        {alertModal.message}
-                      </p>
+                      <h3 className={`text-lg font-bold mb-1 ${styles.titleColor}`}>{alertModal.title}</h3>
+                      <p className="text-[#6D7A8B] text-sm leading-relaxed">{alertModal.message}</p>
                     </div>
-                    <button
-                      onClick={hideAlert}
-                      className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <X size={24} />
-                    </button>
+                    <button onClick={hideAlert} className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0"><X size={20} /></button>
                   </div>
-
                   <div className="flex gap-3">
                     {alertModal.onCancel && (
-                      <button
-                        onClick={alertModal.onCancel}
-                        className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-200"
-                      >
-                        {alertModal.cancelText}
-                      </button>
+                      <button onClick={alertModal.onCancel} className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition text-sm">{alertModal.cancelText}</button>
                     )}
-                    <button
-                      onClick={() => {
-                        if (alertModal.onConfirm) {
-                          alertModal.onConfirm();
-                        }
-                        hideAlert();
-                      }}
-                      className={`flex-1 px-4 py-3 ${styles.buttonBg} text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-200`}
-                    >
+                    <button onClick={() => { alertModal.onConfirm?.(); hideAlert(); }}
+                      className={`flex-1 px-4 py-2.5 ${styles.btnBg} text-white font-semibold rounded-xl transition text-sm`}>
                       {alertModal.confirmText}
                     </button>
                   </div>
@@ -709,801 +474,405 @@ export default function CombinedPaymentsPage() {
     );
   };
 
-  if (step === 3) {
-    const successInfo = successMessages[paybillInfo.payment_type];
-    
-    return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="min-h-screen bg-gradient-to-br from-[#F7F9FC] to-white"
-      >
-        {/* Alert Modal */}
-        <AlertModalComponent />
-        
-        <Header />
-        <main className="flex-1 flex items-center justify-center py-12 px-4">
-          <motion.div
-            variants={scaleIn}
-            initial="hidden"
-            animate="visible"
-            className="w-full max-w-md text-center"
-          >
-            <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
-              <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-[#E8F4FD] to-[#FFF4E6] rounded-full -translate-x-16 -translate-y-16" />
-              <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-[#E8F4FD] to-[#FFF0F0] rounded-full translate-x-20 translate-y-20" />
-              
-              <div className="relative z-10">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                  className="w-24 h-24 bg-gradient-to-br from-[#2B4C73] to-[#1A3557] rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg"
-                >
-                  <CheckCircle className="text-white" size={48} />
-                </motion.div>
-                
-                <motion.h1
-                  variants={fadeUp}
-                  initial="hidden"
-                  animate="visible"
-                  className="text-3xl font-bold font-poppins text-[#0B0F1A] mb-4"
-                >
-                  {successInfo.title}
-                </motion.h1>
-                
-                <motion.p
-                  variants={fadeUp}
-                  initial="hidden"
-                  animate="visible"
-                  transition={{ delay: 0.1 }}
-                  className="text-[#6D7A8B] mb-8 leading-relaxed"
-                >
-                  {successInfo.message}
-                </motion.p>
-
-                {paymentType === "registration" && formData.membership_number && (
-                  <motion.div
-                    variants={fadeUp}
-                    initial="hidden"
-                    animate="visible"
-                    transition={{ delay: 0.15 }}
-                    className="mb-6 p-4 bg-[#E8F4FD] rounded-xl border border-[#2B4C73]/20"
-                  >
-                    <p className="text-sm text-[#2B4C73] font-semibold mb-2">Your Membership Number:</p>
-                    <p className="text-2xl font-bold text-[#2B4C73] font-mono">{formData.membership_number}</p>
-                    <p className="text-xs text-[#2B4C73]/80 mt-2">
-                      Save this number! You'll need it for future renewals and member services.
-                    </p>
-                  </motion.div>
-                )}
-                
-                <motion.div
-                  variants={fadeUp}
-                  initial="hidden"
-                  animate="visible"
-                  transition={{ delay: 0.2 }}
-                  whileHover={buttonHover}
-                  whileTap={buttonTap}
-                >
-                  <Link
-                    href={paybillInfo.payment_type === "registration" ? "/login" : "/member/dashboard"}
-                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#2B4C73] to-[#1A3557] text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300"
-                  >
-                    {paybillInfo.payment_type === "registration" ? "Go to Login" : "Go to Dashboard"}
-                    <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
-                  </Link>
-                </motion.div>
-              </div>
-            </div>
-          </motion.div>
-        </main>
-        <Footer />
-      </motion.div>
-    );
-  }
-
+  // ─── Step 2: Waiting for payment ──────────────────────────────────────────
   if (step === 2) {
     return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="min-h-screen bg-gradient-to-br from-[#F7F9FC] to-white"
-      >
-        {/* Alert Modal */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-gradient-to-br from-[#F7F9FC] via-white to-[#E8F4FD]">
         <AlertModalComponent />
-        
         <Header />
         <main className="flex-1 py-12 px-4">
-          <motion.div
-            variants={scaleIn}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="max-w-2xl mx-auto"
-          >
-            <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-[#FFF4E6] to-[#FFF0F0] rounded-full translate-x-20 -translate-y-20" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-br from-[#E8F4FD] to-[#FFF4E6] rounded-full -translate-x-16 translate-y-16" />
-              
-              <div className="relative z-10">
-                <motion.div
-                  variants={fadeUp}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  className="flex items-center justify-center gap-3 mb-6"
-                >
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#FF7A00] to-[#E56B00] rounded-full flex items-center justify-center">
-                    <Smartphone className="text-white" size={24} />
-                  </div>
-                  <h1 className="text-3xl font-bold font-poppins text-[#0B0F1A]">
-                    Complete Payment on Your Phone
-                  </h1>
-                </motion.div>
+          <div className="max-w-lg mx-auto">
+            <motion.div variants={scaleIn} initial="hidden" animate="visible"
+              className="bg-white rounded-2xl shadow-xl border border-[#E7ECF3] overflow-hidden">
 
-                {/* Payment Status Card */}
-                <motion.div
-                  variants={scaleIn}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  className={`p-6 rounded-2xl mb-8 border ${
-                    stkStatus === 'success' 
-                      ? 'bg-gradient-to-r from-[#E8F4FD] to-emerald-50 border-[#2B4C73]/20'
-                      : stkStatus === 'failed' || stkStatus === 'cancelled'
-                      ? 'bg-gradient-to-r from-[#FFF0F0] to-pink-50 border-[#E53E3E]/20'
-                      : 'bg-gradient-to-r from-[#FFF4E6] to-yellow-50 border-[#FF7A00]/20'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h2 className="text-2xl font-bold font-poppins mb-2 text-[#0B0F1A]">
-                        {paybillInfo.payment_type === "registration" 
-                          ? "Registration Fee" 
-                          : "Renewal Fee"}
-                      </h2>
-                      <p className="text-sm text-[#6D7A8B]">{paybillInfo.description}</p>
-                    </div>
-                    <div className="px-4 py-2 bg-gradient-to-r from-[#FF7A00] to-[#E56B00] text-white rounded-full font-bold text-lg">
-                      Ksh {paybillInfo.amount.toLocaleString()}
-                    </div>
+              {/* Top banner */}
+              <div className="bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] p-6 text-white text-center">
+                <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Smartphone className="text-white" size={28} />
+                </div>
+                <h1 className="text-xl font-bold">Check Your Phone</h1>
+                <p className="text-white/80 text-sm mt-1">An M-PESA prompt has been sent to</p>
+                <p className="text-[#FF7A00] font-bold text-lg mt-0.5">{formData.phone}</p>
+              </div>
+
+              <div className="p-6 space-y-5">
+                {/* Amount */}
+                <div className="flex items-center justify-between p-4 bg-[#F7F9FC] rounded-xl border border-[#E7ECF3]">
+                  <div>
+                    <p className="text-xs text-[#6D7A8B] font-medium">Amount Due</p>
+                    <p className="text-sm text-[#0B0F1A] font-medium">{paybillInfo.description}</p>
                   </div>
-                  
-                  {/* Status Indicator */}
-                  <div className="flex items-center gap-3 mb-4">
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-[#FF7A00]">Ksh {paybillInfo.amount.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className={`p-4 rounded-xl border ${
+                  stkStatus === 'success' ? 'bg-[#E8F4FD] border-[#2B4C73]/20' :
+                  stkStatus === 'failed' || stkStatus === 'cancelled' ? 'bg-[#FFF0F0] border-[#E53E3E]/20' :
+                  'bg-[#FFF4E6] border-[#FF7A00]/20'}`}>
+                  <div className="flex items-center gap-3">
                     {stkStatus === 'pending' && (
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-8 h-8 border-2 border-[#FF7A00] border-t-transparent rounded-full"
-                      />
+                      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-7 h-7 border-2 border-[#FF7A00] border-t-transparent rounded-full flex-shrink-0" />
                     )}
-                    {stkStatus === 'success' && (
-                      <CheckCircle className="text-[#2B4C73]" size={32} />
-                    )}
-                    {(stkStatus === 'failed' || stkStatus === 'cancelled') && (
-                      <AlertCircle className="text-[#E53E3E]" size={32} />
-                    )}
+                    {stkStatus === 'success' && <CheckCircle className="text-[#2B4C73] flex-shrink-0" size={28} />}
+                    {(stkStatus === 'failed' || stkStatus === 'cancelled') && <AlertCircle className="text-[#E53E3E] flex-shrink-0" size={28} />}
                     <div>
-                      <p className="font-semibold text-[#0B0F1A]">
-                        {stkStatus === 'initiating' && 'Initiating Payment...'}
-                        {stkStatus === 'pending' && 'Awaiting Payment on Phone'}
+                      <p className="font-semibold text-sm text-[#0B0F1A]">
+                        {stkStatus === 'pending' && 'Awaiting your M-PESA PIN...'}
                         {stkStatus === 'success' && 'Payment Confirmed!'}
                         {stkStatus === 'failed' && 'Payment Failed'}
                         {stkStatus === 'cancelled' && 'Payment Cancelled'}
                       </p>
-                      <p className="text-sm text-[#6D7A8B]">
-                        {stkStatusMessages[stkStatus]}
-                      </p>
+                      <p className="text-xs text-[#6D7A8B] mt-0.5">{stkStatusMessages[stkStatus]}</p>
                     </div>
                   </div>
+                </div>
 
-                  {/* Payment Instructions */}
-                  <div className="space-y-3">
-                    {paymentSteps.map((stepText, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-8 h-8 bg-white/50 rounded-full flex items-center justify-center">
-                          <span className="font-bold text-sm text-[#0B0F1A]">{index + 1}</span>
-                        </div>
-                        <p className="text-sm text-[#6D7A8B]">{stepText}</p>
+                {/* Steps */}
+                <div className="space-y-2.5">
+                  {["Check your phone for a prompt", "Enter your M-PESA PIN", "Wait for payment confirmation"].map((s, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-7 h-7 bg-[#E8F4FD] rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-[#2B4C73]">{i + 1}</span>
                       </div>
-                    ))}
-                  </div>
-                </motion.div>
-
-                {/* Phone Number Display */}
-                <motion.div
-                  variants={scaleIn}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  className="bg-gradient-to-r from-[#E8F4FD] to-[#FFF4E6] p-6 rounded-2xl mb-8 border border-[#2B4C73]/20"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <Phone className="text-[#2B4C73]" size={20} />
-                    <div>
-                      <div className="text-sm text-[#2B4C73] font-medium">Payment will be sent to:</div>
-                      <div className="text-xl font-bold text-[#0B0F1A]">{formData.phone}</div>
+                      <p className="text-sm text-[#6D7A8B]">{s}</p>
                     </div>
-                  </div>
-                  <p className="text-sm text-[#2B4C73]">
-                   Keep your phone nearby. You should receive a payment prompt shortly.
-                  </p>
-                </motion.div>
+                  ))}
+                </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-4">
-                  <button
-                    onClick={cancelPayment}
-                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-200"
-                  >
-                    Cancel Payment
+                {/* Actions */}
+                <div className="flex gap-3 pt-2">
+                  <button onClick={cancelPayment}
+                    className="flex-1 px-4 py-3 bg-[#F7F9FC] text-[#6D7A8B] font-semibold rounded-xl hover:bg-[#E7ECF3] border border-[#E7ECF3] transition text-sm">
+                    Cancel
                   </button>
-                  
                   {stkStatus === 'failed' && (
-                    <button
-                      onClick={() => setStep(1)}
-                      className="flex-1 px-4 py-3 bg-gradient-to-r from-[#FF7A00] to-[#E56B00] text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-200"
-                    >
+                    <button onClick={() => setStep(1)}
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-[#FF7A00] to-[#E56B00] text-white font-semibold rounded-xl hover:opacity-90 transition text-sm">
                       Try Again
                     </button>
                   )}
                 </div>
 
                 {stkStatus === 'pending' && (
-                  <motion.p
-                    variants={fadeUp}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 }}
-                    className="text-sm text-[#6D7A8B] text-center mt-4"
-                  >
-                   Payment status updates automatically. Please wait...
-                  </motion.p>
+                  <p className="text-xs text-[#6D7A8B] text-center">Payment status updates automatically. Please wait...</p>
                 )}
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </main>
         <Footer />
       </motion.div>
     );
   }
 
+  // ─── Step 1: Main Form ─────────────────────────────────────────────────────
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen bg-gradient-to-br from-[#F7F9FC] via-white to-[#E8F4FD]"
-    >
-      {/* Alert Modal */}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
+      className="min-h-screen bg-gradient-to-br from-[#F7F9FC] via-white to-[#E8F4FD]">
       <AlertModalComponent />
-      
       <Header />
 
-      <main className="flex-1 py-12 px-4">
-        <motion.div
-          variants={scaleIn}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className="max-w-3xl mx-auto"
-        >
-          <div className="relative bg-white rounded-2xl p-8 shadow-2xl border border-gray-100 overflow-hidden">
-            {/* Background Elements */}
-            <div className="absolute top-0 left-0 w-40 h-40 bg-gradient-to-br from-[#E8F4FD] to-[#FFF4E6] rounded-full -translate-x-20 -translate-y-20" />
-            <div className="absolute bottom-0 right-0 w-48 h-48 bg-gradient-to-br from-[#FFF4E6] to-[#FFF0F0] rounded-full translate-x-24 translate-y-24" />
-            
-            <div className="relative z-10">
-              <motion.div
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                className="text-center mb-8"
-              >
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#FF7A00] to-[#E56B00] rounded-full flex items-center justify-center">
-                    <CreditCard className="text-white" size={24} />
+      <main className="flex-1 py-10 px-4">
+        <div className="max-w-2xl mx-auto">
+
+          {/* Page title */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#E8F4FD] text-[#2B4C73] rounded-full text-sm font-semibold mb-4 border border-[#2B4C73]/10">
+              <Shield size={14} /> Secure Payment
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold text-[#0B0F1A] mb-2">
+              {paymentType === "registration" ? "Join CHRMAA" : "Renew Membership"}
+            </h1>
+            <p className="text-[#6D7A8B]">
+              {paymentType === "registration"
+                ? "Become part of the CHRMAA community. Payment is processed securely via M-PESA."
+                : "Keep your membership active and continue enjoying full member benefits."}
+            </p>
+          </motion.div>
+
+          {/* Payment type toggle */}
+          <motion.div variants={scaleIn} initial="hidden" animate="visible"
+            className="grid grid-cols-2 gap-3 mb-7 p-1.5 bg-white rounded-2xl border border-[#E7ECF3] shadow-sm">
+            {[
+              { id: "registration" as const, label: "New Member", icon: GraduationCap, sub: "First-time registration" },
+              { id: "renewal" as const, label: "Renew", icon: BadgeCheck, sub: "Annual renewal" },
+            ].map(t => (
+              <motion.button key={t.id} whileTap={buttonTap}
+                onClick={() => setPaymentType(t.id)}
+                className={`flex flex-col items-center gap-1 py-3 px-4 rounded-xl font-semibold transition-all duration-200 ${
+                  paymentType === t.id
+                    ? "bg-gradient-to-br from-[#2B4C73] to-[#1E3A5F] text-white shadow-md"
+                    : "text-[#6D7A8B] hover:bg-[#F7F9FC]"
+                }`}>
+                <t.icon size={20} />
+                <span className="text-sm">{t.label}</span>
+                <span className={`text-xs ${paymentType === t.id ? "text-white/70" : "text-[#6D7A8B]/70"}`}>{t.sub}</span>
+              </motion.button>
+            ))}
+          </motion.div>
+
+          {/* Form card */}
+          <motion.div variants={scaleIn} initial="hidden" animate="visible"
+            className="bg-white rounded-2xl shadow-lg border border-[#E7ECF3] overflow-hidden">
+
+            <form onSubmit={handleSubmit}>
+              {paymentType === "registration" ? (
+                <div className="p-6 space-y-5">
+                  {/* Personal details section */}
+                  <div>
+                    <h2 className="text-sm font-bold text-[#0B0F1A] uppercase tracking-wide mb-4 flex items-center gap-2">
+                      <span className="w-5 h-5 bg-[#2B4C73] text-white rounded-full text-xs flex items-center justify-center">1</span>
+                      Personal Details
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><User size={14} className="text-[#6D7A8B]" />Full Name *</label>
+                        <input type="text" required value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})}
+                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition"
+                          placeholder="Your full name" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><Mail size={14} className="text-[#6D7A8B]" />Email *</label>
+                        <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
+                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition"
+                          placeholder="you@email.com" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><Phone size={14} className="text-[#6D7A8B]" />Phone (M-PESA) *</label>
+                        <div className="relative">
+                          <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
+                            className="w-full px-4 py-2.5 pl-10 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition"
+                            placeholder="0712345678" />
+                          <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" />
+                        </div>
+                        <p className="text-xs text-[#6D7A8B] mt-1">M-PESA prompt will be sent here</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><Lock size={14} className="text-[#6D7A8B]" />Password *</label>
+                        <div className="relative">
+                          <input type={showPassword ? "text" : "password"} required minLength={6} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
+                            className="w-full px-4 py-2.5 pr-10 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition"
+                            placeholder="Min. 6 characters" />
+                          <button type="button" onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6D7A8B] hover:text-[#0B0F1A] transition">
+                            {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <h1 className="text-3xl md:text-4xl font-bold font-poppins text-[#0B0F1A]">
-                    Make a Payment
-                  </h1>
+
+                  {/* Academic details section */}
+                  <div className="border-t border-[#E7ECF3] pt-5">
+                    <h2 className="text-sm font-bold text-[#0B0F1A] uppercase tracking-wide mb-4 flex items-center gap-2">
+                      <span className="w-5 h-5 bg-[#FF7A00] text-white rounded-full text-xs flex items-center justify-center">2</span>
+                      Academic Details
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5">
+                          <GraduationCap size={14} className="text-[#6D7A8B]" />Graduation Year *
+                        </label>
+                        <input type="number" min="2000" max="2030" required value={formData.graduation_year}
+                          onChange={e => setFormData({...formData, graduation_year: e.target.value})}
+                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition"
+                          placeholder="e.g. 2023" />
+                        {/* ── Live fee indicator ── */}
+                        <AnimatePresence mode="wait">
+                          {registrationFee !== null && (
+                            <motion.div
+                              key={feeGroup}
+                              initial={{ opacity: 0, y: -6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
+                              className={`mt-2 flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg w-fit ${
+                                feeGroup === 'recent'
+                                  ? 'bg-green-50 text-green-700 border border-green-200'
+                                  : 'bg-[#FFF4E6] text-[#FF7A00] border border-[#FF7A00]/20'
+                              }`}>
+                              {feeGroup === 'recent'
+                                ? <><Star size={12} /> Ksh 1,000 fee applies (2021 or later)</>
+                                : <><Info size={12} /> Ksh 1,500 fee applies (before 2021)</>
+                              }
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><BookOpen size={14} className="text-[#6D7A8B]" />Course Studied *</label>
+                        <select required value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})}
+                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition bg-white">
+                          <option value="">Select your course</option>
+                          {CHRM_COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><MapPin size={14} className="text-[#6D7A8B]" />County of Residence *</label>
+                        <select required value={formData.county} onChange={e => setFormData({...formData, county: e.target.value})}
+                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition bg-white">
+                          <option value="">Select your county</option>
+                          {COUNTIES_IN_KENYA.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fee summary */}
+                  <div className={`rounded-2xl border p-5 transition-all duration-300 ${
+                    registrationFee !== null
+                      ? registrationFee === 1000
+                        ? 'bg-gradient-to-r from-green-50 to-[#E8F4FD] border-green-200'
+                        : 'bg-gradient-to-r from-[#FFF4E6] to-[#FFF0F0] border-[#FF7A00]/20'
+                      : 'bg-[#F7F9FC] border-[#E7ECF3]'
+                  }`}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <Gift size={20} className={registrationFee === 1000 ? "text-green-600" : registrationFee === 1500 ? "text-[#FF7A00]" : "text-[#6D7A8B]"} />
+                      <p className="font-bold text-[#0B0F1A]">Registration Summary</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                      {[
+                        "Lifetime membership access", "Networking opportunities",
+                        "Exclusive events & workshops", "Member resources & discounts"
+                      ].map(b => (
+                        <div key={b} className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-[#2B4C73] mt-0.5 flex-shrink-0" />
+                          <span className="text-[#6D7A8B] text-xs">{b}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-[#E7ECF3] pt-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-[#6D7A8B]">Registration Fee</p>
+                        {registrationFee !== null && (
+                          <p className="text-xs text-[#6D7A8B] mt-0.5">
+                            {registrationFee === 1000
+                              ? "✓ Graduated 2021 or later"
+                              : "✓ Graduated before 2021"}
+                          </p>
+                        )}
+                      </div>
+                      <AnimatePresence mode="wait">
+                        <motion.p
+                          key={feeLabel}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.8 }}
+                          className={`text-2xl font-bold ${
+                            registrationFee === 1000 ? 'text-green-700' :
+                            registrationFee === 1500 ? 'text-[#FF7A00]' : 'text-[#6D7A8B]'
+                          }`}>
+                          {feeLabel}
+                        </motion.p>
+                      </AnimatePresence>
+                    </div>
+                    <p className="text-xs text-[#6D7A8B] mt-2">Payment via M-PESA STK Push on your phone</p>
+                  </div>
+
+                  <p className="text-sm text-[#6D7A8B] text-center">
+                    Already have an account?{" "}
+                    <Link href="/login" className="text-[#FF7A00] font-semibold hover:underline">Login here</Link>
+                  </p>
+
+                  <div className="border-t border-[#E7ECF3] pt-4 text-center">
+                    <p className="text-[#6D7A8B] text-sm mb-2">Already have a membership number?</p>
+                    <Link href="/claim-account" className="inline-flex items-center gap-2 text-[#2B4C73] font-semibold hover:underline text-sm">
+                      <Key size={14} /> Claim your account
+                    </Link>
+                  </div>
                 </div>
-                <p className="text-[#6D7A8B]">
-                  Register as a new member or renew your membership
-                </p>
-              </motion.div>
-
-              {/* Payment Type Selection */}
-              <motion.div
-                variants={staggerContainer}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8"
-              >
-                {[
-                  { 
-                    id: "registration" as const, 
-                    label: "New Member", 
-                    icon: BookOpen, 
-                    color: "from-[#2B4C73] to-[#1A3557]", 
-                    desc: "Join CHRMAA community" 
-                  },
-                  { 
-                    id: "renewal" as const, 
-                    label: "Membership Renewal", 
-                    icon: Users, 
-                    color: "from-[#FF7A00] to-[#E56B00]", 
-                    desc: "Renew your annual membership" 
-                  },
-                ].map((type, index) => (
-                  <motion.button
-                    key={type.id}
-                    variants={scaleIn}
-                    custom={index}
-                    whileHover={{ scale: 1.05, y: -5 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setPaymentType(type.id)}
-                    className={`px-6 py-4 rounded-xl font-bold transition-all duration-300 flex flex-col items-center gap-2 relative overflow-hidden ${
-                      paymentType === type.id
-                        ? `bg-gradient-to-r ${type.color} text-white shadow-lg`
-                        : "bg-white border-2 border-gray-200 text-gray-700 hover:border-gray-300 hover:shadow-md"
-                    }`}
-                  >
-                    <type.icon size={24} />
-                    <span className="font-poppins">{type.label}</span>
-                    <span className={`text-xs mt-1 ${
-                      paymentType === type.id ? "text-white/80" : "text-gray-500"
-                    }`}>
-                      {type.desc}
-                    </span>
-                  </motion.button>
-                ))}
-              </motion.div>
-
-              {/* Old error display (kept as fallback) */}
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-[#FFF0F0] border border-[#E53E3E]/20 text-[#E53E3E] px-4 py-3 rounded-xl mb-6 opacity-75"
-                >
-                  <div className="flex items-center gap-2">
-                    <AlertCircle size={16} />
-                    <span>{error}</span>
+              ) : (
+                /* ── Renewal form ── */
+                <div className="p-6 space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5">Membership Number *</label>
+                      <input type="text" required value={formData.membership_number} onChange={e => setFormData({...formData, membership_number: e.target.value})}
+                        className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition font-mono"
+                        placeholder="e.g. 100121" pattern="^100\d{3}$" />
+                      <p className="text-xs text-[#6D7A8B] mt-1">Format: 100XXX</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5">Full Name *</label>
+                      <input type="text" required value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})}
+                        className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition"
+                        placeholder="John Doe" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5">Email *</label>
+                      <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
+                        className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition"
+                        placeholder="john@email.com" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><Phone size={14} className="text-[#6D7A8B]" />Phone (M-PESA) *</label>
+                      <div className="relative">
+                        <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
+                          className="w-full px-4 py-2.5 pl-10 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition"
+                          placeholder="0712345678" />
+                        <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" />
+                      </div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5">Renewal Year *</label>
+                      <select required value={formData.renewal_year} onChange={e => setFormData({...formData, renewal_year: e.target.value})}
+                        className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition bg-white">
+                        {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() + i).map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                </motion.div>
+
+                  <div className="bg-gradient-to-r from-[#FFF4E6] to-[#FFF0F0] p-5 rounded-2xl border border-[#FF7A00]/20">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-[#FF7A00]">Annual Membership Fee</p>
+                        <p className="text-sm text-[#6D7A8B] mt-0.5">Paid via M-PESA STK Push</p>
+                      </div>
+                      <p className="text-2xl font-bold text-[#FF7A00]">Ksh {FEE_RENEWAL.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
               )}
 
-              {/* Main form container */}
-              <motion.div
-                variants={scaleIn}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                className="min-h-[500px]"
-              >
-                <motion.form
-                  onSubmit={handleSubmit}
-                  variants={staggerContainer}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true, margin: "-50px" }}
-                  className="space-y-6"
-                >
-                  {paymentType === "registration" ? (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
-                            <User size={16} className="text-[#6D7A8B]" />
-                            Full Name *
-                          </label>
-                          <motion.input
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            type="text"
-                            required
-                            value={formData.full_name}
-                            onChange={(e) =>
-                              setFormData({ ...formData, full_name: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
-                            placeholder="Enter your full name"
-                          />
-                        </motion.div>
-
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
-                            <Mail size={16} className="text-[#6D7A8B]" />
-                            Email Address *
-                          </label>
-                          <motion.input
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            type="email"
-                            required
-                            value={formData.email}
-                            onChange={(e) =>
-                              setFormData({ ...formData, email: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
-                            placeholder="Enter your email"
-                          />
-                        </motion.div>
-
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
-                            <Phone size={16} className="text-[#6D7A8B]" />
-                            Phone Number (M-PESA) *
-                          </label>
-                          <div className="relative">
-                            <motion.input
-                              whileHover={inputHover}
-                              whileFocus={inputFocus}
-                              type="tel"
-                              required
-                              value={formData.phone}
-                              onChange={(e) =>
-                                setFormData({ ...formData, phone: e.target.value })
-                              }
-                              className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
-                              placeholder="0712345678"
-                              pattern="^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$"
-                              title="Enter a valid Kenyan phone number"
-                            />
-                            <Phone size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#6D7A8B]" />
-                          </div>
-                          <p className="text-xs text-[#6D7A8B] mt-1">
-                            You'll receive a prompt on this number
-                          </p>
-                        </motion.div>
-
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
-                            <Calendar size={16} className="text-[#6D7A8B]" />
-                            Graduation Year *
-                          </label>
-                          <motion.input
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            type="number"
-                            min="2000"
-                            max="2030"
-                            required
-                            value={formData.graduation_year}
-                            onChange={(e) =>
-                              setFormData({ ...formData, graduation_year: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
-                            placeholder="e.g., 2024"
-                          />
-                        </motion.div>
-
-                        {/* Course Selection Field */}
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
-                            <BookOpen size={16} className="text-[#6D7A8B]" />
-                            Course Studied *
-                          </label>
-                          <motion.select
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            required
-                            value={formData.course}
-                            onChange={(e) =>
-                              setFormData({ ...formData, course: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
-                          >
-                            <option value="">Select your course</option>
-                            {CHRM_COURSES.map((course) => (
-                              <option key={course} value={course}>
-                                {course}
-                              </option>
-                            ))}
-                          </motion.select>
-                        </motion.div>
-
-                        {/* County Selection Field */}
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
-                            <Users size={16} className="text-[#6D7A8B]" />
-                            County of Residence *
-                          </label>
-                          <motion.select
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            required
-                            value={formData.county}
-                            onChange={(e) =>
-                              setFormData({ ...formData, county: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
-                          >
-                            <option value="">Select your county</option>
-                            {COUNTIES_IN_KENYA.map((county) => (
-                              <option key={county} value={county}>
-                                {county}
-                              </option>
-                            ))}
-                          </motion.select>
-                        </motion.div>
-                      </div>
-
-                      <motion.div variants={scaleIn} className="relative">
-                        <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2 flex items-center gap-2">
-                          <Lock size={16} className="text-[#6D7A8B]" />
-                          Password *
-                        </label>
-                        <motion.input
-                          whileHover={inputHover}
-                          whileFocus={inputFocus}
-                          type={showPassword ? "text" : "password"}
-                          required
-                          minLength={6}
-                          value={formData.password}
-                          onChange={(e) =>
-                            setFormData({ ...formData, password: e.target.value })
-                          }
-                          className="w-full px-4 py-3 pr-12 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none transition-all duration-200 focus:border-[#2B4C73]"
-                          placeholder="Minimum 6 characters"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#6D7A8B] hover:text-[#0B0F1A] transition-colors"
-                        >
-                          {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
-                        </button>
-                      </motion.div>
-
-                      <motion.div
-                        variants={scaleIn}
-                        className="bg-gradient-to-r from-[#E8F4FD] to-[#FFF4E6] p-6 rounded-2xl border border-[#2B4C73]/20 mt-6"
-                      >
-                        <div className="flex items-center gap-3 mb-4">
-                          <Gift className="text-[#2B4C73]" size={24} />
-                          <p className="text-[#2B4C73] font-semibold text-lg">Registration Benefits:</p>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                          <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-[#2B4C73] mt-0.5 flex-shrink-0" />
-                            <span className="text-[#6D7A8B]">Lifetime membership access</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-[#2B4C73] mt-0.5 flex-shrink-0" />
-                            <span className="text-[#6D7A8B]">Networking opportunities</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-[#2B4C73] mt-0.5 flex-shrink-0" />
-                            <span className="text-[#6D7A8B]">Exclusive events & workshops</span>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <CheckCircle size={18} className="text-[#2B4C73] mt-0.5 flex-shrink-0" />
-                            <span className="text-[#6D7A8B]">Member resources & discounts</span>
-                          </div>
-                        </div>
-                        <div className="pt-4 border-t border-[#2B4C73]/20">
-                          <div className="flex items-center justify-between">
-                            <p className="text-lg font-bold text-[#2B4C73]">
-                              Registration Fee:
-                            </p>
-                            <p className="text-2xl font-bold text-[#2B4C73]">
-                              Ksh 1,500
-                            </p>
-                          </div>
-                          <p className="text-sm text-[#2B4C73] mt-2">
-                            Payment will be requested via STK Push on your phone
-                          </p>
-                        </div>
-                      </motion.div>
-
-                      <motion.p
-                        variants={fadeUp}
-                        className="text-sm text-[#6D7A8B] text-center pt-4"
-                      >
-                        Already have an account?{" "}
-                        <Link
-                          href="/login"
-                          className="text-[#FF7A00] hover:text-[#E56B00] font-semibold hover:underline transition-colors"
-                        >
-                          Login here
-                        </Link>
-                      </motion.p>
-                      
-                      <div className="mt-8 border-t pt-8">
-                        <div className="text-center">
-                          <p className="text-[#6D7A8B] mb-4">
-                            Already have a CHRMAA membership number?
-                          </p>
-                          <Link
-                            href="/claim-account"
-                            className="inline-flex items-center gap-2 text-[#2B4C73] hover:text-[#1A3557] font-semibold hover:underline transition-colors"
-                          >
-                            <Key size={16} />
-                            Click here to claim your account
-                          </Link>
-                        </div>
-                      </div>
-                    </>
+              {/* Submit button */}
+              <div className={`px-6 pb-6 ${paymentType === 'registration' ? '' : 'pt-0'}`}>
+                <motion.button
+                  type="submit"
+                  disabled={loading || (paymentType === 'registration' && registrationFee === null)}
+                  whileHover={(!loading && registrationFee !== null) ? buttonHover : undefined}
+                  whileTap={buttonTap}
+                  className="w-full py-4 bg-gradient-to-r from-[#E53E3E] to-[#CC3636] text-white font-bold rounded-xl hover:opacity-95 transition shadow-md disabled:opacity-50 flex items-center justify-center gap-2 text-base">
+                  {loading ? (
+                    <><Loader2 className="animate-spin" size={18} />Processing...</>
                   ) : (
-                    // Renewal form
                     <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2">
-                            Membership Number *
-                          </label>
-                          <motion.input
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            type="text"
-                            required
-                            value={formData.membership_number}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                membership_number: e.target.value,
-                              })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition-all duration-200"
-                            placeholder="e.g., 100121"
-                            pattern="^100\d{3}$"
-                            title="Enter your 6-digit membership number (e.g., 100121)"
-                          />
-                          <p className="text-xs text-[#6D7A8B] mt-1">
-                            Format: 100XXX (e.g., 100121)
-                          </p>
-                        </motion.div>
-
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2">
-                            Full Name *
-                          </label>
-                          <motion.input
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            type="text"
-                            required
-                            value={formData.full_name}
-                            onChange={(e) =>
-                              setFormData({ ...formData, full_name: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition-all duration-200"
-                            placeholder="John Doe"
-                          />
-                        </motion.div>
-
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2">
-                            Email *
-                          </label>
-                          <motion.input
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            type="email"
-                            required
-                            value={formData.email}
-                            onChange={(e) =>
-                              setFormData({ ...formData, email: e.target.value })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition-all duration-200"
-                            placeholder="john.doe@example.com"
-                          />
-                        </motion.div>
-
-                        <motion.div variants={scaleIn}>
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2">
-                            Phone Number (M-PESA) *
-                          </label>
-                          <div className="relative">
-                            <motion.input
-                              whileHover={inputHover}
-                              whileFocus={inputFocus}
-                              type="tel"
-                              required
-                              value={formData.phone}
-                              onChange={(e) =>
-                                setFormData({ ...formData, phone: e.target.value })
-                              }
-                              className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition-all duration-200"
-                              placeholder="0712345678"
-                              pattern="^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$"
-                              title="Enter a valid Kenyan phone number"
-                            />
-                            <Phone size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#6D7A8B]" />
-                          </div>
-                          <p className="text-xs text-[#6D7A8B] mt-1">
-                            You'll receive a prompt on this number
-                          </p>
-                        </motion.div>
-
-                        <motion.div variants={scaleIn} className="md:col-span-2">
-                          <label className="block font-poppins font-semibold text-sm text-[#0B0F1A] mb-2">
-                            Renewal Year *
-                          </label>
-                          <motion.select
-                            whileHover={inputHover}
-                            whileFocus={inputFocus}
-                            required
-                            value={formData.renewal_year}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                renewal_year: e.target.value,
-                              })
-                            }
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#FF7A00] transition-all duration-200"
-                          >
-                            {Array.from(
-                              { length: 7 },
-                              (_, i) => new Date().getFullYear() + i,
-                            ).map((year) => (
-                              <option key={year} value={year}>
-                                {year}
-                              </option>
-                            ))}
-                          </motion.select>
-                        </motion.div>
-                      </div>
-
-                      <motion.div
-                        variants={scaleIn}
-                        className="bg-gradient-to-r from-[#FFF4E6] to-[#FFF0F0] p-6 rounded-2xl border border-[#FF7A00]/20 mt-6"
-                      >
-                        <div className="flex items-center justify-between">
-                          <p className="text-lg font-bold text-[#FF7A00]">
-                            Annual Membership Fee:
-                          </p>
-                          <p className="text-2xl font-bold text-[#FF7A00]">
-                            Ksh 1,000
-                          </p>
-                        </div>
-                        <p className="text-sm text-[#FF7A00] mt-2">
-                          Payment will be requested via STK Push on your phone
-                        </p>
-                      </motion.div>
+                      <Smartphone size={18} />
+                      {paymentType === "registration"
+                        ? `Register & Pay ${registrationFee ? `Ksh ${registrationFee.toLocaleString()}` : ''} via M-PESA`
+                        : `Pay Ksh ${FEE_RENEWAL.toLocaleString()} via M-PESA`}
+                      <ArrowRight size={18} />
                     </>
                   )}
+                </motion.button>
+                {paymentType === 'registration' && !formData.graduation_year && (
+                  <p className="text-xs text-center text-[#6D7A8B] mt-2">Enter your graduation year to see your fee</p>
+                )}
+              </div>
+            </form>
+          </motion.div>
 
-                  <motion.button
-                    variants={fadeUp}
-                    type="submit"
-                    disabled={loading}
-                    whileHover={buttonHover}
-                    whileTap={buttonTap}
-                    className="group w-full px-4 py-4 bg-gradient-to-br from-[#E53E3E] to-[#CC3636] text-white font-semibold rounded-xl hover:shadow-xl transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 mt-8"
-                  >
-                    {loading ? (
-                      <>
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                        />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Smartphone size={20} />
-                        {paymentType === "registration" ? "Register & Pay via M-PESA" : "Pay via M-PESA"}
-                        <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
-                      </>
-                    )}
-                  </motion.button>
-                </motion.form>
-              </motion.div>
-            </div>
-          </div>
-        </motion.div>
+          {/* Security note */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.2 }}
+            className="flex items-center justify-center gap-2 mt-5 text-xs text-[#6D7A8B]">
+            <Shield size={13} />
+            <span>Payments are processed securely via M-PESA. Your data is encrypted and protected.</span>
+          </motion.div>
+        </div>
       </main>
 
       <Footer />
@@ -1511,56 +880,37 @@ export default function CombinedPaymentsPage() {
   );
 }
 
+// ─── Data ─────────────────────────────────────────────────────────────────────
 const CHRM_COURSES = [
-  // Diploma / Higher Diploma Programmes
-  "Diploma in Human Resource Management (KNEC)",
-  "Diploma in Business Management",
-  "Diploma in Banking and Finance",
-  "Diploma in Supply Chain Management (KNEC)",
+  "Diploma in Human Resource Management (KNEC)", "Diploma in Business Management",
+  "Diploma in Banking and Finance", "Diploma in Supply Chain Management (KNEC)",
   "Diploma in Information Communication Technology (ICT) – KNEC",
   "Diploma in Computer Science / Computer Programming (TVET CDACC)",
-  "Diploma in Cyber Security (TVET CDACC)",
-  "Diploma in Criminal Justice (TVET CDACC)",
-  "Diploma in Security Management (TVET CDACC)",
-  "Diploma in Forensic Investigation (TVET CDACC)",
-  "Diploma in Customer Service (ICM)",
-  "Diploma in Digital Journalism Level 6",
+  "Diploma in Cyber Security (TVET CDACC)", "Diploma in Criminal Justice (TVET CDACC)",
+  "Diploma in Security Management (TVET CDACC)", "Diploma in Forensic Investigation (TVET CDACC)",
+  "Diploma in Customer Service (ICM)", "Diploma in Digital Journalism Level 6",
   "Diploma in Food and Beverage Production (Culinary Arts) Level 6",
   "Diploma in Food and Beverage Sales Management Level 6",
   "Higher Diploma in Human Resource Management",
-
-  // Certificate Courses
-  "Certificate in Human Resource Management (KNEC)",
-  "Certificate in Business Management (KNEC)",
-  "Certificate in Banking and Finance (KNEC)",
-  "Certificate in Supply Chain Management (KNEC)",
+  "Certificate in Human Resource Management (KNEC)", "Certificate in Business Management (KNEC)",
+  "Certificate in Banking and Finance (KNEC)", "Certificate in Supply Chain Management (KNEC)",
   "Certificate in Information Communication Technology (ICT) – KNEC",
   "Certificate in Security Management – TVET CDACC Level 5",
   "Certificate in Cyber Security – TVET CDACC Level 5",
   "Certificate in Forensic Investigation – TVET CDACC Level 5",
   "Certificate in Accounting and Management Skills (CAMS – KASNEB)",
-
-  // Artisan & Vocational Courses
-  "Artisan in Store-Keeping (KNEC)",
-  "Artisan in Salesmanship (KNEC)",
-
-  // Professional & Short-Courses / Specialized Trainings
-  "ICT & Computer Application Packages",
-  "Digital Marketing & Social Media Courses",
-  "Graphic Design & CAD Courses",
-  "Leadership & Management Training",
-  "HR Consultancy Training",
-  "CHRP",
-  "HRCi",
-  "Other Professional Short Courses",
+  "Artisan in Store-Keeping (KNEC)", "Artisan in Salesmanship (KNEC)",
+  "ICT & Computer Application Packages", "Digital Marketing & Social Media Courses",
+  "Graphic Design & CAD Courses", "Leadership & Management Training",
+  "HR Consultancy Training", "CHRP", "HRCi", "Other Professional Short Courses",
 ];
 
 const COUNTIES_IN_KENYA = [
-  "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita Taveta", "Garissa", 
-  "Wajir", "Mandera", "Marsabit", "Isiolo", "Meru", "Tharaka Nithi", "Embu", 
-  "Kitui", "Machakos", "Makueni", "Nyandarua", "Nyeri", "Kirinyaga", "Murang'a", 
-  "Kiambu", "Turkana", "West Pokot", "Samburu", "Trans Nzoia", "Uasin Gishu", 
-  "Elgeyo Marakwet", "Nandi", "Baringo", "Laikipia", "Nakuru", "Narok", "Kajiado", 
-  "Kericho", "Bomet", "Kakamega", "Vihiga", "Bungoma", "Busia", "Siaya", 
+  "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita Taveta", "Garissa",
+  "Wajir", "Mandera", "Marsabit", "Isiolo", "Meru", "Tharaka Nithi", "Embu",
+  "Kitui", "Machakos", "Makueni", "Nyandarua", "Nyeri", "Kirinyaga", "Murang'a",
+  "Kiambu", "Turkana", "West Pokot", "Samburu", "Trans Nzoia", "Uasin Gishu",
+  "Elgeyo Marakwet", "Nandi", "Baringo", "Laikipia", "Nakuru", "Narok", "Kajiado",
+  "Kericho", "Bomet", "Kakamega", "Vihiga", "Bungoma", "Busia", "Siaya",
   "Kisumu", "Homa Bay", "Migori", "Kisii", "Nyamira", "Nairobi"
 ];

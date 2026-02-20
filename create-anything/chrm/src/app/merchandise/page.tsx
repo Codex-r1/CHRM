@@ -32,8 +32,7 @@ type ProductVariant = {
   stock_quantity: number;
   is_available: boolean;
   image_url: string;
-  sku: string;
-};
+}
 
 type Product = {
   id: string;
@@ -402,32 +401,65 @@ useEffect(() => {
       }));
     }
   }, [user]);
+useEffect(() => {
+  const fetchProducts = async () => {
+    try {
+      // Add a timestamp to bust cache
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/products/list?t=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch products');
+      const data = await response.json();
+      
+      console.log('Fetched products:', data.products); // Debug log
+      setProducts(data.products || []);
+      
+      // Clear any errors if fetch successful
+      setErrors({});
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setErrors({ fetch: 'Failed to load products. Please refresh the page.' });
+    }
+  };
 
-  // Fetch products from database
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch('/api/products/list');
-        if (!response.ok) throw new Error('Failed to fetch products');
-        const data = await response.json();
-        setProducts(data.products || []);
-      } catch (error) {
-        console.error('Error fetching products:', error);
-        setErrors({ fetch: 'Failed to load products. Please refresh the page.' });
-      }
-    };
+  fetchProducts();
+}, []); // Empty dependency array means it runs once on mount
 
-    fetchProducts();
-  }, []);
-
-  // Redirect to login if trying to checkout without being logged in
   useEffect(() => {
     if ((step === 2 || step === 3) && !user && !loading) {
       console.log("Redirecting to login, step:", step, "user:", user);
-      router.push("/login?redirect=/merchandise&checkout=true");
+      router.push(`/login?redirect=${encodeURIComponent(`/merchandise?step=${step}`)}`);
     }
   }, [step, user, loading, router]);
+// Save cart before redirect
+const saveCartBeforeRedirect = () => {
+  sessionStorage.setItem('pendingCart', JSON.stringify(cart));
+  sessionStorage.setItem('checkoutIntent', 'true');
+};
 
+// Check for saved cart after login
+useEffect(() => {
+  if (user) {
+    const pendingCart = sessionStorage.getItem('pendingCart');
+    const checkoutIntent = sessionStorage.getItem('checkoutIntent');
+    
+    if (pendingCart && checkoutIntent === 'true') {
+      try {
+        setCart(JSON.parse(pendingCart));
+        sessionStorage.removeItem('pendingCart');
+        sessionStorage.removeItem('checkoutIntent');
+        setStep(2); // Go directly to checkout
+      } catch (error) {
+        console.error('Error restoring cart:', error);
+      }
+    }
+  }
+}, [user]);
   const getAvailableColors = (product: Product) => {
     const uniqueColors = new Map<string, { name: string; hex: string; value: string }>();
     product.variants.forEach(variant => {
@@ -559,22 +591,19 @@ useEffect(() => {
   };
 
   const handleCheckout = () => {
-    console.log("Checkout clicked, user:", user, "cart length:", cart.length);
-    
-    if (cart.length === 0) {
-      alert("Your cart is empty!");
-      return;
-    }
-    
-    if (!user) {
-      console.log("No user, redirecting to login");
-      router.push("/login?redirect=/merchandise&checkout=true");
-      return;
-    }
-    
-    console.log("User exists, proceeding to step 2");
-    setStep(2);
-  };
+  if (cart.length === 0) {
+    alert("Your cart is empty!");
+    return;
+  }
+  
+  if (!user) {
+    saveCartBeforeRedirect(); // Save cart
+    router.push("/login?redirect=/merchandise");
+    return;
+  }
+  
+  setStep(2);
+};
 const checkPaymentStatus = async (checkoutId: string, orderId: string) => {
   try {
     const response = await fetch(`/api/payments/${checkoutId}`);
@@ -687,7 +716,7 @@ const handleCompleteOrder = async () => {
 
     // Step 2: Initiate STK Push
     console.log('Initiating STK Push...');
-    const paymentResponse = await fetch('/api/payments/stkpush', {
+    const paymentResponse = await fetch('/api/payments/stk-push', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

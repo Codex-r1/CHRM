@@ -96,7 +96,6 @@ type MembershipType = {
   created_at: string;
 };
 
-// CHRMAA Colors
 const COLORS = {
   darkBlue: "#2B4C73",
   gold: "#FF7A00",
@@ -127,12 +126,11 @@ export default function MemberDashboard() {
 
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
   const [debugError, setDebugError] = useState<string | null>(null);
 
   const router = useRouter();
 
-  // Close profile menu when clicking outside
+  // Close profile menu on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -143,7 +141,7 @@ export default function MemberDashboard() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Keep tab synced with URL
+  // Sync tab with URL
   useEffect(() => {
     const tab = searchParams?.get("tab");
     if (tab && tab !== activeTab) setActiveTab(tab);
@@ -168,131 +166,131 @@ export default function MemberDashboard() {
     return name.substring(0, 2).toUpperCase();
   }, [getUserDisplayName]);
 
-  // IMPORTANT: ensure we have a valid Supabase session in the browser before queries
-  const ensureSupabaseSession = useCallback(async () => {
-    // This does NOT log in; it just checks if a session exists.
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      console.error("Supabase getSession error:", error);
-      throw error;
-    }
-    return data.session;
-  }, []);
+  // ─── FIX: Robust session resolution ────────────────────────────────────────
+  // Returns the best user ID we can get — from auth context or live Supabase session.
+  const resolveUserId = useCallback(async (): Promise<string | null> => {
+    // 1) Trust auth context first (already resolved in the app)
+    if (user?.id) return user.id;
 
-  const fetchRemainingData = useCallback(
-    async (userId: string) => {
-      // Membership
-      try {
-        const { data: membershipData, error: membershipError } = await supabase
-          .from("memberships")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("is_active", true)
-          .maybeSingle();
-
-        if (membershipError) {
-          console.log("Memberships error:", membershipError);
-        } else {
-          setMembership(membershipData || null);
-        }
-      } catch (e) {
-        console.log("Memberships fetch failed:", e);
+    // 2) Fall back to a live Supabase session check
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error("getSession error:", error);
+        return null;
       }
+      return data.session?.user?.id ?? null;
+    } catch (e) {
+      console.error("resolveUserId failed:", e);
+      return null;
+    }
+  }, [user?.id]);
+
+  // ─── FIX: Fetch all secondary data in parallel ──────────────────────────────
+  const fetchRemainingData = useCallback(async (userId: string) => {
+    const results = await Promise.allSettled([
+      // Membership
+      supabase
+        .from("memberships")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .maybeSingle(),
 
       // Payments
-      try {
-        const { data: paymentsData, error: paymentsError } = await supabase
-          .from("payments")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false });
-
-        if (paymentsError) {
-          console.log("Payments error:", paymentsError);
-        } else {
-          setPayments(paymentsData || []);
-        }
-      } catch (e) {
-        console.log("Payments fetch failed:", e);
-      }
+      supabase
+        .from("payments")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
 
       // Orders
-      try {
-        const { data: ordersData, error: ordersError } = await supabase
-          .from("orders")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false });
+      supabase
+        .from("orders")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false }),
 
-        if (ordersError) {
-          console.log("Orders error:", ordersError);
-        } else {
-          setOrders(ordersData || []);
-        }
-      } catch (e) {
-        console.log("Orders fetch failed:", e);
-      }
+      // Events (not user-scoped — public list)
+      supabase
+        .from("events")
+        .select("*")
+        .eq("is_active", true)
+        .in("status", ["upcoming", "ongoing"])
+        .order("event_date", { ascending: true })
+        .limit(10),
+    ]);
 
-      // Events
-      try {
-        const { data: eventsData, error: eventsError } = await supabase
-          .from("events")
-          .select("*")
-          .eq("is_active", true)
-          .in("status", ["upcoming", "ongoing"])
-          .order("event_date", { ascending: true })
-          .limit(10);
+    const [membershipRes, paymentsRes, ordersRes, eventsRes] = results;
 
-        if (eventsError) {
-          console.log("Events error:", eventsError);
-        } else {
-          setEvents(eventsData || []);
-        }
-      } catch (e) {
-        console.log("Events fetch failed:", e);
-      }
-    },
-    [setMembership, setPayments, setOrders, setEvents]
-  );
+    if (membershipRes.status === "fulfilled") {
+      const { data, error } = membershipRes.value;
+      if (error) console.warn("Memberships error:", error.message);
+      else setMembership(data ?? null);
+    }
 
+    if (paymentsRes.status === "fulfilled") {
+      const { data, error } = paymentsRes.value;
+      if (error) console.warn("Payments error:", error.message);
+      else setPayments((data as PaymentType[]) ?? []);
+    }
+
+    if (ordersRes.status === "fulfilled") {
+      const { data, error } = ordersRes.value;
+      if (error) console.warn("Orders error:", error.message);
+      else setOrders((data as OrderType[]) ?? []);
+    }
+
+    if (eventsRes.status === "fulfilled") {
+      const { data, error } = eventsRes.value;
+      if (error) console.warn("Events error:", error.message);
+      else setEvents((data as EventType[]) ?? []);
+    }
+  }, []);
+
+  // ─── FIX: Main fetch — no longer bails on missing Supabase session ──────────
   const fetchMemberData = useCallback(async () => {
-    if (!user?.id) return;
-
     setDebugError(null);
     setLoading(true);
 
     try {
-      // 1) Ensure Supabase session exists (RLS depends on JWT)
-      const session = await ensureSupabaseSession();
-      if (!session) {
-        // Your app auth may be "logged in" but supabase client session isn't set.
-        // This is the #1 reason dashboards show no data.
+      // 1) Resolve user ID — from context OR live session
+      const userId = await resolveUserId();
+
+      if (!userId) {
         setDebugError(
-          "No Supabase session found. Make sure you are signing in via Supabase Auth (supabase.auth.signInWithPassword / OAuth) or you set the session after custom login."
+          "Could not resolve a user ID. Make sure login uses Supabase Auth " +
+            "(supabase.auth.signInWithPassword / OAuth). Check the browser console for details."
         );
-        setMemberDetails(null);
-        setMembership(null);
-        setPayments([]);
-        setOrders([]);
-        setEvents([]);
+        setLoading(false);
         return;
       }
 
-      // 2) Fetch profile
+      // 2) Fetch profile — but never hard-fail; always show *something*
       const { data: memberData, error: memberError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", userId)
         .maybeSingle();
 
       if (memberError) {
-        console.log("Profiles table error:", memberError);
+        console.warn("Profiles fetch error (RLS or schema issue):", memberError.message);
+        // Non-fatal: build a minimal fallback profile so the UI still renders
+      }
 
-        // If profiles RLS blocks, fallback to minimal UI but still fetch other data
-        const fallbackProfile: Partial<MemberDetailsType> = {
-          id: user.id,
-          email: user.email || "",
-          full_name: user.email?.split("@")[0] || "Member",
+      if (memberData) {
+        // ── FIX: Guard admin redirect ONLY after profile is loaded ──
+        if (memberData.role === "admin") {
+          router.push("/admin/dashboard");
+          return;
+        }
+        setMemberDetails(memberData as MemberDetailsType);
+      } else {
+        // Profile row missing or blocked by RLS — use fallback
+        const fallback: MemberDetailsType = {
+          id: userId,
+          email: user?.email || "",
+          full_name: user?.email?.split("@")[0] || "Member",
           status: "active",
           role: "member",
           created_at: new Date().toISOString(),
@@ -303,50 +301,27 @@ export default function MemberDashboard() {
           course: "",
           county: "",
         };
+        setMemberDetails(fallback);
 
-        setMemberDetails(fallbackProfile as MemberDetailsType);
-        await fetchRemainingData(user.id);
-        return;
+        if (memberError) {
+          setDebugError(
+            `Profile table error: "${memberError.message}". ` +
+              "Check your RLS policies on the 'profiles' table — the logged-in user must be able to SELECT their own row."
+          );
+        }
       }
 
-      if (!memberData) {
-        // Profile not found (common if you don't auto-create profiles on signup)
-        const fallbackProfile: Partial<MemberDetailsType> = {
-          id: user.id,
-          email: user.email || "",
-          full_name: user.email?.split("@")[0] || "Member",
-          status: "active",
-          role: "member",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          membership_number: "",
-          phone_number: "",
-          graduation_year: 0,
-          course: "",
-          county: "",
-        };
-
-        setMemberDetails(fallbackProfile as MemberDetailsType);
-        await fetchRemainingData(user.id);
-        return;
-      }
-
-      // 3) Admin guard (in case)
-      if (memberData.role === "admin") {
-        router.push("/admin/dashboard");
-        return;
-      }
-
-      setMemberDetails(memberData);
-      await fetchRemainingData(memberData.id);
+      // 3) Always fetch remaining data regardless of profile result
+      await fetchRemainingData(userId);
     } catch (error: any) {
-      console.error("Failed to fetch member data:", error);
-      setDebugError(error?.message || "Unknown error fetching dashboard data.");
+      console.error("fetchMemberData exception:", error);
+      setDebugError(error?.message || "Unexpected error loading dashboard data.");
     } finally {
       setLoading(false);
     }
-  }, [user?.id, user?.email, ensureSupabaseSession, fetchRemainingData, router]);
+  }, [resolveUserId, fetchRemainingData, router, user?.email]);
 
+  // ─── FIX: Effect — removed premature role check on raw auth user ────────────
   useEffect(() => {
     if (authLoading) return;
 
@@ -355,13 +330,8 @@ export default function MemberDashboard() {
       return;
     }
 
-    // if your auth context includes role:
-    // @ts-ignore
-    if (user.role === "admin") {
-      router.push("/admin/dashboard");
-      return;
-    }
-
+    // Do NOT check user.role here — it's on the profile row, not the auth user.
+    // The redirect is handled inside fetchMemberData after profile is loaded.
     fetchMemberData();
   }, [user, authLoading, router, fetchMemberData]);
 
@@ -395,7 +365,6 @@ export default function MemberDashboard() {
       <header className="bg-white border-b border-[#E7ECF3] sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
-            {/* Logo + Title */}
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-[#2B4C73] to-[#FF7A00] rounded-xl flex items-center justify-center shadow-md">
                 <User className="text-white" size={20} />
@@ -405,7 +374,6 @@ export default function MemberDashboard() {
               </div>
             </div>
 
-            {/* Right side */}
             <div className="flex items-center gap-2 sm:gap-3">
               <Link
                 href="/"
@@ -415,7 +383,6 @@ export default function MemberDashboard() {
                 <span>Home</span>
               </Link>
 
-              {/* Profile Dropdown (Edit Profile only) */}
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => setProfileMenuOpen((v) => !v)}
@@ -462,8 +429,7 @@ export default function MemberDashboard() {
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="flex items-center gap-3 px-3 py-2 text-[#0B0F1A] hover:bg-[#F7F9FC] rounded-lg transition"
-                        
+                        className="w-full flex items-center gap-3 px-3 py-2 text-[#0B0F1A] hover:bg-[#F7F9FC] rounded-lg transition"
                       >
                         <LogOut size={16} className="text-[#E53E3E]" />
                         <span className="font-medium">Logout</span>
@@ -473,7 +439,6 @@ export default function MemberDashboard() {
                 )}
               </div>
             </div>
-            {/* /Right side */}
           </div>
         </div>
       </header>
@@ -481,21 +446,21 @@ export default function MemberDashboard() {
       {/* Main */}
       <main className="w-full flex-1">
         <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-          {/* Debug message if session missing / errors */}
+
+          {/* Debug banner — only shown when there's an error */}
           {debugError && (
             <div className="mb-6 bg-[#FFF0F0] border border-[#E53E3E]/30 text-[#0B0F1A] rounded-xl p-4">
-              <p className="font-semibold mb-1">Dashboard data not loading</p>
+              <p className="font-semibold mb-1">⚠️ Some data could not be loaded</p>
               <p className="text-sm text-[#6D7A8B]">{debugError}</p>
               <p className="text-sm text-[#6D7A8B] mt-2">
-                Fix: Ensure your login uses Supabase Auth so the browser has a valid JWT session (check
-                <code className="mx-1">supabase.auth.getSession()</code> in console).
+                Check your Supabase RLS policies and ensure the user is authenticated via{" "}
+                <code className="mx-1 bg-[#F7F9FC] px-1 rounded">supabase.auth.signInWithPassword</code>.
               </p>
             </div>
           )}
 
-          {/* Top section: Welcome + Membership expiry card */}
+          {/* Welcome + Membership expiry */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Welcome */}
             <div className="lg:col-span-2 bg-white rounded-xl border border-[#E7ECF3] p-6 shadow-sm">
               <div className="flex flex-col gap-4">
                 <div>
@@ -507,14 +472,12 @@ export default function MemberDashboard() {
                       <Mail size={14} className="text-[#6D7A8B]" />
                       <span className="text-[#6D7A8B]">{user?.email}</span>
                     </div>
-
                     {memberDetails?.phone_number ? (
                       <div className="flex items-center gap-2">
                         <Phone size={14} className="text-[#6D7A8B]" />
                         <span className="text-[#6D7A8B]">{memberDetails.phone_number}</span>
                       </div>
                     ) : null}
-
                     {memberDetails?.membership_number ? (
                       <div className="flex items-center gap-2">
                         <Award size={14} className="text-[#FF7A00]" />
@@ -532,7 +495,11 @@ export default function MemberDashboard() {
                       <Clock size={14} className="text-[#FF7A00]" />
                     )}
                     <span className="text-sm font-medium text-[#0B0F1A]">
-                      {membershipActive ? "Active" : memberDetails?.status === "pending" ? "Pending" : "Inactive"}
+                      {membershipActive
+                        ? "Active"
+                        : memberDetails?.status === "pending"
+                        ? "Pending"
+                        : "Inactive"}
                     </span>
                   </div>
 
@@ -551,7 +518,6 @@ export default function MemberDashboard() {
               </div>
             </div>
 
-            {/* Membership expiry card */}
             <div className="lg:col-span-1 bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-4">
                 <div className="p-3 bg-[#E8F4FD] rounded-lg">
@@ -563,7 +529,7 @@ export default function MemberDashboard() {
                 <p className="text-[#6D7A8B] text-sm mb-1 font-medium">Membership Expires</p>
                 <p className="text-xl font-bold text-[#0B0F1A]">{membershipExpiry}</p>
                 <p className="text-sm text-[#6D7A8B] mt-1">
-                  {membershipActive ? "You’re covered" : "Renew to activate benefits"}
+                  {membershipActive ? "You're covered" : "Renew to activate benefits"}
                 </p>
               </div>
             </div>
@@ -627,7 +593,7 @@ export default function MemberDashboard() {
             </div>
           </div>
 
-          {/* Stats cards */}
+          {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-white p-6 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-4">
@@ -711,7 +677,7 @@ export default function MemberDashboard() {
                 }}
                 className={`px-5 py-3 font-medium rounded-lg transition-all flex items-center gap-2 ${
                   activeTab === tab.id
-                    ? `text-white shadow-md`
+                    ? "text-white shadow-md"
                     : "bg-white text-[#6D7A8B] hover:bg-[#F7F9FC] border border-[#E7ECF3]"
                 }`}
                 style={{
@@ -724,7 +690,7 @@ export default function MemberDashboard() {
                             ? "#FF8C00"
                             : "#F56565"
                         })`
-                      : "white",
+                      : undefined,
                 }}
               >
                 <tab.icon size={18} />
@@ -733,16 +699,207 @@ export default function MemberDashboard() {
             ))}
           </div>
 
-          {/* Tab content placeholder (keep your existing content) */}
+          {/* Tab content */}
           <div className="bg-white rounded-xl border border-[#E7ECF3] p-6 shadow-sm">
-            <p className="text-[#6D7A8B]">
-              Render your <span className="font-semibold text-[#0B0F1A]">{activeTab}</span> tab content here.
-            </p>
+            {activeTab === "overview" && (
+              <div>
+                <h3 className="text-lg font-semibold text-[#0B0F1A] mb-4">Recent Activity</h3>
+                {payments.length === 0 && orders.length === 0 ? (
+                  <p className="text-[#6D7A8B]">No recent activity found.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {payments.slice(0, 5).map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between p-3 bg-[#F7F9FC] rounded-lg border border-[#E7ECF3]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <CreditCard size={16} className="text-[#2B4C73]" />
+                          <div>
+                            <p className="text-sm font-medium text-[#0B0F1A]">{p.description || p.payment_type}</p>
+                            <p className="text-xs text-[#6D7A8B]">
+                              {new Date(p.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-[#0B0F1A]">Ksh {p.amount?.toLocaleString()}</p>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              p.status === "confirmed"
+                                ? "bg-[#E8F4FD] text-[#2B4C73]"
+                                : p.status === "failed"
+                                ? "bg-[#FFF0F0] text-[#E53E3E]"
+                                : "bg-[#FFF4E6] text-[#FF7A00]"
+                            }`}
+                          >
+                            {p.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "payments" && (
+              <div>
+                <h3 className="text-lg font-semibold text-[#0B0F1A] mb-4">Payment History</h3>
+                {payments.length === 0 ? (
+                  <p className="text-[#6D7A8B]">No payments found.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {payments.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between p-4 bg-[#F7F9FC] rounded-lg border border-[#E7ECF3]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <CreditCard size={16} className="text-[#2B4C73]" />
+                          <div>
+                            <p className="text-sm font-medium text-[#0B0F1A]">{p.description || p.payment_type}</p>
+                            <p className="text-xs text-[#6D7A8B]">
+                              {new Date(p.created_at).toLocaleDateString()} •{" "}
+                              {p.mpesa_receipt_number || p.account_reference}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-[#0B0F1A]">Ksh {p.amount?.toLocaleString()}</p>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              p.status === "confirmed"
+                                ? "bg-[#E8F4FD] text-[#2B4C73]"
+                                : p.status === "failed"
+                                ? "bg-[#FFF0F0] text-[#E53E3E]"
+                                : "bg-[#FFF4E6] text-[#FF7A00]"
+                            }`}
+                          >
+                            {p.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "orders" && (
+              <div>
+                <h3 className="text-lg font-semibold text-[#0B0F1A] mb-4">My Orders</h3>
+                {orders.length === 0 ? (
+                  <p className="text-[#6D7A8B]">No orders found.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {orders.map((o) => (
+                      <div
+                        key={o.id}
+                        className="flex items-center justify-between p-4 bg-[#F7F9FC] rounded-lg border border-[#E7ECF3]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <ShoppingBag size={16} className="text-[#E53E3E]" />
+                          <div>
+                            <p className="text-sm font-medium text-[#0B0F1A]">
+                              Order #{o.id.slice(0, 8).toUpperCase()}
+                            </p>
+                            <p className="text-xs text-[#6D7A8B]">
+                              {new Date(o.created_at).toLocaleDateString()} • {o.items?.length || 0} item(s)
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-[#0B0F1A]">Ksh {o.total?.toLocaleString()}</p>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              o.status === "delivered"
+                                ? "bg-[#E8F4FD] text-[#2B4C73]"
+                                : o.status === "cancelled"
+                                ? "bg-[#FFF0F0] text-[#E53E3E]"
+                                : "bg-[#FFF4E6] text-[#FF7A00]"
+                            }`}
+                          >
+                            {o.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "events" && (
+              <div>
+                <h3 className="text-lg font-semibold text-[#0B0F1A] mb-4">Upcoming Events</h3>
+                {events.length === 0 ? (
+                  <p className="text-[#6D7A8B]">No upcoming events at the moment.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {events.map((e) => (
+                      <div
+                        key={e.id}
+                        className="p-4 bg-[#F7F9FC] rounded-lg border border-[#E7ECF3]"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="text-sm font-semibold text-[#0B0F1A]">{e.name}</h4>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-[#E8F4FD] text-[#2B4C73]">
+                            {e.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#6D7A8B] mb-2 line-clamp-2">{e.description}</p>
+                        <div className="flex items-center justify-between text-xs text-[#6D7A8B]">
+                          <span>
+                            {e.event_date ? new Date(e.event_date).toLocaleDateString() : "TBD"}
+                            {e.location ? ` • ${e.location}` : ""}
+                          </span>
+                          <span className="font-semibold text-[#FF7A00]">
+                            {e.price === 0 ? "Free" : `Ksh ${e.price?.toLocaleString()}`}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "profile" && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-[#0B0F1A]">Profile Details</h3>
+                  <Link
+                    href="/member/dashboard/profile/edit"
+                    className="flex items-center gap-2 px-4 py-2 bg-[#2B4C73] text-white text-sm rounded-lg hover:opacity-90 transition"
+                  >
+                    <Edit size={14} />
+                    Edit Profile
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { label: "Full Name", value: memberDetails?.full_name },
+                    { label: "Email", value: memberDetails?.email || user?.email },
+                    { label: "Phone", value: memberDetails?.phone_number },
+                    { label: "Membership No.", value: memberDetails?.membership_number },
+                    { label: "Course", value: memberDetails?.course },
+                    { label: "Graduation Year", value: memberDetails?.graduation_year?.toString() },
+                    { label: "County", value: memberDetails?.county },
+                    { label: "Status", value: memberDetails?.status },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="p-4 bg-[#F7F9FC] rounded-lg border border-[#E7ECF3]">
+                      <p className="text-xs text-[#6D7A8B] mb-1">{label}</p>
+                      <p className="text-sm font-medium text-[#0B0F1A]">{value || "—"}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
 
-      {/* Global font */}
       <style jsx global>{`
         @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
         .font-poppins {

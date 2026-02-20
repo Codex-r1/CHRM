@@ -7,6 +7,14 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 export async function GET(request: NextRequest) {
   try {
+    // Add cache-busting headers
+    const headers = {
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Surrogate-Control': 'no-store'
+    };
+
     // Fetch all active products with their variants
     const { data: products, error: productsError } = await supabase
       .from('products')
@@ -29,7 +37,7 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching products:', productsError);
       return NextResponse.json(
         { error: 'Failed to fetch products' },
-        { status: 500 }
+        { status: 500, headers }
       );
     }
 
@@ -46,7 +54,6 @@ export async function GET(request: NextRequest) {
         stock_quantity,
         is_available,
         image_url,
-        sku,
         price_adjustment
       `)
       .order('color_name', { ascending: true });
@@ -55,7 +62,7 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching variants:', variantsError);
       return NextResponse.json(
         { error: 'Failed to fetch product variants' },
-        { status: 500 }
+        { status: 500, headers }
       );
     }
 
@@ -69,7 +76,7 @@ export async function GET(request: NextRequest) {
       success: true,
       products: productsWithVariants,
       count: productsWithVariants.length
-    });
+    }, { headers });
 
   } catch (error) {
     console.error('Error in products list API:', error);
