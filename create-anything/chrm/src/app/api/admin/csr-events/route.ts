@@ -1,3 +1,4 @@
+//api/admin/csr-events/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase/admin';
 import { createClient } from '@supabase/supabase-js';

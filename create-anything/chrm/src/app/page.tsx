@@ -150,7 +150,7 @@ export default function HomePage() {
     {
       icon: GraduationCap,
       title: "Career Growth",
-      description: "Exclusive job opportunities and career advancement resources.",
+      description: "Enjoy 5% discount on all CHRM programs and trainings, helping you continue your professional development at a reduced cost.",
       iconColor: "bg-gradient-to-br from-[#E53E3E] to-[#CC3636]",
       iconTextColor: "text-white",
       bgColor: "bg-[#FFF0F0]",
@@ -159,7 +159,7 @@ export default function HomePage() {
     {
       icon: Calendar,
       title: "Events",
-      description: "Attend exclusive alumni events, workshops, and professional sessions.",
+      description: "Attend exclusive alumni events and workshops.",
       iconColor: "bg-gradient-to-br from-[#2B4C73] to-[#1A3557]",
       iconTextColor: "text-white",
       bgColor: "bg-[#E8F4FD]",

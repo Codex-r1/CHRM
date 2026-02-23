@@ -342,7 +342,7 @@ export default function AdminDashboard() {
   const [messageSearch, setMessageSearch] = useState("");
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
-
+const csrSubmittingRef = useRef(false);
   // ─── Helpers ───────────────────────────────────────────────────────────────
   const getSessionToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -544,22 +544,43 @@ export default function AdminDashboard() {
   };
 
   const handleCreateCSREvent = async (e: React.FormEvent) => {
-    e.preventDefault(); setCsrLoading(true);
-    try {
-      const token = await getSessionToken(); if (!token) throw new Error('No session');
-      let mainImageUrl = newCSREvent.main_image_url;
-      if (csrMainImage) mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `main/${Date.now()}`);
-      const res = await fetch('/api/admin/csr-events', { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newCSREvent, main_image_url: mainImageUrl }) });
-      if (!res.ok) throw new Error('Failed to create CSR event');
-      const event = await res.json();
-      if (csrPhotoFiles.length > 0) {
-        const photos = await Promise.all(csrPhotoFiles.map(async (file, i) => ({ image_url: await uploadFile(file, 'csr-events', `photos/${event.id}`), caption: `Photo ${i + 1}`, display_order: i })));
-        await fetch(`/api/admin/csr-events/${event.id}/photos`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ photos }) });
-      }
-      resetCsrForm(); showSuccessMessage("Success", "CSR Event created!"); await fetchCSREvents();
-    } catch (err: any) { showErrorMessage("Error", err.message); }
-    finally { setCsrLoading(false); }
-  };
+  e.preventDefault();
+  if (csrSubmittingRef.current) return; // prevent double submit
+  csrSubmittingRef.current = true;
+  setCsrLoading(true);
+  try {
+    const token = await getSessionToken(); if (!token) throw new Error('No session');
+    let mainImageUrl = newCSREvent.main_image_url;
+    if (csrMainImage) mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `main/${Date.now()}`);
+    const res = await fetch('/api/admin/csr-events', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...newCSREvent, main_image_url: mainImageUrl })
+    });
+    if (!res.ok) throw new Error('Failed to create CSR event');
+    const data = await res.json();
+    if (csrPhotoFiles.length > 0) {
+      const photos = await Promise.all(csrPhotoFiles.map(async (file, i) => ({
+        image_url: await uploadFile(file, 'csr-events', `photos/${data.event.id}`),
+        caption: `Photo ${i + 1}`,
+        display_order: i
+      })));
+      await fetch(`/api/admin/csr-events/${data.event.id}/photos`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photos })
+      });
+    }
+    resetCsrForm();
+    showSuccessMessage("Success", "CSR Event created!");
+    await fetchCSREvents();
+  } catch (err: any) {
+    showErrorMessage("Error", err.message);
+  } finally {
+    setCsrLoading(false);
+    csrSubmittingRef.current = false;
+  }
+};
 
   const handleUpdateCSREvent = async (e: React.FormEvent) => {
     e.preventDefault(); if (!editingCSREvent) return; setCsrLoading(true);
