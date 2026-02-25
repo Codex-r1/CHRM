@@ -200,7 +200,7 @@ export default function ContactPage() {
                   transition={{ delay: 0.1 }}
                   className="text-4xl md:text-5xl font-bold text-[#0B0F1A] mb-6 font-poppins"
                 >
-                  Get in <span className="bg-gradient-to-r from-[#2B4C73] via-[#FF7A00] to-[#E53E3E] bg-clip-text text-transparent">Touch</span>
+                  Get in <span className="bg-[black] bg-clip-text text-transparent">Touch</span>
                 </motion.h1>
                 <motion.p
                   variants={fadeUp}
@@ -290,8 +290,8 @@ export default function ContactPage() {
               </motion.div>
             ))}
           </motion.div>
-{/* SEND MESSAGE */}
-<motion.section
+          {/* SEND MESSAGE */}
+         <motion.section
   initial="hidden"
   whileInView="visible"
   viewport={{ once: true }}
@@ -398,7 +398,7 @@ export default function ContactPage() {
       </button>
     </div>
   </form>
-</motion.section>
+           </motion.section>
 
           {/* PAYMENT INFO */}
           <motion.section
@@ -406,7 +406,7 @@ export default function ContactPage() {
             whileInView="visible"
             viewport={{ once: true }}
             variants={scaleIn}
-            className="relative bg-gradient-to-r from-[#2B4C73] fto-[#E53E3E] rounded-2xl p-8 text-center overflow-hidden"
+            className="relative bg-[#2B4C73] rounded-2xl p-8 text-center overflow-hidden"
           >
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10">
@@ -569,13 +569,6 @@ export default function ContactPage() {
             />
             
             <div className="relative z-10">
-              <motion.div
-                variants={fadeUp}
-                className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-6 py-3 rounded-full mb-6"
-              >
-                <Sparkles className="w-5 h-5 text-white" />
-                <span className="text-white font-semibold">Take Action</span>
-              </motion.div>
               
               <motion.h2
                 variants={fadeUp}

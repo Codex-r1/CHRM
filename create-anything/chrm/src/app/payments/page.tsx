@@ -581,9 +581,6 @@ export default function CombinedPaymentsPage() {
 
           {/* Page title */}
           <motion.div variants={fadeUp} initial="hidden" animate="visible" className="text-center mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#E8F4FD] text-[#2B4C73] rounded-full text-sm font-semibold mb-4 border border-[#2B4C73]/10">
-              <Shield size={14} /> Secure Payment
-            </div>
             <h1 className="text-3xl md:text-4xl font-bold text-[#0B0F1A] mb-2">
               {paymentType === "registration" ? "Join CHRMAA" : "Renew Membership"}
             </h1>
@@ -599,7 +596,7 @@ export default function CombinedPaymentsPage() {
             className="grid grid-cols-2 gap-3 mb-7 p-1.5 bg-white rounded-2xl border border-[#E7ECF3] shadow-sm">
             {[
               { id: "registration" as const, label: "New Member", icon: GraduationCap, sub: "First-time registration" },
-              { id: "renewal" as const, label: "Renew", icon: BadgeCheck, sub: "Annual renewal" },
+              { id: "renewal" as const, label: "Renew Membership", icon: BadgeCheck, sub: "Annual renewal" },
             ].map(t => (
               <motion.button key={t.id} whileTap={buttonTap}
                 onClick={() => setPaymentType(t.id)}
@@ -695,8 +692,8 @@ export default function CombinedPaymentsPage() {
                                   : 'bg-[#FFF4E6] text-[#FF7A00] border border-[#FF7A00]/20'
                               }`}>
                               {feeGroup === 'recent'
-                                ? <><Star size={12} /> Ksh 1,000 fee applies (2021 or later)</>
-                                : <><Info size={12} /> Ksh 1,500 fee applies (before 2021)</>
+                                ? <> Ksh 1,000 fee applies (2021 or later)</>
+                                : <> Ksh 1,500 fee applies (before 2021)</>
                               }
                             </motion.div>
                           )}
@@ -745,16 +742,6 @@ export default function CombinedPaymentsPage() {
                       ))}
                     </div>
                     <div className="border-t border-[#E7ECF3] pt-3 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-[#6D7A8B]">Registration Fee</p>
-                        {registrationFee !== null && (
-                          <p className="text-xs text-[#6D7A8B] mt-0.5">
-                            {registrationFee === 1000
-                              ? "✓ Graduated 2021 or later"
-                              : "✓ Graduated before 2021"}
-                          </p>
-                        )}
-                      </div>
                       <AnimatePresence mode="wait">
                         <motion.p
                           key={feeLabel}
@@ -769,7 +756,6 @@ export default function CombinedPaymentsPage() {
                         </motion.p>
                       </AnimatePresence>
                     </div>
-                    <p className="text-xs text-[#6D7A8B] mt-2">Payment via M-PESA STK Push on your phone</p>
                   </div>
 
                   <p className="text-sm text-[#6D7A8B] text-center">

@@ -222,7 +222,7 @@ export default function EventsPage() {
       <Header />
 
       {/* Hero */}
-      <section className="relative py-12 md:py-16 bg-gradient-to-b from-[#E8F4FD] to-white overflow-hidden">
+      <section className="relative py-12 md:py-16 bg-white overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-10 left-10 w-64 h-64 bg-[#2B4C73]/10 rounded-full blur-3xl opacity-50" />
           <div className="absolute bottom-10 right-10 w-80 h-80 bg-[#FF7A00]/10 rounded-full blur-3xl opacity-30" />
@@ -233,7 +233,7 @@ export default function EventsPage() {
             className="text-3xl md:text-4xl font-bold text-[#0B0F1A] mb-4"
           >
             CHRMAA{" "}
-            <span className="bg-gradient-to-r from-[#2B4C73] via-[#FF7A00] to-[#E53E3E] bg-clip-text text-transparent">
+            <span className="bg-[black] bg-clip-text text-transparent">
               Events
             </span>
           </motion.h1>
@@ -267,7 +267,7 @@ export default function EventsPage() {
                   : "bg-white border border-[#E7ECF3] text-[#6D7A8B] hover:border-[#2B4C73]"
               }`}
             >
-              CSR Gallery ({csrLoading ? "…" : csrEvents.length})
+               Gallery ({csrLoading ? "…" : csrEvents.length})
             </button>
           </motion.div>
         </div>
@@ -321,7 +321,7 @@ export default function EventsPage() {
               <div className="text-center py-16">
                 <Calendar className="mx-auto mb-4 text-[#E7ECF3]" size={56} />
                 <p className="text-[#6D7A8B] text-lg font-medium mb-2">No upcoming events</p>
-                <p className="text-[#6D7A8B] text-sm">Check back soon for new events.</p>
+                <p className="text-[#6D7A8B] text-sm">Check later for new events.</p>
               </div>
             )}
 
@@ -410,7 +410,7 @@ export default function EventsPage() {
         {activeTab === "csr" && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-[#0B0F1A]">CSR Activities Gallery</h2>
+              <h2 className="text-2xl font-bold text-[#0B0F1A]"> Gallery</h2>
               <span className="text-sm text-[#6D7A8B]">
                 {csrLoading ? "Loading…" : `${filteredCSR.length} activit${filteredCSR.length !== 1 ? "ies" : "y"}`}
               </span>
@@ -436,7 +436,7 @@ export default function EventsPage() {
             {!csrLoading && !csrError && filteredCSR.length === 0 && (
               <div className="text-center py-16">
                 <Heart className="mx-auto mb-4 text-[#E7ECF3]" size={56} />
-                <p className="text-[#6D7A8B] text-lg font-medium mb-2">No CSR activities yet</p>
+                <p className="text-[#6D7A8B] text-lg font-medium mb-2">No photos yet</p>
                 <p className="text-[#6D7A8B] text-sm">Our community impact stories will be shared here.</p>
               </div>
             )}

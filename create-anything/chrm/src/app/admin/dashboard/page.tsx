@@ -542,40 +542,94 @@ const csrSubmittingRef = useRef(false);
     setCsrMainImage(null); setCsrMainImagePreview(''); setCsrPhotoFiles([]); setCsrPhotoPreviews([]);
     setShowCSREventForm(false); setEditingCSREvent(null);
   };
-
-  const handleCreateCSREvent = async (e: React.FormEvent) => {
+// Replace handleCreateCSREvent in your dashboard
+const handleCreateCSREvent = async (e: React.FormEvent) => {
   e.preventDefault();
-  if (csrSubmittingRef.current) return; // prevent double submit
+  
+  // Prevent double submission
+  if (csrSubmittingRef.current) {
+    console.log('Already submitting, ignoring duplicate call');
+    return;
+  }
+  
   csrSubmittingRef.current = true;
   setCsrLoading(true);
+  
   try {
-    const token = await getSessionToken(); if (!token) throw new Error('No session');
+    const token = await getSessionToken();
+    if (!token) throw new Error('No session');
+    
+    // Upload main image if provided
     let mainImageUrl = newCSREvent.main_image_url;
-    if (csrMainImage) mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `main/${Date.now()}`);
+    if (csrMainImage) {
+      mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `main/${Date.now()}`);
+    }
+    
+    // Create the CSR event first
     const res = await fetch('/api/admin/csr-events', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...newCSREvent, main_image_url: mainImageUrl })
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        ...newCSREvent,
+        main_image_url: mainImageUrl
+      })
     });
-    if (!res.ok) throw new Error('Failed to create CSR event');
-    const data = await res.json();
-    if (csrPhotoFiles.length > 0) {
-      const photos = await Promise.all(csrPhotoFiles.map(async (file, i) => ({
-        image_url: await uploadFile(file, 'csr-events', `photos/${data.event.id}`),
-        caption: `Photo ${i + 1}`,
-        display_order: i
-      })));
-      await fetch(`/api/admin/csr-events/${data.event.id}/photos`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photos })
-      });
+    
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to create CSR event');
     }
+    
+    const data = await res.json();
+    console.log('CSR event created:', data.event.id);
+    
+    // Upload photos if provided (only during creation, not edit)
+    if (csrPhotoFiles.length > 0) {
+      console.log(`Uploading ${csrPhotoFiles.length} photos...`);
+      
+      // Upload files to storage and get URLs
+      const photoUrls = await Promise.all(
+        csrPhotoFiles.map(async (file, index) => {
+          const url = await uploadFile(file, 'csr-events', `photos/${data.event.id}`);
+          return {
+            image_url: url,
+            caption: `Photo ${index + 1}`,
+            display_order: index
+          };
+        })
+      );
+      
+      console.log('Photo URLs ready:', photoUrls);
+      
+      // Send photos to API
+      const photosRes = await fetch(`/api/admin/csr-events/${data.event.id}/photos`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ photos: photoUrls })
+      });
+      
+      if (!photosRes.ok) {
+        console.error('Failed to save photos to database');
+      } else {
+        const photosData = await photosRes.json();
+        console.log('Photos saved:', photosData.photos?.length);
+      }
+    }
+    
+    // Reset form and reload events
     resetCsrForm();
-    showSuccessMessage("Success", "CSR Event created!");
+    showSuccessMessage("Success", "CSR Event created successfully!");
     await fetchCSREvents();
+    
   } catch (err: any) {
-    showErrorMessage("Error", err.message);
+    console.error('Error creating CSR event:', err);
+    showErrorMessage("Error", err.message || 'Failed to create CSR event');
   } finally {
     setCsrLoading(false);
     csrSubmittingRef.current = false;
@@ -611,19 +665,74 @@ const csrSubmittingRef = useRef(false);
   };
 
   const handleUploadPhotos = async () => {
-    if (!selectedCSREventId || csrPhotoFiles.length === 0) { showErrorMessage("Validation", "Add at least one photo"); return; }
-    setCsrLoading(true);
-    try {
-      const token = await getSessionToken(); if (!token) throw new Error('No session');
-      const photos = await Promise.all(csrPhotoFiles.map(async (file, i) => ({ image_url: await uploadFile(file, 'csr-events', `photos/${selectedCSREventId}`), caption: `Photo ${i + 1}`, display_order: i })));
-      const res = await fetch(`/api/admin/csr-events/${selectedCSREventId}/photos`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ photos }) });
-      if (res.ok) { showSuccessMessage("Success", "Photos uploaded!"); setCsrPhotoFiles([]); setCsrPhotoPreviews([]); setShowPhotoUploadModal(false); setSelectedCSREventId(null); await fetchCSREvents(); }
-      else { throw new Error('Failed to upload photos'); }
-    } catch (err: any) { showErrorMessage("Error", err.message); }
-    finally { setCsrLoading(false); }
-  };
+  if (!selectedCSREventId || csrPhotoFiles.length === 0) {
+    showErrorMessage("Validation", "Add at least one photo");
+    return;
+  }
+  
+  if (csrLoading) {
+    console.log('Already uploading, ignoring duplicate call');
+    return;
+  }
+  
+  setCsrLoading(true);
+  
+  try {
+    const token = await getSessionToken();
+    if (!token) throw new Error('No session');
+    
+    console.log(`Uploading ${csrPhotoFiles.length} photos to event ${selectedCSREventId}...`);
+    
+    // Upload all files to storage first
+    const photoUrls = await Promise.all(
+      csrPhotoFiles.map(async (file, index) => {
+        const url = await uploadFile(file, 'csr-events', `photos/${selectedCSREventId}`);
+        return {
+          image_url: url,
+          caption: `Photo ${index + 1}`,
+          display_order: index
+        };
+      })
+    );
+    
+    console.log('Photo URLs ready, saving to database:', photoUrls);
+    
+    // Save photo records to database
+    const res = await fetch(`/api/admin/csr-events/${selectedCSREventId}/photos`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ photos: photoUrls })
+    });
+    
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to upload photos');
+    }
+    
+    const data = await res.json();
+    console.log('Photos saved successfully:', data.photos?.length);
+    
+    showSuccessMessage("Success", `${data.photos?.length || 0} photos uploaded!`);
+    
+    // Clean up and refresh
+    setCsrPhotoFiles([]);
+    setCsrPhotoPreviews([]);
+    setShowPhotoUploadModal(false);
+    setSelectedCSREventId(null);
+    await fetchCSREvents();
+    
+  } catch (err: any) {
+    console.error('Error uploading photos:', err);
+    showErrorMessage("Error", err.message || 'Failed to upload photos');
+  } finally {
+    setCsrLoading(false);
+  }
+};
 
-  // ─── Official handlers ─────────────────────────────────────────────────────
+ 
   const resetOfficialForm = () => {
     setNewOfficial({ name: '', position: '', image_url: '', display_order: 0, is_active: true });
     setOfficialImageFile(null); setOfficialImagePreview(''); setEditingOfficial(null); setShowOfficialForm(false);
@@ -836,7 +945,7 @@ const csrSubmittingRef = useRef(false);
     { id: "orders", label: "Orders", icon: ShoppingBag },
     { id: "events", label: "Events", icon: Calendar },
     { id: "merchandise", label: "Merchandise", icon: Tag },
-    { id: "csr", label: "CSR", icon: Heart },
+    { id: "gallery", label: "Gallery", icon: Heart },
     { id: "officials", label: "Officials", icon: UsersIcon },
     { id: "messages", label: "Messages", icon: MessageSquare },
   ];
@@ -1167,9 +1276,6 @@ const csrSubmittingRef = useRef(false);
             </div>
           )}
 
-          {/* ═══════════════════════════════════════════════════════════════
-              MERCHANDISE TAB — redesigned
-          ═══════════════════════════════════════════════════════════════ */}
           {activeTab === "merchandise" && (
             <div>
               {/* Header row */}
@@ -1359,12 +1465,12 @@ const csrSubmittingRef = useRef(false);
             <div>
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-[#0B0F1A]">CSR Events</h2>
+                  <h2 className="text-xl font-bold text-[#0B0F1A]">Gallery</h2>
                   <p className="text-sm text-[#6D7A8B]">{csrEvents.length} total</p>
                 </div>
                 <button onClick={() => { resetCsrForm(); setShowCSREventForm(true); }}
                   className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm hover:opacity-90 transition">
-                  <Plus size={16} /> Add CSR Event
+                  <Plus size={16} /> Add Event Photos
                 </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -1400,8 +1506,8 @@ const csrSubmittingRef = useRef(false);
               {csrEvents.length === 0 && (
                 <div className="text-center py-16">
                   <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4"><Heart className="text-green-300" size={28} /></div>
-                  <p className="text-[#6D7A8B] mb-4">No CSR events yet</p>
-                  <button onClick={() => { resetCsrForm(); setShowCSREventForm(true); }} className="px-5 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg text-sm font-medium">Add First CSR Event</button>
+                  <p className="text-[#6D7A8B] mb-4">No photos added yet</p>
+                  <button onClick={() => { resetCsrForm(); setShowCSREventForm(true); }} className="px-5 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg text-sm font-medium">Add Event Photos</button>
                 </div>
               )}
             </div>

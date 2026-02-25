@@ -1135,14 +1135,14 @@ const STKPushModal = () => {
                 className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
               >
                 <div className="relative h-64 bg-gray-100">
-                  {selection.color && (
-                    <Image
-                      src={getProductImage(product, selection.color)}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                    />
-                  )}
+                 {selection.color && getProductImage(product, selection.color) && (
+  <Image
+    src={getProductImage(product, selection.color)}
+    alt={product.name}
+    fill
+    className="object-cover"
+  />
+)}
                   <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full shadow-md">
                     <p className="text-sm font-bold text-gray-900">
                       Ksh {product.base_price.toLocaleString()}

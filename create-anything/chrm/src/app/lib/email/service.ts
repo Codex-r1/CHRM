@@ -44,7 +44,7 @@ export async function sendEmail({ to, type, data }: SendEmailParams) {
 
 function getFromEmail(type: EmailType): string {
   // Use env variable or fallback to verified email
-  const domain = process.env.RESEND_FROM_EMAIL || 'noreply@chrmaa.org';
+  const domain = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
   const emails = {
     welcome: `CHRMAA <${domain}>`,
     account_claim: `CHRMAA <${domain}>`,
@@ -91,7 +91,7 @@ function getHtmlContent(type: EmailType, data: any): string {
             </div>
             <div class="content">
               <h2 style="color: #2B4C73;">Dear ${data.name},</h2>
-              <p style="font-size: 16px;">We're thrilled to have you as a member of the CHRMAA Alumni Association! Your registration has been successfully completed.</p>
+              <p style="font-size: 16px;">We're thrilled to have you as a member of the CHRM Alumni Association! Your registration has been successfully completed.</p>
               
               <div class="info-box">
                 <p style="margin: 0; font-weight: bold; color: #2B4C73;">Your Membership Details:</p>
@@ -113,8 +113,8 @@ function getHtmlContent(type: EmailType, data: any): string {
               </div>
               
               <div class="footer">
-                <p style="margin: 5px 0;"><strong>Need help?</strong> Contact us at support@chrmaa.org</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRMAA Alumni Association. All rights reserved.</p>
+                <p style="margin: 5px 0;"><strong>Need help?</strong> Contact us at chrmalumniassociation@gmail.com</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association. All rights reserved.</p>
               </div>
             </div>
           </div>
@@ -145,7 +145,7 @@ function getHtmlContent(type: EmailType, data: any): string {
             </div>
             <div class="content">
               <h2 style="color: #2B4C73;">Dear ${data.name},</h2>
-              <p>You're receiving this email because you requested to claim your CHRMAA Alumni Association account.</p>
+              <p>You're receiving this email because you requested to claim your CHRM Alumni Association account.</p>
               
               <div class="info-box">
                 <p style="margin: 0; font-weight: bold; color: #2B4C73;">Your Account Details:</p>
@@ -170,7 +170,7 @@ function getHtmlContent(type: EmailType, data: any): string {
               
               <div class="footer">
                 <p style="margin: 5px 0;">If you didn't request this, please ignore this email or contact support@chrmaa.org</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRMAA Alumni Association. All rights reserved.</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association. All rights reserved.</p>
               </div>
             </div>
           </div>
@@ -234,8 +234,8 @@ function getHtmlContent(type: EmailType, data: any): string {
               </div>
               
               <div class="footer">
-                <p style="margin: 5px 0;">Questions? Contact us at events@chrmaa.org</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRMAA Alumni Association</p>
+                <p style="margin: 5px 0;">Questions? Contact us at chrmalumniassociation@gmail.com</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association</p>
               </div>
             </div>
           </div>
@@ -285,8 +285,8 @@ function getHtmlContent(type: EmailType, data: any): string {
               </div>
               
               <div class="footer">
-                <p style="margin: 5px 0;">Questions? Contact us at merch@chrmaa.org</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRMAA Alumni Association</p>
+                <p style="margin: 5px 0;">Questions? Contact us at chrmalumniassociation@gmail.com</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association</p>
               </div>
             </div>
           </div>
@@ -333,7 +333,7 @@ function getHtmlContent(type: EmailType, data: any): string {
               
               <div class="footer">
                 <p style="margin: 5px 0;">Keep this email for your records</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRMAA Alumni Association</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association</p>
               </div>
             </div>
           </div>
@@ -377,7 +377,7 @@ function getHtmlContent(type: EmailType, data: any): string {
               
               <div class="footer">
                 <p style="margin: 5px 0;">Need help? Contact support@chrmaa.org</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRMAA Alumni Association</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association</p>
               </div>
             </div>
           </div>

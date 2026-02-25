@@ -168,8 +168,8 @@ export default function HomePage() {
   ];
 
   const stats = [
-    { value: "1,000+", label: "Active Members", icon: Users, color: "text-[#2B4C73]" },
-    { value: "50+", label: "Events Yearly", icon: Calendar, color: "text-[#FF7A00]" },
+    { value: "500+", label: "Active Members", icon: Users, color: "text-[#2B4C73]" },
+    { value: "20+", label: "Events Yearly", icon: Calendar, color: "text-[#FF7A00]" },
     { value: "10+", label: "Years Strong", icon: Target, color: "text-[#E53E3E]" },
     { value: "98%", label: "Satisfaction", icon: Award, color: "text-[#2B4C73]" }
   ];
@@ -407,7 +407,7 @@ export default function HomePage() {
               className="text-center mb-12"
             >
               <h3 className="text-3xl font-bold text-white mb-4">Our Community in Numbers</h3>
-              <p className="text-gray-400">Join thousands of successful HR professionals</p>
+              <p className="text-gray-400">Join our successful HR professionals</p>
             </motion.div>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
@@ -450,7 +450,7 @@ export default function HomePage() {
           {/* Background */}
           <motion.div
             animate={pulseAnimation}
-            className="absolute inset-0 bg-gradient-to-r from-[#2B4C73] to-[#E53E3E]"
+            className="absolute inset-0 bg-[#2B4C73]"
           />
           
           <div className="max-w-4xl mx-auto text-center relative z-10">
