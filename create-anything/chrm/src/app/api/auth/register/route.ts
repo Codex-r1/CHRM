@@ -1,150 +1,132 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+// app/api/auth/register/route.ts
+import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
 
-const supabaseAdmin = createClient(
+const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await request.json()
+    const body = await request.json();
     const {
       email,
-      password,
       full_name,
       phone,
+      password,
       graduation_year,
       course,
-      county,
-    } = body
+      country,
+      registration_fee,
+    } = body;
 
-    console.log('Registration attempt for:', email)
+    console.log('Registration attempt for:', email);
 
-    // Validate required fields
-    if (!email || !password || !full_name || !phone) {
+    // Validate input
+    if (!email || !full_name || !phone || !password || !graduation_year || !country) {
       return NextResponse.json(
-        { error: 'Email, password, full name, and phone are required' },
+        { error: 'Missing required fields' },
         { status: 400 }
-      )
+      );
     }
 
-    // Validate phone
-    const phoneRegex = /^(07\d{8}|7\d{8}|\+2547\d{8}|2547\d{8})$/
-    if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
-      return NextResponse.json(
-        { error: 'Please enter a valid Kenyan phone number' },
-        { status: 400 }
-      )
-    }
-
-    // Check if email already exists in profiles table
-    const { data: existingProfile } = await supabaseAdmin
+    // Check if user already exists
+    const { data: existingUser } = await supabase
       .from('profiles')
-      .select('email, id')
+      .select('id, email, status, is_active')
       .eq('email', email.toLowerCase())
-      .maybeSingle()
+      .maybeSingle();
 
-    if (existingProfile) {
-      return NextResponse.json(
-        { error: 'Email already registered. Please login instead.' },
-        { status: 400 }
-      )
-    }
+    if (existingUser) {
+      // If user exists but isn't active, they might have a pending payment
+      if (!existingUser.is_active) {
+        const { data: pendingPayment } = await supabase
+          .from('payments')
+          .select('id, status, checkout_request_id')
+          .eq('user_id', existingUser.id)
+          .maybeSingle();
 
-    // Check if phone already exists
-    const { data: existingPhone } = await supabaseAdmin
-      .from('profiles')
-      .select('phone_number')
-      .eq('phone_number', phone)
-      .maybeSingle()
+        if (pendingPayment) {
+          return NextResponse.json({
+            error: 'Registration already started but not complete. Please complete your payment.',
+            code: 'PENDING_PAYMENT',
+            payment_id: pendingPayment.id,
+          }, { status: 400 });
+        }
 
-    if (existingPhone) {
-      return NextResponse.json(
-        { error: 'Phone number already registered.' },
-        { status: 400 }
-      )
-    }
-    const { data: existingPayment } = await supabaseAdmin
-      .from('payments')
-      .select('id, status, metadata')
-      .eq('payment_type', 'registration')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+        // Reactivate the user if they have an inactive profile
+        await supabase
+          .from('profiles')
+          .update({ status: 'pending', updated_at: new Date().toISOString() })
+          .eq('id', existingUser.id);
+      }
 
-    if (existingPayment?.metadata?.registration_data?.email === email.toLowerCase()) {
-      // There's already a pending payment for this email
       return NextResponse.json({
-        success: true,
-        message: 'Registration already in progress. Please complete the payment.',
-        
-        phone_number: phone,
-        amount: 1
-      })
+        error: 'User already exists. Please login instead.',
+        code: 'USER_EXISTS',
+      }, { status: 400 });
     }
 
-    console.log('Creating pending payment record with registration data...')
+    // Create a TEMPORARY payment record WITHOUT a user
+    // Store all registration data in metadata
+    const registrationData = {
+      email: email.toLowerCase(),
+      full_name: full_name,
+      phone: phone,
+      graduation_year: parseInt(graduation_year),
+      course: course || '',
+      country: country || 'Kenya',
+      password: password,
+    };
 
-    const { data: payment, error: paymentError } = await supabaseAdmin
+    console.log(' Creating temporary payment record...');
+
+    // Create payment with NO user_id - we'll link it after payment
+    const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert({
-        amount: 1, // Registration fee
-        currency: 'KES',
-        method: 'mpesa_stk',
+        user_id: null, // ← No user yet!
         payment_type: 'registration',
-        phone_number: phone,
+        amount: registration_fee || 1000,
         status: 'pending',
-        description: `CHRMAA Registration - ${full_name}`,
         metadata: {
-          // Store ALL registration data here - will be used after payment
-          registration_data: {
-            email: email.toLowerCase(),
-            password, // Will be used to create auth user after payment
-            full_name,
-            phone,
-            graduation_year,
-            course,
-            county
-          }
-        }
+          registration_data: registrationData,
+          graduation_year: parseInt(graduation_year),
+          course: course || '',
+          country: country || 'Kenya',
+          email: email.toLowerCase(),
+          full_name: full_name,
+          phone: phone,
+          is_temp: true, // Flag to identify temporary payments
+          created_at: new Date().toISOString(),
+        },
       })
       .select()
-      .single()
+      .single();
 
-    if (paymentError || !payment) {
-      console.error('Payment record creation error:', paymentError)
+    if (paymentError) {
+      console.error(' Payment creation error:', paymentError);
       return NextResponse.json(
-        { error: 'Failed to initiate registration. Please try again.' },
+        { error: `Failed to create payment record: ${paymentError.message}` },
         { status: 500 }
-      )
+      );
     }
 
-    console.log('Payment record created successfully:', payment.id)
+    console.log(' Temporary payment record created with ID:', payment.id);
+
+    // Return payment ID for STK push
     return NextResponse.json({
       success: true,
-      message: 'Registration initiated. Please complete payment to activate your account.',
       payment_id: payment.id,
-      phone_number: phone,
-      amount: 1
-    })
+      message: 'Payment record created. Complete payment to activate account.',
+    });
 
-  } catch (error: any) {
-    console.error('Unexpected registration error:', error)
+  } catch (error) {
+    console.error(' Registration API error:', error);
     return NextResponse.json(
-      { 
-        success: false,
-        error: 'An unexpected error occurred during registration',
-        details: error.message
-      },
+      { error: 'Internal server error' },
       { status: 500 }
-    )
+    );
   }
 }

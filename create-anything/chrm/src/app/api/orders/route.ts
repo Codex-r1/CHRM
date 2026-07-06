@@ -1,9 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../lib/supabase/admin'
+// app/api/orders/create/route.ts
+import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body = await request.json();
     const {
       user_id,
       items,
@@ -11,50 +17,53 @@ export async function POST(request: NextRequest) {
       customer_name,
       customer_phone,
       customer_email,
-      payment_id,
-      shipping_address
-    } = body
+      shipping_address,
+      status,
+    } = body;
 
-    if (!user_id || !items || !total) {
+    // Validate input
+    if (!user_id || !items || !total || !customer_name || !customer_phone || !customer_email) {
       return NextResponse.json(
-        { error: 'User ID, items, and total are required' },
+        { error: 'Missing required fields' },
         { status: 400 }
-      )
+      );
     }
 
-    const { data: order, error } = await supabaseAdmin()
-
+    // Create order
+    const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         user_id,
         items,
         total,
-        status: 'pending',
         customer_name,
         customer_phone,
         customer_email,
-        payment_id,
-        shipping_address: shipping_address || 'To be provided'
+        shipping_address: shipping_address || null,
+        status: status || 'pending',
       })
       .select()
-      .single()
+      .single();
 
-    if (error) throw error
+    if (orderError) {
+      console.error('Order creation error:', orderError);
+      return NextResponse.json(
+        { error: 'Failed to create order: ' + orderError.message },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
       order,
-      message: 'Order created successfully'
-    })
+      message: 'Order created successfully',
+    });
 
-  } catch (error: any) {
-    console.error('Order creation error:', error)
+  } catch (error) {
+    console.error('Order API error:', error);
     return NextResponse.json(
-      { 
-        success: false,
-        error: error.message || 'Failed to create order'
-      },
+      { error: 'Internal server error' },
       { status: 500 }
-    )
+    );
   }
 }

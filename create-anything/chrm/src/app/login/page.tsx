@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, FormEvent, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../lib/supabase/client";
@@ -46,7 +47,6 @@ const slideDown: Variants = {
   },
 };
 
-// Separate component that uses useSearchParams
 function LoginForm() {
   const [formData, setFormData] = useState<FormData>({
     email: "",
@@ -134,7 +134,6 @@ function LoginForm() {
     >
       <Header />
 
-      {/* Session Expired Alert */}
       <AnimatePresence>
         {sessionExpired && (
           <motion.div
@@ -184,13 +183,11 @@ function LoginForm() {
           className="w-full max-w-md"
         >
           <div className="relative bg-white rounded-2xl p-8 shadow-lg border border-[#E7ECF3] overflow-hidden">
-            {/* Background Elements */}
-            <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-[#E8F4FD] to-[#d4e9fa] rounded-full -translate-x-16 -translate-y-16" />
-            <div className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-[#FFF4E6] to-[#ffe9cc] rounded-full translate-x-20 translate-y-20" />
+            <div className="absolute top-0 left-0 w-32 h-32 bg-[#F5F5F5] rounded-full -translate-x-16 -translate-y-16" />
+            <div className="absolute bottom-0 right-0 w-40 h-40 bg-[#F5F5F5] rounded-full translate-x-20 translate-y-20" />
             
-            {/* Floating Icons */}
             <div className="absolute top-6 right-6">
-              <Shield size={24} className="text-[#2B4C73]/20" />
+              <Shield size={24} className="text-[#171717]/20" />
             </div>
             
             <div className="relative z-10">
@@ -200,7 +197,7 @@ function LoginForm() {
                 animate="visible"
                 className="text-center mb-8"
               >
-                <div className="w-16 h-16 bg-gradient-to-br from-[#2B4C73] to-[#1E3A5F] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
+                <div className="w-16 h-16 bg-[#171717] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
                   <Lock className="text-white" size={28} />
                 </div>
                 
@@ -256,7 +253,7 @@ function LoginForm() {
                         onChange={(e) =>
                           setFormData({ ...formData, email: e.target.value })
                         }
-                        className="w-full px-4 py-3 pl-12 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] bg-white focus:outline-none focus:border-[#2B4C73] focus:ring-2 focus:ring-[#E8F4FD] transition-all duration-200"
+                        className="w-full px-4 py-3 pl-12 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] bg-white focus:outline-none focus:border-[#171717] focus:ring-2 focus:ring-[#F5F5F5] transition-all duration-200"
                         placeholder="your.email@example.com"
                       />
                       <Mail size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#6D7A8B]" />
@@ -283,7 +280,7 @@ function LoginForm() {
                         onChange={(e) =>
                           setFormData({ ...formData, password: e.target.value })
                         }
-                        className="w-full px-4 py-3 pl-12 pr-12 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] bg-white focus:outline-none focus:border-[#2B4C73] focus:ring-2 focus:ring-[#E8F4FD] transition-all duration-200" 
+                        className="w-full px-4 py-3 pl-12 pr-12 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] bg-white focus:outline-none focus:border-[#171717] focus:ring-2 focus:ring-[#F5F5F5] transition-all duration-200" 
                         placeholder="Enter your password"
                       />
                       <Lock size={20} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#6D7A8B]" />
@@ -298,7 +295,7 @@ function LoginForm() {
                     <div className="mt-2 text-right">
                       <Link
                         href="/forgot-password"
-                        className="text-sm text-[#2B4C73] hover:text-[#1E3A5F] hover:underline transition-colors"
+                        className="text-sm text-[#171717] hover:text-[#333333] hover:underline transition-colors"
                       >
                         Forgot password?
                       </Link>
@@ -313,7 +310,7 @@ function LoginForm() {
                   transition={{ delay: 0.5 }}
                   type="submit"
                   disabled={loading}
-                  className="group w-full px-4 py-4 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white font-semibold rounded-xl hover:opacity-90 transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 hover:shadow-md"
+                  className="group w-full px-4 py-4 bg-[#171717] text-white font-semibold rounded-xl hover:bg-[#333333] transition-all duration-300 disabled:opacity-50 flex items-center justify-center gap-2 hover:shadow-md"
                 >
                   {loading ? (
                     <motion.div
@@ -336,16 +333,9 @@ function LoginForm() {
               >
                 <p className="text-[#6D7A8B] mb-4">
                   Don't have an account?{" "}
-                  <Link
-                    href="/claim-account"
-                    className="group inline-flex items-center gap-1 text-[#2B4C73] hover:text-[#1E3A5F] font-semibold hover:underline transition-colors"
-                  >
-                    Claim your account
-                    <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-                  </Link>
                 </p>
                 <p className="text-[#6D7A8B]">
-                  New to CHRMAA?{" "}
+                  New to Alumni Association?{" "}
                   <Link
                     href="/payments"
                     className="group inline-flex items-center gap-1 text-[#FF7A00] hover:text-[#E56A00] font-semibold hover:underline transition-colors"
@@ -373,13 +363,12 @@ function LoginForm() {
   );
 }
 
-// Main page component wrapped with Suspense
 export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-[#F7F9FC] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#2B4C73] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-[#171717] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-[#6D7A8B]">Loading...</p>
         </div>
       </div>

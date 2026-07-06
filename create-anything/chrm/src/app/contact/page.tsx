@@ -8,7 +8,6 @@ import type { Variants } from "framer-motion";
 import { useState } from "react";
 import { Loader2, Send, AlertTriangle, CheckCircle } from "lucide-react";
 
-
 // Animation Variants
 const fadeUp: Variants = {
   hidden: {
@@ -67,22 +66,18 @@ export default function ContactPage() {
       icon: Mail,
       title: "Email",
       description: "We respond within 24 hours",
-      color: "blue",
-      gradient: "from-[#2B4C73]/20 to-transparent",
-      iconBg: "bg-gradient-to-br from-[#2B4C73] to-[#1A3557]",
-      textColor: "text-[#2B4C73]",
+      iconBg: "bg-[#171717]",
+      textColor: "text-[#171717]",
       items: [
-        { text: "alumni@chrm.or.ke", href: "mailto:alumni@chrm.or.ke" },
-        { text: "chrmalumniassociation@gmail.com", href: "mailto:chrmalumniassociation@gmail.com" }
+        { text: "alumni@alumni.or.ke", href: "mailto:alumni@alumni.or.ke" },
+        { text: "alumniassociation@gmail.com", href: "mailto:alumniassociation@gmail.com" }
       ]
     },
     {
       icon: Phone,
       title: "Phone",
       description: "Speak with our administrator",
-      color: "amber",
-      gradient: "from-[#FF7A00]/20 to-transparent",
-      iconBg: "bg-gradient-to-br from-[#FF7A00] to-[#E56B00]",
+      iconBg: "bg-[#FF7A00]",
       textColor: "text-[#FF7A00]",
       items: [
         { text: "0700 773 322", href: "tel:+254700773322" },
@@ -93,13 +88,11 @@ export default function ContactPage() {
       icon: MapPin,
       title: "Location",
       description: "Visit our office",
-      color: "red",
-      gradient: "from-[#E53E3E]/20 to-transparent",
-      iconBg: "bg-gradient-to-br from-[#E53E3E] to-[#CC3636]",
+      iconBg: "bg-[#E53E3E]",
       textColor: "text-[#E53E3E]",
       items: [
-        { text: "Hazina Trade Centre, 13th Floor", href: "#" },
-        { text: "CHRM Campus, Nairobi", href: "#" }
+        { text: "Nairobi CBD", href: "#" },
+        { text: "College Campus, Nairobi", href: "#" }
       ]
     }
   ];
@@ -114,18 +107,17 @@ export default function ContactPage() {
     {
       text: "Register Now",
       href: "/payments",
-      color: "amber",
       icon: User,
-      gradient: "from-[#FF7A00] to-[#E56B00]"
+      bg: "bg-[#171717] hover:bg-[#333333]"
     },
     {
       text: "About Us",
       href: "/about",
-      color: "blue",
       icon: MessageSquare,
-      gradient: "from-[#2B4C73] to-[#1A3557]"
+      bg: "bg-[#FF7A00] hover:bg-[#E56B00]"
     }
   ];
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -145,7 +137,6 @@ export default function ContactPage() {
     e.preventDefault();
     setFeedback(null);
 
-    // quick client validation (keep it minimal)
     if (!form.name.trim() || !form.email.trim() || !form.subject.trim() || !form.message.trim()) {
       setFeedback({ type: "error", text: "Please fill in Name, Email, Subject, and Message." });
       return;
@@ -172,7 +163,7 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F7F9FC] to-white flex flex-col">
+    <div className="min-h-screen bg-[#F7F9FC] flex flex-col">
       <Header />
 
       <main className="flex-1 py-16 px-4">
@@ -190,24 +181,23 @@ export default function ContactPage() {
                 <motion.div 
                   animate={{ rotate: 360 }}
                   transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  className="w-64 h-64 bg-gradient-to-r from-[#2B4C73]/10 to-[#FF7A00]/10 rounded-full blur-3xl"
+                  className="w-64 h-64 bg-[#F5F5F5] rounded-full blur-3xl"
                 />
               </div>
               <div className="relative z-10">
-                
                 <motion.h1
                   variants={fadeUp}
                   transition={{ delay: 0.1 }}
                   className="text-4xl md:text-5xl font-bold text-[#0B0F1A] mb-6 font-poppins"
                 >
-                  Get in <span className="bg-[black] bg-clip-text text-transparent">Touch</span>
+                  Get in <span className="text-[#171717]">Touch</span>
                 </motion.h1>
                 <motion.p
                   variants={fadeUp}
                   transition={{ delay: 0.2 }}
                   className="text-lg text-[#6D7A8B] max-w-2xl mx-auto"
                 >
-                  Connect with the CHRM Alumni Association - We're here to help you with all your alumni needs
+                  Connect with the Alumni Association - We're here to help you with all your alumni needs
                 </motion.p>
               </div>
             </div>
@@ -226,17 +216,14 @@ export default function ContactPage() {
                 key={index}
                 variants={scaleIn}
                 custom={index}
-                whileHover={{ scale: 1.05, y: -8 }}
-                className="group relative bg-white rounded-2xl p-8 border-2 border-gray-100 shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden"
+                whileHover={{ y: -8 }}
+                className="group relative bg-white rounded-2xl p-8 border border-[#E7ECF3] shadow-sm hover:shadow-xl transition-all duration-300"
               >
-                {/* Background Gradient */}
-                <div className={`absolute inset-0 ${method.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
-                
                 <div className="relative z-10">
                   <motion.div
                     whileHover={{ scale: 1.1, rotate: 5 }}
                     transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                    className={`w-16 h-16 ${method.iconBg} rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg`}
+                    className={`w-16 h-16 ${method.iconBg} rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-md`}
                   >
                     <method.icon className="text-white" size={28} />
                   </motion.div>
@@ -290,115 +277,116 @@ export default function ContactPage() {
               </motion.div>
             ))}
           </motion.div>
+
           {/* SEND MESSAGE */}
-         <motion.section
-  initial="hidden"
-  whileInView="visible"
-  viewport={{ once: true }}
-  variants={scaleIn}
-  className="bg-white rounded-2xl p-8 border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300"
->
-  <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-    <div>
-      <h2 className="text-2xl font-bold text-[#0B0F1A] font-poppins">Send a Message</h2>
-      <p className="text-[#6D7A8B] mt-1">
-        Have a question or request? Send it directly to the CHRMAA administrator.
-      </p>
-    </div>
+          <motion.section
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={scaleIn}
+            className="bg-white rounded-2xl p-8 border border-[#E7ECF3] shadow-sm hover:shadow-md transition-all duration-300"
+          >
+            <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-[#0B0F1A] font-poppins">Send a Message</h2>
+                <p className="text-[#6D7A8B] mt-1">
+                  Have a question or request? Send it directly to the alumni administrator.
+                </p>
+              </div>
 
-    <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#E8F4FD] to-[#FFF4E6] px-4 py-2 rounded-xl border border-[#2B4C73]/10">
-      <MessageSquare className="text-[#2B4C73]" size={18} />
-      <span className="text-sm font-semibold text-[#2B4C73]">Direct Inbox</span>
-    </div>
-  </div>
+              <div className="inline-flex items-center gap-2 bg-[#F5F5F5] px-4 py-2 rounded-xl border border-[#E7ECF3]">
+                <MessageSquare className="text-[#171717]" size={18} />
+                <span className="text-sm font-semibold text-[#171717]">Direct Inbox</span>
+              </div>
+            </div>
 
-  {feedback && (
-    <div
-      className={`mb-6 p-4 rounded-xl border flex items-start gap-3 ${
-        feedback.type === "success"
-          ? "bg-[#E8F4FD] border-[#2B4C73]/20"
-          : "bg-[#FFF4E6] border-[#FF7A00]/30"
-      }`}
-    >
-      {feedback.type === "success" ? (
-        <CheckCircle className="text-[#2B4C73] mt-0.5" size={18} />
-      ) : (
-        <AlertTriangle className="text-[#FF7A00] mt-0.5" size={18} />
-      )}
-      <p className={`text-sm ${feedback.type === "success" ? "text-[#2B4C73]" : "text-[#6D7A8B]"}`}>
-        {feedback.text}
-      </p>
-    </div>
-  )}
+            {feedback && (
+              <div
+                className={`mb-6 p-4 rounded-xl border flex items-start gap-3 ${
+                  feedback.type === "success"
+                    ? "bg-[#F5F5F5] border-[#171717]/20"
+                    : "bg-[#FFF4E6] border-[#FF7A00]/30"
+                }`}
+              >
+                {feedback.type === "success" ? (
+                  <CheckCircle className="text-[#171717] mt-0.5" size={18} />
+                ) : (
+                  <AlertTriangle className="text-[#FF7A00] mt-0.5" size={18} />
+                )}
+                <p className={`text-sm ${feedback.type === "success" ? "text-[#171717]" : "text-[#6D7A8B]"}`}>
+                  {feedback.text}
+                </p>
+              </div>
+            )}
 
-  <form onSubmit={handleSubmitMessage} className="space-y-4">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Full Name *</label>
-        <input
-          value={form.name}
-          onChange={onChange("name")}
-          className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]"
-          placeholder="Your name"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Email *</label>
-        <input
-          type="email"
-          value={form.email}
-          onChange={onChange("email")}
-          className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]"
-          placeholder="you@example.com"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Phone (optional)</label>
-        <input
-          value={form.phone}
-          onChange={onChange("phone")}
-          className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]"
-          placeholder="07xx xxx xxx"
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Subject *</label>
-        <input
-          value={form.subject}
-          onChange={onChange("subject")}
-          className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]"
-          placeholder="Membership, events, payments, etc."
-          required
-        />
-      </div>
-    </div>
+            <form onSubmit={handleSubmitMessage} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Full Name *</label>
+                  <input
+                    value={form.name}
+                    onChange={onChange("name")}
+                    className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#171717] focus:border-[#171717] transition"
+                    placeholder="Your name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Email *</label>
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={onChange("email")}
+                    className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#171717] focus:border-[#171717] transition"
+                    placeholder="you@example.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Phone (optional)</label>
+                  <input
+                    value={form.phone}
+                    onChange={onChange("phone")}
+                    className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#171717] focus:border-[#171717] transition"
+                    placeholder="07xx xxx xxx"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Subject *</label>
+                  <input
+                    value={form.subject}
+                    onChange={onChange("subject")}
+                    className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#171717] focus:border-[#171717] transition"
+                    placeholder="Membership, events, payments, etc."
+                    required
+                  />
+                </div>
+              </div>
 
-    <div>
-      <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Message *</label>
-      <textarea
-        value={form.message}
-        onChange={onChange("message")}
-        rows={5}
-        className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#FF7A00]"
-        placeholder="Type your message here..."
-        required
-      />
-    </div>
+              <div>
+                <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Message *</label>
+                <textarea
+                  value={form.message}
+                  onChange={onChange("message")}
+                  rows={5}
+                  className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white focus:ring-2 focus:ring-[#171717] focus:border-[#171717] transition"
+                  placeholder="Type your message here..."
+                  required
+                />
+              </div>
 
-    <div className="flex items-center justify-end pt-2">
-      <button
-        type="submit"
-        disabled={sending}
-        className="px-6 py-3 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-xl hover:opacity-90 transition flex items-center gap-2 font-bold disabled:opacity-50"
-      >
-        {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
-        {sending ? "Sending..." : "Send Message"}
-      </button>
-    </div>
-  </form>
-           </motion.section>
+              <div className="flex items-center justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="px-6 py-3 bg-[#171717] text-white rounded-xl hover:bg-[#333333] transition flex items-center gap-2 font-bold disabled:opacity-50 shadow-sm hover:shadow-md"
+                >
+                  {sending ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                  {sending ? "Sending..." : "Send Message"}
+                </button>
+              </div>
+            </form>
+          </motion.section>
 
           {/* PAYMENT INFO */}
           <motion.section
@@ -406,10 +394,9 @@ export default function ContactPage() {
             whileInView="visible"
             viewport={{ once: true }}
             variants={scaleIn}
-            className="relative bg-[#2B4C73] rounded-2xl p-8 text-center overflow-hidden"
+            className="relative bg-[#171717] rounded-2xl p-8 text-center overflow-hidden"
           >
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0 opacity-5">
               <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4zIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIxLTEuNzktNC00LTRzLTQgMS43OS00IDQgMS43OSA0IDQgNCA0LTEuNzkgNC00eiIvPjwvZz48L2c+PC9zdmc+')]"></div>
             </div>
             
@@ -436,7 +423,7 @@ export default function ContactPage() {
               <motion.p
                 variants={fadeUp}
                 transition={{ delay: 0.1 }}
-                className="text-white/90 text-sm mt-2"
+                className="text-white/80 text-sm mt-2"
               >
                 Use the correct account number depending on the service
               </motion.p>
@@ -455,12 +442,12 @@ export default function ContactPage() {
             <motion.div
               variants={scaleIn}
               custom={0}
-              whileHover={{ scale: 1.02, y: -5 }}
-              className="bg-white rounded-2xl p-8 border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300"
+              whileHover={{ y: -5 }}
+              className="bg-white rounded-2xl p-8 border border-[#E7ECF3] shadow-sm hover:shadow-md transition-all duration-300"
             >
               <div className="flex items-center mb-8">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#E8F4FD] to-[#FFF4E6] rounded-xl flex items-center justify-center mr-4">
-                  <Clock className="text-[#FF7A00]" size={24} />
+                <div className="w-12 h-12 bg-[#F5F5F5] rounded-xl flex items-center justify-center mr-4">
+                  <Clock className="text-[#171717]" size={24} />
                 </div>
                 <h3 className="text-xl font-semibold text-[#0B0F1A]">Office Hours</h3>
               </div>
@@ -475,10 +462,10 @@ export default function ContactPage() {
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.1 }}
                     whileHover={{ scale: 1.02 }}
-                    className="flex justify-between items-center p-4 bg-[#F7F9FC] rounded-xl hover:bg-[#E8F4FD] transition-colors duration-200 border border-gray-100"
+                    className="flex justify-between items-center p-4 bg-[#F7F9FC] rounded-xl hover:bg-[#F5F5F5] transition-colors duration-200 border border-[#E7ECF3]"
                   >
                     <span className="font-medium text-[#0B0F1A]">{hour.day}</span>
-                    <span className={`font-bold ${hour.day === 'Sunday' ? 'text-[#6D7A8B]' : 'text-[#FF7A00]'}`}>
+                    <span className={`font-bold ${hour.day === 'Sunday' ? 'text-[#6D7A8B]' : 'text-[#171717]'}`}>
                       {hour.time}
                     </span>
                   </motion.div>
@@ -490,22 +477,22 @@ export default function ContactPage() {
             <motion.div
               variants={scaleIn}
               custom={1}
-              whileHover={{ scale: 1.02, y: -5 }}
-              className="bg-white rounded-2xl p-8 border-2 border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300"
+              whileHover={{ y: -5 }}
+              className="bg-white rounded-2xl p-8 border border-[#E7ECF3] shadow-sm hover:shadow-md transition-all duration-300"
             >
               <div className="flex items-center mb-8">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#E8F4FD] to-[#FFF4E6] rounded-xl flex items-center justify-center mr-4">
-                  <User className="text-[#2B4C73]" size={24} />
+                <div className="w-12 h-12 bg-[#F5F5F5] rounded-xl flex items-center justify-center mr-4">
+                  <User className="text-[#171717]" size={24} />
                 </div>
                 <h3 className="text-xl font-semibold text-[#0B0F1A]">Administrator</h3>
               </div>
               
               <motion.div
                 variants={scaleIn}
-                className="mb-6 p-4 bg-gradient-to-r from-[#E8F4FD] to-[#FFF4E6] rounded-xl border border-[#2B4C73]/20"
+                className="mb-6 p-4 bg-[#F5F5F5] rounded-xl border border-[#E7ECF3]"
               >
                 <p className="font-bold text-lg text-[#0B0F1A]">Ms Mercy Wambui</p>
-                <p className="text-[#2B4C73] font-medium">CHRMAA Administrator</p>
+                <p className="text-[#171717] font-medium">Alumni Administrator</p>
               </motion.div>
               
               <div className="space-y-3">
@@ -514,11 +501,11 @@ export default function ContactPage() {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  href="mailto:alumni@chrm.or.ke"
-                  className="flex items-center gap-3 text-[#2B4C73] hover:text-[#1A3557] font-medium hover:underline transition-colors duration-200"
+                  href="mailto:alumni@alumni.or.ke"
+                  className="flex items-center gap-3 text-[#171717] hover:text-[#333333] font-medium hover:underline transition-colors duration-200"
                 >
                   <Mail size={18} />
-                  alumni@chrm.or.ke
+                  alumni@alumni.or.ke
                 </motion.a>
                 <motion.a
                   variants={fadeUp}
@@ -527,7 +514,7 @@ export default function ContactPage() {
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
                   href="tel:+254700773322"
-                  className="flex items-center gap-3 text-[#2B4C73] hover:text-[#1A3557] font-medium hover:underline transition-colors duration-200"
+                  className="flex items-center gap-3 text-[#171717] hover:text-[#333333] font-medium hover:underline transition-colors duration-200"
                 >
                   <Phone size={18} />
                   0700 773 322
@@ -539,7 +526,7 @@ export default function ContactPage() {
                   viewport={{ once: true }}
                   transition={{ delay: 0.2 }}
                   href="tel:+254733883322"
-                  className="flex items-center gap-3 text-[#2B4C73] hover:text-[#1A3557] font-medium hover:underline transition-colors duration-200"
+                  className="flex items-center gap-3 text-[#171717] hover:text-[#333333] font-medium hover:underline transition-colors duration-200"
                 >
                   <Phone size={18} />
                   0733 883 322
@@ -554,28 +541,26 @@ export default function ContactPage() {
             whileInView="visible"
             viewport={{ once: true }}
             variants={scaleIn}
-            className="bg-[#2B4C73] rounded-2xl p-10 text-center overflow-hidden"
+            className="bg-[#171717] rounded-2xl p-10 text-center overflow-hidden relative"
           >
-            {/* Background Elements */}
             <motion.div 
               animate={{ rotate: 360 }}
               transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-              className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-[#2B4C73]/20  rounded-full -translate-x-16 -translate-y-16"
+              className="absolute top-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-16 -translate-y-16"
             />
             <motion.div 
               animate={{ rotate: -360 }}
               transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-              className="absolute bottom-0 right-0 w-40 h-40 bg-gradient-to-br from-[#FF7A00]/20 to-transparent rounded-full translate-x-20 translate-y-20"
+              className="absolute bottom-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-20 translate-y-20"
             />
             
             <div className="relative z-10">
-              
               <motion.h2
                 variants={fadeUp}
                 transition={{ delay: 0.1 }}
                 className="text-2xl md:text-3xl text-white font-bold mb-8 font-poppins"
               >
-                Ready to Engage with CHRMAA?
+                Ready to Engage with Alumni?
               </motion.h2>
               
               <motion.div
@@ -594,7 +579,7 @@ export default function ContactPage() {
                   >
                     <Link
                       href={button.href}
-                      className={`group inline-flex items-center gap-2 px-6 py-3 ${button.gradient} text-white font-bold rounded-xl hover:shadow-xl transition-all duration-300`}
+                      className={`group inline-flex items-center gap-2 px-6 py-3 ${button.bg} text-white font-bold rounded-xl hover:shadow-xl transition-all duration-300`}
                     >
                       <button.icon size={20} />
                       {button.text}
@@ -607,9 +592,9 @@ export default function ContactPage() {
               <motion.p
                 variants={fadeUp}
                 transition={{ delay: 0.3 }}
-                className="text-gray-300 mt-8 text-sm"
+                className="text-white/60 mt-8 text-sm"
               >
-                Connect with thousands of HR professionals in our network
+                Connect with thousands of alumni in our network
               </motion.p>
             </div>
           </motion.section>

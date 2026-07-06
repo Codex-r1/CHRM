@@ -24,7 +24,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
-// CHRMAA Colors
+//     Colors
 const COLORS = {
   darkBlue: "#2B4C73",
   gold: "#FF7A00",
@@ -60,7 +60,7 @@ const generateGraduationYears = () => {
   return years;
 };
 
-const CHRM_COURSES = [
+const  _COURSES = [
   // Diploma / Higher Diploma Programmes
   "Diploma in Human Resource Management (KNEC)",
   "Diploma in Business Management",
@@ -600,7 +600,7 @@ export default function EditProfilePage() {
                   required
                 >
                   <option value="">Select your course</option>
-                  {CHRM_COURSES.map(course => (
+                  { _COURSES.map(course => (
                     <option key={course} value={course}>{course}</option>
                   ))}
                 </select>

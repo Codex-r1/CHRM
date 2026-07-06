@@ -1,3 +1,4 @@
+// app/api/mpesa/callback/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/app/lib/supabase/admin';
 import { sendEmail } from '@/app/lib/email/service';
@@ -5,24 +6,20 @@ import { sendEmail } from '@/app/lib/email/service';
 // Inline membership calculation function
 function calculateMembershipDates(registrationDate: string | Date) {
   const regDate = new Date(registrationDate);
-  const regMonth = regDate.getMonth(); // 0-11
+  const regMonth = regDate.getMonth();
   const regYear = regDate.getFullYear();
   
   const startDate = new Date(regDate);
   startDate.setHours(0, 0, 0, 0);
   
-  // Check if October-December (waiver period)
-  const hasWaiver = regMonth >= 9; // Months 9, 10, 11 = Oct, Nov, Dec
+  const hasWaiver = regMonth >= 9;
   
   let expiryDate: Date;
   if (hasWaiver) {
-    // October-December: Expires December 31st of NEXT year
     expiryDate = new Date(regYear + 1, 11, 31);
   } else {
-    // January-September: Expires December 31st of SAME year
     expiryDate = new Date(regYear, 11, 31);
   }
-  
   expiryDate.setHours(23, 59, 59, 999);
   
   const today = new Date();
@@ -40,9 +37,8 @@ function calculateRenewalDates(currentExpiryDate: string | Date) {
   const expiryDate = new Date(currentExpiryDate);
   const nextYear = expiryDate.getFullYear() + 1;
   
-  // Renewals always: Jan 1 - Dec 31 of next year
-  const startDate = new Date(nextYear, 0, 1); // January 1st
-  const newExpiryDate = new Date(nextYear, 11, 31); // December 31st
+  const startDate = new Date(nextYear, 0, 1);
+  const newExpiryDate = new Date(nextYear, 11, 31);
   
   startDate.setHours(0, 0, 0, 0);
   newExpiryDate.setHours(23, 59, 59, 999);
@@ -65,7 +61,8 @@ function formatDate(date: Date): string {
 }
 
 export async function POST(req: NextRequest) {
-  console.log('M-PESA CALLBACK RECEIVED AT:', new Date().toISOString());
+  console.log('========================================');
+  console.log(' M-PESA CALLBACK RECEIVED AT:', new Date().toISOString());
   console.log('========================================');
   
   try {
@@ -74,12 +71,11 @@ export async function POST(req: NextRequest) {
     console.log(' RAW CALLBACK BODY:');
     console.log(JSON.stringify(body, null, 2));
     
-    // Parse the callback
     const { Body } = body;
     const stkCallback = Body?.stkCallback;
     
     if (!stkCallback) {
-      console.error(' No stkCallback found in body');
+      console.error('❌ No stkCallback found in body');
       return NextResponse.json({ 
         ResultCode: 1,
         ResultDesc: 'Invalid callback data' 
@@ -94,13 +90,13 @@ export async function POST(req: NextRequest) {
       CallbackMetadata 
     } = stkCallback;
     
-    console.log(' Parsed Callback Data:');
+    console.log('📋 Parsed Callback Data:');
     console.log('  - CheckoutRequestID:', CheckoutRequestID);
     console.log('  - ResultCode:', ResultCode);
     console.log('  - ResultDesc:', ResultDesc);
     
     // Find the payment
-    console.log(' Searching for payment...');
+    console.log('🔍 Searching for payment...');
     const { data: payment, error } = await supabaseAdmin()
       .from('payments')
       .select('*')
@@ -108,8 +104,8 @@ export async function POST(req: NextRequest) {
       .single();
     
     if (error || !payment) {
-      console.error(' Payment not found:', error);
-      console.error('   CheckoutRequestID:', CheckoutRequestID);
+      console.error('❌ Payment not found:', error);
+      console.error('  CheckoutRequestID:', CheckoutRequestID);
       
       return NextResponse.json({ 
         ResultCode: 1,
@@ -118,16 +114,17 @@ export async function POST(req: NextRequest) {
       });
     }
     
-    console.log(' Payment found:', {
+    console.log('✅ Payment found:', {
       id: payment.id,
       current_status: payment.status,
       payment_type: payment.payment_type,
-      has_user_id: !!payment.user_id
+      has_user_id: !!payment.user_id,
+      is_temp: payment.metadata?.is_temp
     });
     
     // Check if payment already confirmed
     if (payment.status === 'confirmed') {
-      console.log(' Payment already confirmed, skipping...');
+      console.log('⚠️ Payment already confirmed, skipping...');
       return NextResponse.json({ 
         ResultCode: 0,
         ResultDesc: 'Already processed' 
@@ -136,61 +133,68 @@ export async function POST(req: NextRequest) {
     
     // Process based on ResultCode
     if (Number(ResultCode) === 0) {
-      console.log(' PAYMENT SUCCESSFUL - PROCESSING...');
+      console.log('✅ PAYMENT SUCCESSFUL - PROCESSING...');
       console.log('========================================');
       
       // Extract M-PESA receipt number
-      let mpesaReceiptNumber = null;
+      let receiptNumber = null;
       if (CallbackMetadata?.Item) {
         const receiptItem = CallbackMetadata.Item.find((item: any) => 
           item.Name === 'MpesaReceiptNumber'
         );
-        mpesaReceiptNumber = receiptItem?.Value;
-        console.log(' M-PESA Receipt:', mpesaReceiptNumber);
+        receiptNumber = receiptItem?.Value;
+        console.log('  📄 M-PESA Receipt:', receiptNumber);
       }
       
-      // STEP 1: Process payment type handlers FIRST (creates user, profile, membership)
+      // Process based on payment type
       let userId = payment.user_id;
       
       try {
-        console.log(' Processing payment type:', payment.payment_type);
+        console.log('🔄 Processing payment type:', payment.payment_type);
         
         switch (payment.payment_type) {
           case 'registration': {
-            console.log(' Starting registration handler...');
+            console.log('🎓 Starting registration handler...');
             const result = await handleRegistrationPayment(payment);
             
             if (result?.userId) {
               userId = result.userId;
-              console.log(' User created successfully with ID:', userId);
+              console.log('✅ User created/activated successfully with ID:', userId);
+              console.log('✅ Membership number:', result.membershipNumber);
             } else {
               throw new Error('Registration handler did not return userId');
             }
             break;
           }
           
-          case 'renewal':
-            console.log(' Starting renewal handler...');
+          case 'renewal': {
+            console.log('🔄 Starting renewal handler...');
             await handleRenewalPayment(payment);
             userId = payment.user_id;
             break;
+          }
           
-          case 'event':
-            console.log(' Starting event handler...');
+          case 'event': {
+            console.log('🎪 Starting event handler...');
             await handleEventPayment(payment);
             userId = payment.user_id;
             break;
+          }
           
-          case 'merchandise':
-            console.log(' Starting merchandise handler...');
+          case 'merchandise': {
+            console.log('🛍️ Starting merchandise handler...');
             await handleMerchandisePayment(payment);
             userId = payment.user_id;
             break;
+          }
           
-          default:
-            console.log(' Unknown payment type:', payment.payment_type);
+          default: {
+            console.log('❓ Unknown payment type:', payment.payment_type);
+            throw new Error(`Unknown payment type: ${payment.payment_type}`);
+          }
         }
       } catch (handlerError: any) {
+        console.error('❌ Handler error:', handlerError);
         
         // Mark payment as failed
         await supabaseAdmin()
@@ -209,10 +213,10 @@ export async function POST(req: NextRequest) {
         });
       }
       
-      // STEP 2: Now update payment to confirmed (with user_id)
+      // Update payment to confirmed
       const updateData: any = {
         status: 'confirmed',
-        mpesa_receipt_number: mpesaReceiptNumber,
+        receipt_number: receiptNumber,
         paid_at: new Date().toISOString(),
         confirmed_at: new Date().toISOString(),
         callback_data: body,
@@ -221,10 +225,11 @@ export async function POST(req: NextRequest) {
       
       if (userId) {
         updateData.user_id = userId;
-        console.log(' Linking payment to user:', userId);
+        console.log('🔗 Linking payment to user:', userId);
       }
       
-      console.log(' Updating payment status to confirmed...');
+      console.log('📝 Updating payment status to confirmed...');
+      console.log('  Update data:', updateData);
       
       const { error: updateError } = await supabaseAdmin()
         .from('payments')
@@ -232,13 +237,15 @@ export async function POST(req: NextRequest) {
         .eq('checkout_request_id', CheckoutRequestID);
 
       if (updateError) {
-        console.error(' Payment update failed:', updateError);
+        console.error('❌ Payment update failed:', updateError);
         return NextResponse.json({ 
           ResultCode: 1, 
           ResultDesc: 'Database update failed: ' + updateError.message 
         });
       }
-    
+      
+      console.log('✅ Payment confirmed successfully!');
+      console.log('========================================');
       
       return NextResponse.json({ 
         ResultCode: 0,
@@ -246,8 +253,8 @@ export async function POST(req: NextRequest) {
       });
       
     } else {
-      console.log('Payment failed with ResultCode:', ResultCode);
-      console.log('   ResultDesc:', ResultDesc);
+      console.log('❌ Payment failed with ResultCode:', ResultCode);
+      console.log('  ResultDesc:', ResultDesc);
       
       await supabaseAdmin()
         .from('payments')
@@ -279,6 +286,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// ─── REGISTRATION HANDLER ────────────────────────────────────────────────────
 async function handleRegistrationPayment(payment: any) {
   try {
     console.log('========================================');
@@ -286,41 +294,51 @@ async function handleRegistrationPayment(payment: any) {
     console.log('========================================');
     console.log('Payment ID:', payment.id);
 
+    // Get registration data from metadata
     const registrationData = payment.metadata?.registration_data;
     
     if (!registrationData) {
+      console.error('❌ No registration data found in metadata');
+      console.log('Available metadata keys:', Object.keys(payment.metadata || {}));
       throw new Error('No registration data found in payment metadata');
     }
 
-    console.log(' Email:', registrationData.email);
-    console.log(' Phone:', registrationData.phone);
-    console.log(' Name:', registrationData.full_name);
+    console.log('📧 Email:', registrationData.email);
+    console.log('👤 Name:', registrationData.full_name);
+    console.log('📱 Phone:', registrationData.phone);
+    console.log('🎓 Graduation Year:', registrationData.graduation_year);
+    console.log('📚 Course:', registrationData.course);
+    console.log('🌍 Country:', registrationData.country);
     
     // Check if profile already exists
     const { data: existingProfile } = await supabaseAdmin()
       .from('profiles')
-      .select('id, membership_number, status')
+      .select('id, membership_number, status, is_active')
       .eq('email', registrationData.email.toLowerCase())
       .maybeSingle();
 
-    let authUserId;
+    let userId;
     let membershipNumber = '';
-    
+
     if (existingProfile) {
       console.log('👤 Profile already exists:', existingProfile.id);
-      authUserId = existingProfile.id;
-      membershipNumber = existingProfile.membership_number;
+      userId = existingProfile.id;
+      membershipNumber = existingProfile.membership_number || '';
       
-      // Just activate the profile
+      // Activate the profile
       await supabaseAdmin()
         .from('profiles')
-        .update({ status: 'active' })
-        .eq('id', authUserId);
+        .update({ 
+          status: 'active', 
+          is_active: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
       
-      console.log(' Profile activated');
+      console.log('✅ Profile activated');
       
     } else {
-      console.log('Creating new user account...');
+      console.log('🆕 Creating new user account after payment confirmation...');
       
       // Create auth user
       const { data: authData, error: authError } = await supabaseAdmin().auth.admin.createUser({
@@ -332,21 +350,20 @@ async function handleRegistrationPayment(payment: any) {
           phone: registrationData.phone,
           graduation_year: registrationData.graduation_year,
           course: registrationData.course,
-          county: registrationData.county,
-          role: 'member'
+          country: registrationData.country,
         }
       });
 
       if (authError || !authData?.user) {
-        console.error(' Auth user creation failed:', authError);
+        console.error('❌ Auth user creation failed:', authError);
         throw new Error('Failed to create auth user: ' + (authError?.message || 'Unknown error'));
       }
         
-      authUserId = authData.user.id;
-      console.log('Auth user created:', authUserId);
+      userId = authData.user.id;
+      console.log('✅ Auth user created:', userId);
 
       // Generate membership number
-      console.log(' Generating membership number...');
+      console.log('🔢 Generating membership number...');
       const { data: maxMembershipData } = await supabaseAdmin()
         .from('profiles')
         .select('membership_number')
@@ -355,31 +372,32 @@ async function handleRegistrationPayment(payment: any) {
         .limit(1)
         .maybeSingle();
 
-      membershipNumber = '100196';
       if (maxMembershipData?.membership_number) {
         const lastNumber = parseInt(maxMembershipData.membership_number);
         if (!isNaN(lastNumber)) {
           membershipNumber = (lastNumber + 1).toString();
         }
+      } else {
+        membershipNumber = '100001';
       }
 
-      console.log('Membership number:', membershipNumber);
+      console.log(' Membership number:', membershipNumber);
 
       // Create profile
       console.log(' Creating profile...');
       const { error: profileError } = await supabaseAdmin()
         .from('profiles')
         .insert({
-          id: authUserId,
+          id: userId,
           email: registrationData.email.toLowerCase(),
           full_name: registrationData.full_name,
-          phone_number: registrationData.phone,
+          phone: registrationData.phone,
           graduation_year: registrationData.graduation_year ? parseInt(registrationData.graduation_year) : null,
           course: registrationData.course || null,
-          county: registrationData.county || null,
+          country: registrationData.country || null,
           role: 'member',
           status: 'active',
-          registration_source: 'online',
+          is_active: true,
           membership_number: membershipNumber
         });
 
@@ -396,21 +414,21 @@ async function handleRegistrationPayment(payment: any) {
     const { data: existingMembership } = await supabaseAdmin()
       .from('memberships')
       .select('id')
-      .eq('user_id', authUserId)
+      .eq('user_id', userId)
       .eq('is_active', true)
       .maybeSingle();
     
     if (!existingMembership) {
       const membershipDates = calculateMembershipDates(new Date());
       
-      console.log('   Start:', membershipDates.start_date);
-      console.log('   Expiry:', membershipDates.expiry_date);
-      console.log('   Waiver:', membershipDates.has_waiver);
+      console.log('  📅 Start:', membershipDates.start_date);
+      console.log('  📅 Expiry:', membershipDates.expiry_date);
+      console.log('  🎯 Waiver:', membershipDates.has_waiver);
       
       const { error: membershipError } = await supabaseAdmin()
         .from('memberships')
         .insert({
-          user_id: authUserId,
+          user_id: userId,
           start_date: membershipDates.start_date,
           expiry_date: membershipDates.expiry_date,
           is_active: true,
@@ -418,17 +436,17 @@ async function handleRegistrationPayment(payment: any) {
         });
       
       if (membershipError) {
-        console.error(' Membership creation failed:', membershipError);
+        console.error('❌ Membership creation failed:', membershipError);
         throw new Error('Membership creation failed: ' + membershipError.message);
       }
       
-      console.log(' Membership created');
+      console.log('✅ Membership created');
     } else {
-      console.log('Membership already exists');
+      console.log('ℹ️ Membership already exists');
     }
 
     // Send welcome email
-    console.log(' Sending welcome email...');
+    console.log('📧 Sending welcome email...');
     if (registrationData.email) {
       try {
         await sendEmail({
@@ -440,25 +458,25 @@ async function handleRegistrationPayment(payment: any) {
             email: registrationData.email.toLowerCase()
           }
         });
-        console.log(' Welcome email sent');
+        console.log('✅ Welcome email sent');
       } catch (emailError: any) {
-        console.error(' Email send failed (non-critical):', emailError.message);
+        console.error('⚠️ Email send failed (non-critical):', emailError.message);
       }
     }
 
     console.log('========================================');
-    console.log('REGISTRATION COMPLETED SUCCESSFULLY');
+    console.log('✅ REGISTRATION COMPLETED SUCCESSFULLY');
     console.log('========================================');
     
     return { 
       success: true, 
-      userId: authUserId, 
+      userId: userId, 
       membershipNumber 
     };
 
   } catch (error: any) {
     console.error('========================================');
-    console.error(' REGISTRATION HANDLER ERROR');
+    console.error('❌ REGISTRATION HANDLER ERROR');
     console.error('========================================');
     console.error('Error:', error.message);
     console.error('Stack:', error.stack);
@@ -466,9 +484,10 @@ async function handleRegistrationPayment(payment: any) {
   }
 }
 
+// ─── RENEWAL HANDLER ──────────────────────────────────────────────────────
 async function handleRenewalPayment(payment: any) {
   try {
-    console.log(' Processing renewal payment:', payment.id);
+    console.log('🔄 Processing renewal payment:', payment.id);
     
     if (!payment.user_id) {
       throw new Error('No user_id for renewal payment');
@@ -486,7 +505,7 @@ async function handleRenewalPayment(payment: any) {
       // Calculate renewal dates
       const renewalDates = calculateRenewalDates(currentMembership.expiry_date);
       
-      console.log(' Renewal dates:', {
+      console.log('  📅 Renewal dates:', {
         current_expiry: currentMembership.expiry_date,
         new_start: renewalDates.start_date,
         new_expiry: renewalDates.expiry_date
@@ -515,10 +534,13 @@ async function handleRenewalPayment(payment: any) {
       // Update profile status
       await supabaseAdmin()
         .from('profiles')
-        .update({ status: 'active' })
+        .update({ 
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
         .eq('id', payment.user_id);
       
-      console.log(' Membership renewed');
+      console.log('✅ Membership renewed');
       
     } else {
       // Create new membership
@@ -534,18 +556,19 @@ async function handleRenewalPayment(payment: any) {
           payment_id: payment.id
         });
       
-      console.log(' New membership created');
+      console.log('✅ New membership created');
     }
     
   } catch (error: any) {
-    console.error(' Renewal handler error:', error);
+    console.error('❌ Renewal handler error:', error);
     throw error;
   }
 }
 
+// ─── EVENT HANDLER ──────────────────────────────────────────────────────
 async function handleEventPayment(payment: any) {
   try {
-    console.log(' Processing event payment:', payment.id);
+    console.log('🎪 Processing event payment:', payment.id);
     
     const metadata = payment.metadata || {};
     const eventId = metadata.event_id;
@@ -577,10 +600,6 @@ async function handleEventPayment(payment: any) {
       return;
     }
 
-    const attendeeName = metadata.attendee_name; // Changed from userName
-    const attendeeEmail = metadata.attendee_email; // Changed from userEmail
-    const attendeePhone = metadata.attendee_phone;
-
     // Create registration
     const { error: regError } = await supabaseAdmin()
       .from('event_registrations')
@@ -605,6 +624,9 @@ async function handleEventPayment(payment: any) {
     console.log(' Event registration created');
 
     // Send confirmation email
+    const attendeeEmail = metadata.attendee_email || metadata.userEmail;
+    const attendeeName = metadata.attendee_name || metadata.userName;
+    
     if (attendeeEmail) {
       try {
         await sendEmail({
@@ -622,17 +644,19 @@ async function handleEventPayment(payment: any) {
             event_location: event.location || 'TBA',
           }
         });
-        console.log('✅ Event email sent');
+        console.log(' Event email sent');
       } catch (emailError: any) {
         console.error(' Event email failed:', emailError.message);
       }
     }
     
   } catch (error: any) {
-    console.error('Event handler error:', error);
+    console.error(' Event handler error:', error);
     throw error;
   }
 }
+
+// ─── MERCHANDISE HANDLER ──────────────────────────────────────────────────────
 async function handleMerchandisePayment(payment: any) {
   try {
     console.log(' Processing merchandise payment:', payment.id);
@@ -663,8 +687,8 @@ async function handleMerchandisePayment(payment: any) {
     console.log('Order updated to processing');
 
     // Send order confirmation email
-    const customerEmail = order.customer_email;
-    const customerName = order.customer_name;
+    const customerEmail = order.customer_email || metadata.customer_email;
+    const customerName = order.customer_name || metadata.customer_name;
     
     if (customerEmail) {
       try {
@@ -677,14 +701,14 @@ async function handleMerchandisePayment(payment: any) {
             shipping_address: order.shipping_address || 'N/A',
           }
         });
-        console.log(' Order confirmation email sent');
+        console.log('Order confirmation email sent');
       } catch (emailError: any) {
         console.error(' Order email failed:', emailError.message);
       }
     }
     
   } catch (error: any) {
-    console.error(' Merchandise handler error:', error);
+    console.error('Merchandise handler error:', error);
     throw error;
   }
 }

@@ -24,7 +24,7 @@ type FormData = {
   password: string;
   graduation_year: string;
   course: string;
-  county: string;
+  country: string;
 };
 
 type PaybillInfo = {
@@ -57,23 +57,18 @@ type AlertModal = {
 };
 
 // ─── Fee Logic ────────────────────────────────────────────────────────────────
-/**
- * Members who graduated in 2021 or later pay Ksh 1,000.
- * Members who graduated before 2021 pay Ksh 1,500.
- * Returns null if graduation year is not yet entered.
- */
 const getRegistrationFee = (graduationYear: string): number | null => {
   const year = parseInt(graduationYear, 10);
   if (!graduationYear || isNaN(year)) return null;
-  return year >= 2021 ? 1000 : 1500;
+  return year >= 2021 ? 1 : 1500;
 };
 
-const FEE_RENEWAL = 1000;
+const FEE_RENEWAL = 1;
 
 // ─── Animation Variants ───────────────────────────────────────────────────────
 const fadeUp: Variants = {
   hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
 };
 const scaleIn: Variants = {
   hidden: { opacity: 0, scale: 0.92 },
@@ -84,16 +79,18 @@ const staggerContainer: Variants = {
   visible: { transition: { staggerChildren: 0.08 } },
 };
 const buttonHover = {
-  scale: 1.02, y: -2,
-  boxShadow: "0 12px 28px rgba(43, 76, 115, 0.28)",
+  scale: 1.02,
+  y: -2,
+  boxShadow: "0 12px 28px rgba(0, 0, 0, 0.15)",
   transition: { type: "spring" as const, stiffness: 400, damping: 15 },
 };
 const buttonTap = { scale: 0.97 };
-const inputFocus = {
-  scale: 1.01,
-  borderColor: "#2B4C73",
-  boxShadow: "0 0 0 3px rgba(43, 76, 115, 0.1)",
-  transition: { type: "spring" as const, stiffness: 400, damping: 15 },
+const cardHover = {
+  scale: 1.02,
+  y: -8,
+  boxShadow: "0 20px 40px rgba(0, 0, 0, 0.08)",
+  borderColor: "#171717",
+  transition: { type: "spring" as const, stiffness: 300, damping: 20 },
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -109,7 +106,7 @@ export default function CombinedPaymentsPage() {
     password: "",
     graduation_year: "",
     course: "",
-    county: "",
+    country: "",
   });
   const [step, setStep] = useState(1);
   const [paybillInfo, setPaybillInfo] = useState<PaybillInfo>({
@@ -133,10 +130,8 @@ export default function CombinedPaymentsPage() {
   const router = useRouter();
   const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ── Derived: registration fee updates live as graduation year changes ─────────
   const registrationFee = useMemo(() => getRegistrationFee(formData.graduation_year), [formData.graduation_year]);
   const feeLabel = registrationFee !== null ? `Ksh ${registrationFee.toLocaleString()}` : '—';
-  const feeGroup = registrationFee === null ? null : registrationFee === 1000 ? 'recent' : 'standard';
 
   useEffect(() => {
     return () => { if (pollingInterval) clearInterval(pollingInterval); };
@@ -178,7 +173,7 @@ export default function CombinedPaymentsPage() {
     try {
       if (paymentType === "registration") {
         if (!formData.full_name || !formData.email || !formData.password ||
-          !formData.graduation_year || !formData.course || !formData.county) {
+          !formData.graduation_year || !formData.country) {
           showAlert('error', 'Missing Information', 'Please fill in all required fields');
           setLoading(false);
           return;
@@ -189,7 +184,6 @@ export default function CombinedPaymentsPage() {
           return;
         }
 
-        // ── FIX: compute actual fee from graduation year before proceeding ──
         const fee = getRegistrationFee(formData.graduation_year);
         if (!fee) {
           showAlert('error', 'Invalid Graduation Year', 'Please enter a valid graduation year');
@@ -264,46 +258,100 @@ export default function CombinedPaymentsPage() {
     }
   };
 
-  // ─── Registration + Payment ────────────────────────────────────────────────
-  // FIX: accept fee as a parameter so we use the computed value, not a hardcoded one
-  const handleRegistrationAndPayment = async (fee: number) => {
-    try {
-      setLoading(true);
-      const registrationResponse = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          full_name: formData.full_name,
-          phone: formData.phone,
-          graduation_year: formData.graduation_year,
-          course: formData.course,
-          county: formData.county,
-          password: formData.password,
-          // Pass the computed fee so the backend can store the correct amount
-          registration_fee: fee,
-        })
-      });
-
-      const registrationData = await registrationResponse.json();
-      if (!registrationResponse.ok) throw new Error(registrationData.error || 'Registration failed');
-
-      const payment_id = registrationData.payment_id;
-
-      // ── FIX: use our locally-computed fee, NOT whatever the API returns ──
-      // This ensures the STK Push requests the correct amount based on grad year
-      await initiateSTKPush(fee, 'registration', undefined, {
-        graduation_year: formData.graduation_year,
-        course: formData.course,
-        county: formData.county,
-      }, payment_id);
-
-    } catch (err) {
-      showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
+const handleRegistrationAndPayment = async (fee: number) => {
+  try {
+    setLoading(true);
+    
+    // First, check if user already exists
+    const checkResponse = await fetch(
+      `/api/users/check?email=${encodeURIComponent(formData.email)}`
+    );
+    const checkData = await checkResponse.json();
+    
+    if (checkData.exists) {
+      showAlert('error', 'User Already Exists', 
+        'This email is already registered. Please login instead.',
+        { 
+          confirmText: 'Go to Login',
+          onConfirm: () => router.push('/login')
+        }
+      );
       setLoading(false);
-      throw err;
+      return;
     }
-  };
+    
+    const registrationData = {
+      email: formData.email,
+      full_name: formData.full_name,
+      phone: formData.phone,
+      graduation_year: formData.graduation_year,
+      course: formData.course,
+      country: formData.country,
+      password: formData.password,
+      registration_fee: fee,
+    };
+    
+    console.log(' Sending registration data:', registrationData);
+
+    const registrationResponse = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(registrationData)
+    });
+
+    const registrationResult = await registrationResponse.json();
+    
+    if (!registrationResponse.ok) {
+      console.error(' Registration error details:', registrationResult);
+      
+      // Handle specific error codes
+      if (registrationResult.code === 'USER_EXISTS') {
+        showAlert('error', 'User Already Exists', 
+          'This email is already registered. Please login instead.',
+          { 
+            confirmText: 'Go to Login',
+            onConfirm: () => router.push('/login')
+          }
+        );
+        setLoading(false);
+        return;
+      }
+      
+      if (registrationResult.code === 'PENDING_PAYMENT') {
+        showAlert('warning', 'Payment Pending', 
+          'You have a pending payment. Please complete it to activate your account.',
+          { 
+            confirmText: 'Continue Payment',
+            onConfirm: () => {
+              // Resume the payment flow
+              setPaymentId(registrationResult.payment_id);
+              // Re-initiate STK push or continue polling
+            }
+          }
+        );
+        setLoading(false);
+        return;
+      }
+      
+      throw new Error(registrationResult.error || registrationResult.message || 'Registration failed');
+    }
+
+    // Now initiate STK push with the payment_id
+    const payment_id = registrationResult.payment_id;
+
+    await initiateSTKPush(fee, 'registration', undefined, {
+      graduation_year: formData.graduation_year,
+      course: formData.course,
+      country: formData.country,
+    }, payment_id);
+
+  } catch (err) {
+    console.error(' Registration error:', err);
+    showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
+    setLoading(false);
+    throw err;
+  }
+};
 
   // ─── STK Push ──────────────────────────────────────────────────────────────
   const initiateSTKPush = async (
@@ -320,7 +368,7 @@ export default function CombinedPaymentsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phoneNumber: formData.phone,
-          amount,                // ← correct amount passed here
+          amount,
           paymentType: type,
           userId,
           userEmail: formData.email,
@@ -328,7 +376,7 @@ export default function CombinedPaymentsPage() {
           metadata: metadata || {
             graduation_year: formData.graduation_year,
             course: formData.course,
-            county: formData.county,
+            country: formData.country,
             membership_number: formData.membership_number,
             renewal_year: formData.renewal_year
           },
@@ -382,7 +430,7 @@ export default function CombinedPaymentsPage() {
 
           if (paymentType === 'registration') {
             if (data.membership_number) setFormData(prev => ({ ...prev, membership_number: data.membership_number }));
-            showAlert('success', 'Welcome to CHRMAA!',
+            showAlert('success', 'Welcome to Alumni Association!',
               `Your account has been created! ${data.membership_number ? `Membership Number: ${data.membership_number}.` : ''} Redirecting to login...`,
               { autoClose: 3000 }
             );
@@ -428,9 +476,9 @@ export default function CombinedPaymentsPage() {
   const AlertModalComponent = () => {
     const styles = {
       error: { bg: 'bg-white', border: 'border-[#E53E3E]', iconBg: 'bg-[#FFF0F0]', icon: <AlertCircle className="text-[#E53E3E]" size={28} />, btnBg: 'bg-[#E53E3E] hover:bg-[#C53030]', titleColor: 'text-[#E53E3E]' },
-      success: { bg: 'bg-white', border: 'border-[#2B4C73]', iconBg: 'bg-[#E8F4FD]', icon: <CheckCircle className="text-[#2B4C73]" size={28} />, btnBg: 'bg-[#2B4C73] hover:bg-[#1E3A5F]', titleColor: 'text-[#2B4C73]' },
+      success: { bg: 'bg-white', border: 'border-[#171717]', iconBg: 'bg-[#F5F5F5]', icon: <CheckCircle className="text-[#171717]" size={28} />, btnBg: 'bg-[#171717] hover:bg-[#333333]', titleColor: 'text-[#171717]' },
       warning: { bg: 'bg-white', border: 'border-[#FF7A00]', iconBg: 'bg-[#FFF4E6]', icon: <AlertCircle className="text-[#FF7A00]" size={28} />, btnBg: 'bg-[#FF7A00] hover:bg-[#E56B00]', titleColor: 'text-[#FF7A00]' },
-      info: { bg: 'bg-white', border: 'border-[#2B4C73]', iconBg: 'bg-[#E8F4FD]', icon: <Info className="text-[#2B4C73]" size={28} />, btnBg: 'bg-[#2B4C73] hover:bg-[#1E3A5F]', titleColor: 'text-[#2B4C73]' },
+      info: { bg: 'bg-white', border: 'border-[#171717]', iconBg: 'bg-[#F5F5F5]', icon: <Info className="text-[#171717]" size={28} />, btnBg: 'bg-[#171717] hover:bg-[#333333]', titleColor: 'text-[#171717]' },
     }[alertModal.type];
 
     return (
@@ -477,16 +525,15 @@ export default function CombinedPaymentsPage() {
   // ─── Step 2: Waiting for payment ──────────────────────────────────────────
   if (step === 2) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-gradient-to-br from-[#F7F9FC] via-white to-[#E8F4FD]">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-[#F7F9FC]">
         <AlertModalComponent />
         <Header />
         <main className="flex-1 py-12 px-4">
           <div className="max-w-lg mx-auto">
             <motion.div variants={scaleIn} initial="hidden" animate="visible"
-              className="bg-white rounded-2xl shadow-xl border border-[#E7ECF3] overflow-hidden">
+              className="bg-white rounded-2xl shadow-lg border border-[#E7ECF3] overflow-hidden">
 
-              {/* Top banner */}
-              <div className="bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] p-6 text-white text-center">
+              <div className="bg-[#171717] p-6 text-white text-center">
                 <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
                   <Smartphone className="text-white" size={28} />
                 </div>
@@ -496,20 +543,18 @@ export default function CombinedPaymentsPage() {
               </div>
 
               <div className="p-6 space-y-5">
-                {/* Amount */}
                 <div className="flex items-center justify-between p-4 bg-[#F7F9FC] rounded-xl border border-[#E7ECF3]">
                   <div>
                     <p className="text-xs text-[#6D7A8B] font-medium">Amount Due</p>
                     <p className="text-sm text-[#0B0F1A] font-medium">{paybillInfo.description}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-[#FF7A00]">Ksh {paybillInfo.amount.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-[#171717]">Ksh {paybillInfo.amount.toLocaleString()}</p>
                   </div>
                 </div>
 
-                {/* Status */}
                 <div className={`p-4 rounded-xl border ${
-                  stkStatus === 'success' ? 'bg-[#E8F4FD] border-[#2B4C73]/20' :
+                  stkStatus === 'success' ? 'bg-[#F5F5F5] border-[#171717]/20' :
                   stkStatus === 'failed' || stkStatus === 'cancelled' ? 'bg-[#FFF0F0] border-[#E53E3E]/20' :
                   'bg-[#FFF4E6] border-[#FF7A00]/20'}`}>
                   <div className="flex items-center gap-3">
@@ -517,7 +562,7 @@ export default function CombinedPaymentsPage() {
                       <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                         className="w-7 h-7 border-2 border-[#FF7A00] border-t-transparent rounded-full flex-shrink-0" />
                     )}
-                    {stkStatus === 'success' && <CheckCircle className="text-[#2B4C73] flex-shrink-0" size={28} />}
+                    {stkStatus === 'success' && <CheckCircle className="text-[#171717] flex-shrink-0" size={28} />}
                     {(stkStatus === 'failed' || stkStatus === 'cancelled') && <AlertCircle className="text-[#E53E3E] flex-shrink-0" size={28} />}
                     <div>
                       <p className="font-semibold text-sm text-[#0B0F1A]">
@@ -531,19 +576,17 @@ export default function CombinedPaymentsPage() {
                   </div>
                 </div>
 
-                {/* Steps */}
                 <div className="space-y-2.5">
                   {["Check your phone for a prompt", "Enter your M-PESA PIN", "Wait for payment confirmation"].map((s, i) => (
                     <div key={i} className="flex items-center gap-3">
-                      <div className="w-7 h-7 bg-[#E8F4FD] rounded-full flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-bold text-[#2B4C73]">{i + 1}</span>
+                      <div className="w-7 h-7 bg-[#F5F5F5] rounded-full flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-bold text-[#171717]">{i + 1}</span>
                       </div>
                       <p className="text-sm text-[#6D7A8B]">{s}</p>
                     </div>
                   ))}
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <button onClick={cancelPayment}
                     className="flex-1 px-4 py-3 bg-[#F7F9FC] text-[#6D7A8B] font-semibold rounded-xl hover:bg-[#E7ECF3] border border-[#E7ECF3] transition text-sm">
@@ -551,7 +594,7 @@ export default function CombinedPaymentsPage() {
                   </button>
                   {stkStatus === 'failed' && (
                     <button onClick={() => setStep(1)}
-                      className="flex-1 px-4 py-3 bg-gradient-to-r from-[#FF7A00] to-[#E56B00] text-white font-semibold rounded-xl hover:opacity-90 transition text-sm">
+                      className="flex-1 px-4 py-3 bg-[#171717] text-white font-semibold rounded-xl hover:bg-[#333333] transition text-sm">
                       Try Again
                     </button>
                   )}
@@ -572,7 +615,7 @@ export default function CombinedPaymentsPage() {
   // ─── Step 1: Main Form ─────────────────────────────────────────────────────
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}
-      className="min-h-screen bg-gradient-to-br from-[#F7F9FC] via-white to-[#E8F4FD]">
+      className="min-h-screen bg-[#F7F9FC]">
       <AlertModalComponent />
       <Header />
 
@@ -582,11 +625,11 @@ export default function CombinedPaymentsPage() {
           {/* Page title */}
           <motion.div variants={fadeUp} initial="hidden" animate="visible" className="text-center mb-8">
             <h1 className="text-3xl md:text-4xl font-bold text-[#0B0F1A] mb-2">
-              {paymentType === "registration" ? "Join CHRMAA" : "Renew Membership"}
+              {paymentType === "registration" ? "Join Alumni Association" : "Renew Membership"}
             </h1>
             <p className="text-[#6D7A8B]">
               {paymentType === "registration"
-                ? "Become part of the CHRMAA community. Payment is processed securely via M-PESA."
+                ? "Become part of the alumni community. Payment is processed securely via M-PESA."
                 : "Keep your membership active and continue enjoying full member benefits."}
             </p>
           </motion.div>
@@ -602,7 +645,7 @@ export default function CombinedPaymentsPage() {
                 onClick={() => setPaymentType(t.id)}
                 className={`flex flex-col items-center gap-1 py-3 px-4 rounded-xl font-semibold transition-all duration-200 ${
                   paymentType === t.id
-                    ? "bg-gradient-to-br from-[#2B4C73] to-[#1E3A5F] text-white shadow-md"
+                    ? "bg-[#171717] text-white shadow-md"
                     : "text-[#6D7A8B] hover:bg-[#F7F9FC]"
                 }`}>
                 <t.icon size={20} />
@@ -619,30 +662,29 @@ export default function CombinedPaymentsPage() {
             <form onSubmit={handleSubmit}>
               {paymentType === "registration" ? (
                 <div className="p-6 space-y-5">
-                  {/* Personal details section */}
                   <div>
                     <h2 className="text-sm font-bold text-[#0B0F1A] uppercase tracking-wide mb-4 flex items-center gap-2">
-                      <span className="w-5 h-5 bg-[#2B4C73] text-white rounded-full text-xs flex items-center justify-center">1</span>
+                      <span className="w-5 h-5 bg-[#171717] text-white rounded-full text-xs flex items-center justify-center">1</span>
                       Personal Details
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><User size={14} className="text-[#6D7A8B]" />Full Name *</label>
                         <input type="text" required value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})}
-                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition"
+                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#171717] transition"
                           placeholder="Your full name" />
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><Mail size={14} className="text-[#6D7A8B]" />Email *</label>
                         <input type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
-                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition"
+                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#171717] transition"
                           placeholder="you@email.com" />
                       </div>
                       <div>
                         <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><Phone size={14} className="text-[#6D7A8B]" />Phone (M-PESA) *</label>
                         <div className="relative">
                           <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
-                            className="w-full px-4 py-2.5 pl-10 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition"
+                            className="w-full px-4 py-2.5 pl-10 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#171717] transition"
                             placeholder="0712345678" />
                           <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" />
                         </div>
@@ -652,7 +694,7 @@ export default function CombinedPaymentsPage() {
                         <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><Lock size={14} className="text-[#6D7A8B]" />Password *</label>
                         <div className="relative">
                           <input type={showPassword ? "text" : "password"} required minLength={6} value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})}
-                            className="w-full px-4 py-2.5 pr-10 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition"
+                            className="w-full px-4 py-2.5 pr-10 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#171717] transition"
                             placeholder="Min. 6 characters" />
                           <button type="button" onClick={() => setShowPassword(!showPassword)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6D7A8B] hover:text-[#0B0F1A] transition">
@@ -663,7 +705,6 @@ export default function CombinedPaymentsPage() {
                     </div>
                   </div>
 
-                  {/* Academic details section */}
                   <div className="border-t border-[#E7ECF3] pt-5">
                     <h2 className="text-sm font-bold text-[#0B0F1A] uppercase tracking-wide mb-4 flex items-center gap-2">
                       <span className="w-5 h-5 bg-[#FF7A00] text-white rounded-full text-xs flex items-center justify-center">2</span>
@@ -676,58 +717,29 @@ export default function CombinedPaymentsPage() {
                         </label>
                         <input type="number" min="2000" max="2030" required value={formData.graduation_year}
                           onChange={e => setFormData({...formData, graduation_year: e.target.value})}
-                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition"
+                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#171717] transition"
                           placeholder="e.g. 2023" />
-                        {/* ── Live fee indicator ── */}
-                        <AnimatePresence mode="wait">
-                          {registrationFee !== null && (
-                            <motion.div
-                              key={feeGroup}
-                              initial={{ opacity: 0, y: -6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -6 }}
-                              className={`mt-2 flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg w-fit ${
-                                feeGroup === 'recent'
-                                  ? 'bg-green-50 text-green-700 border border-green-200'
-                                  : 'bg-[#FFF4E6] text-[#FF7A00] border border-[#FF7A00]/20'
-                              }`}>
-                              {feeGroup === 'recent'
-                                ? <> Ksh 1,000 fee applies (2021 or later)</>
-                                : <> Ksh 1,500 fee applies (before 2021)</>
-                              }
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><BookOpen size={14} className="text-[#6D7A8B]" />Course Studied *</label>
-                        <select required value={formData.course} onChange={e => setFormData({...formData, course: e.target.value})}
-                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition bg-white">
-                          <option value="">Select your course</option>
-                          {CHRM_COURSES.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
                       </div>
                       <div className="md:col-span-2">
-                        <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><MapPin size={14} className="text-[#6D7A8B]" />County of Residence *</label>
-                        <select required value={formData.county} onChange={e => setFormData({...formData, county: e.target.value})}
-                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#2B4C73] transition bg-white">
-                          <option value="">Select your county</option>
-                          {COUNTIES_IN_KENYA.map(c => <option key={c} value={c}>{c}</option>)}
+                        <label className="block text-sm font-semibold text-[#0B0F1A] mb-1.5 flex items-center gap-1.5"><MapPin size={14} className="text-[#6D7A8B]" />Country of Residence *</label>
+                        <select required value={formData.country} onChange={e => setFormData({...formData, country: e.target.value})}
+                          className="w-full px-4 py-2.5 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] focus:outline-none focus:border-[#171717] transition bg-white">
+                          <option value="">Select your country</option>
+                          {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                       </div>
                     </div>
                   </div>
 
-                  {/* Fee summary */}
                   <div className={`rounded-2xl border p-5 transition-all duration-300 ${
                     registrationFee !== null
-                      ? registrationFee === 1000
-                        ? 'bg-gradient-to-r from-green-50 to-[#E8F4FD] border-green-200'
-                        : 'bg-gradient-to-r from-[#FFF4E6] to-[#FFF0F0] border-[#FF7A00]/20'
+                      ? registrationFee === 1
+                        ? 'bg-[#F5F5F5] border-[#171717]/20'
+                        : 'bg-[#FFF4E6] border-[#FF7A00]/20'
                       : 'bg-[#F7F9FC] border-[#E7ECF3]'
                   }`}>
                     <div className="flex items-center gap-3 mb-3">
-                      <Gift size={20} className={registrationFee === 1000 ? "text-green-600" : registrationFee === 1500 ? "text-[#FF7A00]" : "text-[#6D7A8B]"} />
+                      <Gift size={20} className={registrationFee === 1 ? "text-[#171717]" : registrationFee === 1500 ? "text-[#FF7A00]" : "text-[#6D7A8B]"} />
                       <p className="font-bold text-[#0B0F1A]">Registration Summary</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm mb-4">
@@ -736,7 +748,7 @@ export default function CombinedPaymentsPage() {
                         "Exclusive events & workshops", "Member resources & discounts"
                       ].map(b => (
                         <div key={b} className="flex items-start gap-2">
-                          <CheckCircle size={14} className="text-[#2B4C73] mt-0.5 flex-shrink-0" />
+                          <CheckCircle size={14} className="text-[#171717] mt-0.5 flex-shrink-0" />
                           <span className="text-[#6D7A8B] text-xs">{b}</span>
                         </div>
                       ))}
@@ -749,7 +761,7 @@ export default function CombinedPaymentsPage() {
                           animate={{ opacity: 1, scale: 1 }}
                           exit={{ opacity: 0, scale: 0.8 }}
                           className={`text-2xl font-bold ${
-                            registrationFee === 1000 ? 'text-green-700' :
+                            registrationFee === 1 ? 'text-[#171717]' :
                             registrationFee === 1500 ? 'text-[#FF7A00]' : 'text-[#6D7A8B]'
                           }`}>
                           {feeLabel}
@@ -762,16 +774,8 @@ export default function CombinedPaymentsPage() {
                     Already have an account?{" "}
                     <Link href="/login" className="text-[#FF7A00] font-semibold hover:underline">Login here</Link>
                   </p>
-
-                  <div className="border-t border-[#E7ECF3] pt-4 text-center">
-                    <p className="text-[#6D7A8B] text-sm mb-2">Already have a membership number?</p>
-                    <Link href="/claim-account" className="inline-flex items-center gap-2 text-[#2B4C73] font-semibold hover:underline text-sm">
-                      <Key size={14} /> Claim your account
-                    </Link>
-                  </div>
                 </div>
               ) : (
-                /* ── Renewal form ── */
                 <div className="p-6 space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -813,26 +817,25 @@ export default function CombinedPaymentsPage() {
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-r from-[#FFF4E6] to-[#FFF0F0] p-5 rounded-2xl border border-[#FF7A00]/20">
+                  <div className="bg-[#F5F5F5] p-5 rounded-2xl border border-[#171717]/20">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="font-bold text-[#FF7A00]">Annual Membership Fee</p>
+                        <p className="font-bold text-[#171717]">Annual Membership Fee</p>
                         <p className="text-sm text-[#6D7A8B] mt-0.5">Paid via M-PESA STK Push</p>
                       </div>
-                      <p className="text-2xl font-bold text-[#FF7A00]">Ksh {FEE_RENEWAL.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-[#171717]">Ksh {FEE_RENEWAL.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Submit button */}
               <div className={`px-6 pb-6 ${paymentType === 'registration' ? '' : 'pt-0'}`}>
                 <motion.button
                   type="submit"
                   disabled={loading || (paymentType === 'registration' && registrationFee === null)}
                   whileHover={(!loading && registrationFee !== null) ? buttonHover : undefined}
                   whileTap={buttonTap}
-                  className="w-full py-4 bg-gradient-to-r from-[#E53E3E] to-[#CC3636] text-white font-bold rounded-xl hover:opacity-95 transition shadow-md disabled:opacity-50 flex items-center justify-center gap-2 text-base">
+                  className="w-full py-4 bg-[#171717] text-white font-bold rounded-xl hover:bg-[#333333] transition shadow-md disabled:opacity-50 flex items-center justify-center gap-2 text-base">
                   {loading ? (
                     <><Loader2 className="animate-spin" size={18} />Processing...</>
                   ) : (
@@ -845,18 +848,8 @@ export default function CombinedPaymentsPage() {
                     </>
                   )}
                 </motion.button>
-                {paymentType === 'registration' && !formData.graduation_year && (
-                  <p className="text-xs text-center text-[#6D7A8B] mt-2">Enter your graduation year to see your fee</p>
-                )}
               </div>
             </form>
-          </motion.div>
-
-          {/* Security note */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" transition={{ delay: 0.2 }}
-            className="flex items-center justify-center gap-2 mt-5 text-xs text-[#6D7A8B]">
-            <Shield size={13} />
-            <span>Payments are processed securely via M-PESA. Your data is encrypted and protected.</span>
           </motion.div>
         </div>
       </main>
@@ -866,37 +859,35 @@ export default function CombinedPaymentsPage() {
   );
 }
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
-const CHRM_COURSES = [
-  "Diploma in Human Resource Management (KNEC)", "Diploma in Business Management",
-  "Diploma in Banking and Finance", "Diploma in Supply Chain Management (KNEC)",
-  "Diploma in Information Communication Technology (ICT) – KNEC",
-  "Diploma in Computer Science / Computer Programming (TVET CDACC)",
-  "Diploma in Cyber Security (TVET CDACC)", "Diploma in Criminal Justice (TVET CDACC)",
-  "Diploma in Security Management (TVET CDACC)", "Diploma in Forensic Investigation (TVET CDACC)",
-  "Diploma in Customer Service (ICM)", "Diploma in Digital Journalism Level 6",
-  "Diploma in Food and Beverage Production (Culinary Arts) Level 6",
-  "Diploma in Food and Beverage Sales Management Level 6",
-  "Higher Diploma in Human Resource Management",
-  "Certificate in Human Resource Management (KNEC)", "Certificate in Business Management (KNEC)",
-  "Certificate in Banking and Finance (KNEC)", "Certificate in Supply Chain Management (KNEC)",
-  "Certificate in Information Communication Technology (ICT) – KNEC",
-  "Certificate in Security Management – TVET CDACC Level 5",
-  "Certificate in Cyber Security – TVET CDACC Level 5",
-  "Certificate in Forensic Investigation – TVET CDACC Level 5",
-  "Certificate in Accounting and Management Skills (CAMS – KASNEB)",
-  "Artisan in Store-Keeping (KNEC)", "Artisan in Salesmanship (KNEC)",
-  "ICT & Computer Application Packages", "Digital Marketing & Social Media Courses",
-  "Graphic Design & CAD Courses", "Leadership & Management Training",
-  "HR Consultancy Training", "CHRP", "HRCi", "Other Professional Short Courses",
-];
-
-const COUNTIES_IN_KENYA = [
-  "Mombasa", "Kwale", "Kilifi", "Tana River", "Lamu", "Taita Taveta", "Garissa",
-  "Wajir", "Mandera", "Marsabit", "Isiolo", "Meru", "Tharaka Nithi", "Embu",
-  "Kitui", "Machakos", "Makueni", "Nyandarua", "Nyeri", "Kirinyaga", "Murang'a",
-  "Kiambu", "Turkana", "West Pokot", "Samburu", "Trans Nzoia", "Uasin Gishu",
-  "Elgeyo Marakwet", "Nandi", "Baringo", "Laikipia", "Nakuru", "Narok", "Kajiado",
-  "Kericho", "Bomet", "Kakamega", "Vihiga", "Bungoma", "Busia", "Siaya",
-  "Kisumu", "Homa Bay", "Migori", "Kisii", "Nyamira", "Nairobi"
+const COUNTRIES = [
+  "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda",
+  "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas",
+  "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin",
+  "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei",
+  "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada",
+  "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
+  "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic",
+  "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt",
+  "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia",
+  "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana",
+  "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti",
+  "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland",
+  "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya",
+  "Kiribati", "Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon",
+  "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg",
+  "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands",
+  "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia",
+  "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal",
+  "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "Norway", "Oman",
+  "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines",
+  "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
+  "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino",
+  "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles",
+  "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands",
+  "Somalia", "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan",
+  "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania",
+  "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia",
+  "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates",
+  "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu",
+  "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
 ];

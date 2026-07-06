@@ -46,26 +46,26 @@ function getFromEmail(type: EmailType): string {
   // Use env variable or fallback to verified email
   const domain = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
   const emails = {
-    welcome: `CHRMAA <${domain}>`,
-    account_claim: `CHRMAA <${domain}>`,
-    event_registration: `CHRMAA Events <${domain}>`,
-    merchandise_order: `CHRMAA Merchandise <${domain}>`,
-    payment_confirmation: `CHRMAA Payments <${domain}>`,
-    password_reset: `CHRMAA Security <${domain}>`,
+    welcome: `    <${domain}>`,
+    account_claim: `    <${domain}>`,
+    event_registration: `    Events <${domain}>`,
+    merchandise_order: `    Merchandise <${domain}>`,
+    payment_confirmation: `    Payments <${domain}>`,
+    password_reset: `    Security <${domain}>`,
   }
-  return emails[type] || `CHRMAA <${domain}>`
+  return emails[type] || `    <${domain}>`
 }
 
 function getSubject(type: EmailType, data: any): string {
   const subjects = {
-    welcome: `Welcome to CHRMAA, ${data.name}!`,
-    account_claim: 'Claim Your CHRMAA Account',
+    welcome: `Welcome to    , ${data.name}!`,
+    account_claim: 'Claim Your     Account',
     event_registration: `Event Registration Confirmed - ${data.event_name}`,
     merchandise_order: 'Merchandise Order Confirmation',
     payment_confirmation: `Payment Confirmation - ${data.type}`,
     password_reset: 'Password Reset Request',
   }
-  return subjects[type] || 'Message from CHRMAA'
+  return subjects[type] || 'Message from    '
 }
 
 function getHtmlContent(type: EmailType, data: any): string {
@@ -87,11 +87,11 @@ function getHtmlContent(type: EmailType, data: any): string {
         <body>
           <div class="container">
             <div class="header">
-              <h1 style="margin: 0; font-size: 28px;">Welcome to CHRMAA!</h1>
+              <h1 style="margin: 0; font-size: 28px;">Welcome to    !</h1>
             </div>
             <div class="content">
               <h2 style="color: #2B4C73;">Dear ${data.name},</h2>
-              <p style="font-size: 16px;">We're thrilled to have you as a member of the CHRM Alumni Association! Your registration has been successfully completed.</p>
+              <p style="font-size: 16px;">We're thrilled to have you as a member of the   Alumni Association! Your registration has been successfully completed.</p>
               
               <div class="info-box">
                 <p style="margin: 0; font-weight: bold; color: #2B4C73;">Your Membership Details:</p>
@@ -104,7 +104,7 @@ function getHtmlContent(type: EmailType, data: any): string {
               <ul style="line-height: 1.8;">
                 <li>Access your member dashboard</li>
                 <li>Register for upcoming events</li>
-                <li>Shop for CHRMAA merchandise</li>
+                <li>Shop for     merchandise</li>
                 <li>Connect with fellow alumni</li>
               </ul>
               
@@ -113,8 +113,8 @@ function getHtmlContent(type: EmailType, data: any): string {
               </div>
               
               <div class="footer">
-                <p style="margin: 5px 0;"><strong>Need help?</strong> Contact us at chrmalumniassociation@gmail.com</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association. All rights reserved.</p>
+                <p style="margin: 5px 0;"><strong>Need help?</strong> Contact us at  alumniassociation@gmail.com</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()}   Alumni Association. All rights reserved.</p>
               </div>
             </div>
           </div>
@@ -141,11 +141,11 @@ function getHtmlContent(type: EmailType, data: any): string {
         <body>
           <div class="container">
             <div class="header">
-              <h1 style="margin: 0; font-size: 28px;">Claim Your CHRMAA Account</h1>
+              <h1 style="margin: 0; font-size: 28px;">Claim Your     Account</h1>
             </div>
             <div class="content">
               <h2 style="color: #2B4C73;">Dear ${data.name},</h2>
-              <p>You're receiving this email because you requested to claim your CHRM Alumni Association account.</p>
+              <p>You're receiving this email because you requested to claim your   Alumni Association account.</p>
               
               <div class="info-box">
                 <p style="margin: 0; font-weight: bold; color: #2B4C73;">Your Account Details:</p>
@@ -169,8 +169,8 @@ function getHtmlContent(type: EmailType, data: any): string {
               </div>
               
               <div class="footer">
-                <p style="margin: 5px 0;">If you didn't request this, please ignore this email or contact support@chrmaa.org</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association. All rights reserved.</p>
+                <p style="margin: 5px 0;">If you didn't request this, please ignore this email or contact support@   .org</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()}   Alumni Association. All rights reserved.</p>
               </div>
             </div>
           </div>
@@ -225,7 +225,7 @@ function getHtmlContent(type: EmailType, data: any): string {
               <p><strong>What to bring:</strong></p>
               <ul>
                 <li>This confirmation email (digital or printed)</li>
-                <li>Your CHRMAA membership card (if applicable)</li>
+                <li>Your     membership card (if applicable)</li>
                 <li>Valid ID</li>
               </ul>
               
@@ -234,8 +234,8 @@ function getHtmlContent(type: EmailType, data: any): string {
               </div>
               
               <div class="footer">
-                <p style="margin: 5px 0;">Questions? Contact us at chrmalumniassociation@gmail.com</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association</p>
+                <p style="margin: 5px 0;">Questions? Contact us at  alumniassociation@gmail.com</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()}   Alumni Association</p>
               </div>
             </div>
           </div>
@@ -285,8 +285,8 @@ function getHtmlContent(type: EmailType, data: any): string {
               </div>
               
               <div class="footer">
-                <p style="margin: 5px 0;">Questions? Contact us at chrmalumniassociation@gmail.com</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association</p>
+                <p style="margin: 5px 0;">Questions? Contact us at  alumniassociation@gmail.com</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()}   Alumni Association</p>
               </div>
             </div>
           </div>
@@ -333,7 +333,7 @@ function getHtmlContent(type: EmailType, data: any): string {
               
               <div class="footer">
                 <p style="margin: 5px 0;">Keep this email for your records</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()}   Alumni Association</p>
               </div>
             </div>
           </div>
@@ -376,8 +376,8 @@ function getHtmlContent(type: EmailType, data: any): string {
               <p style="font-size: 14px; color: #666;"><strong>This link expires in 24 hours.</strong></p>
               
               <div class="footer">
-                <p style="margin: 5px 0;">Need help? Contact support@chrmaa.org</p>
-                <p style="margin: 5px 0;">© ${new Date().getFullYear()} CHRM Alumni Association</p>
+                <p style="margin: 5px 0;">Need help? Contact support@   .org</p>
+                <p style="margin: 5px 0;">© ${new Date().getFullYear()}   Alumni Association</p>
               </div>
             </div>
           </div>

@@ -12,8 +12,8 @@ const poppins = Poppins({
 });
 
 export const metadata = {
-  title: "CHRMAA - Alumni Association",
-  description: "CHRM Alumni Association",
+  title: "    Alumni Association",
+  description: "  Alumni Association",
 };
 
 export default function RootLayout({

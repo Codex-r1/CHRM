@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../context/auth"; // IMPORTANT: Use the auth context!
+import { useAuth } from "../context/auth";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import {
@@ -17,12 +17,33 @@ import {
   AlertCircle,
   Copy,
   LogIn,
-  User
+  User,
+  X,
+  Smartphone,
+  Loader2,
+  Info
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
+import type { Variants } from "framer-motion";
 
-// Define types
+// Animation Variants
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
+};
+
+const scaleIn: Variants = {
+  hidden: { opacity: 0, scale: 0.92 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+};
+
+const staggerContainer: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
 type ProductVariant = {
   id: string;
   color_name: string;
@@ -64,6 +85,15 @@ type CustomerInfo = {
   email: string;
 };
 
+type AlertModalType = {
+  show: boolean;
+  type: 'info' | 'success' | 'error';
+  title: string;
+  message: string;
+  confirmText?: string;
+  onConfirm?: () => void;
+};
+
 const benefits = [
   {
     icon: Package,
@@ -73,7 +103,7 @@ const benefits = [
   {
     icon: Tag,
     title: "Affordable prices",
-    description: "Exclusive prices for CHRMAA members"
+    description: "Exclusive prices for alumni members"
   },
   {
     icon: Truck,
@@ -87,283 +117,7 @@ const benefits = [
   }
 ];
 
-// CustomerInfoForm Component
-interface CustomerInfoFormProps {
-  customerInfo: CustomerInfo;
-  errors: Record<string, string>;
-  onChange: (info: CustomerInfo) => void;
-}
-
-function CustomerInfoForm({ customerInfo, errors, onChange }: CustomerInfoFormProps) {
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Full Name
-        </label>
-        <input
-          type="text"
-          value={customerInfo.full_name}
-          onChange={(e) => onChange({ ...customerInfo, full_name: e.target.value })}
-          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
-          placeholder="John Doe"
-        />
-        {errors.fullName && (
-          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-            <AlertCircle className="w-4 h-4" />
-            {errors.fullName}
-          </p>
-        )}
-      </div>
-
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Phone Number
-        </label>
-        <input
-          type="tel"
-          value={customerInfo.phone}
-          onChange={(e) => onChange({ ...customerInfo, phone: e.target.value })}
-          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
-          placeholder="0712345678"
-        />
-        {errors.phone && (
-          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-            <AlertCircle className="w-4 h-4" />
-            {errors.phone}
-          </p>
-        )}
-      </div>
-
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Email Address
-        </label>
-        <input
-          type="email"
-          value={customerInfo.email}
-          onChange={(e) => onChange({ ...customerInfo, email: e.target.value })}
-          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
-          placeholder="john.doe@example.com"
-        />
-        {errors.email && (
-          <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
-            <AlertCircle className="w-4 h-4" />
-            {errors.email}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// PaymentSummary Component
-interface PaymentSummaryProps {
-  cart: CartItem[];
-  customerInfo: CustomerInfo;
-  total: number;
-}
-
-function PaymentSummary({ cart, customerInfo, total }: PaymentSummaryProps) {
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
-
-  const accountNumber = `MERCH-${customerInfo.full_name.toUpperCase().replace(/\s+/g, '')}`;
-
-  return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-8">
-      <h3 className="text-xl font-bold text-gray-900 mb-4">Order Summary</h3>
-
-      {/* Cart Items */}
-      <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-        {cart.map((item, index) => (
-          <div key={index} className="flex justify-between items-start text-sm">
-            <div className="flex-1">
-              <p className="font-semibold text-gray-900">{item.name}</p>
-              <p className="text-gray-600 text-xs">
-                {item.color_name} • {item.size} • Qty: {item.quantity}
-              </p>
-            </div>
-            <p className="font-bold text-gray-900">
-              KSH {(item.price * item.quantity).toLocaleString()}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Total */}
-      <div className="border-t-2 border-gray-200 pt-4 mb-6">
-        <div className="flex justify-between items-center">
-          <span className="text-lg font-bold text-gray-900">Total Amount</span>
-          <span className="text-2xl font-bold text-blue-600">
-            KSH {total.toLocaleString()}
-          </span>
-        </div>
-      </div>
-
-      {/* MPESA Payment Details */}
-      <div className="bg-blue-50 rounded-xl p-4 mb-4">
-        <h4 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
-          <Copy className="w-4 h-4" />
-          MPESA Payment Instructions
-        </h4>
-        
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between items-center">
-            <span className="text-blue-700 font-semibold">Paybill Number:</span>
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-blue-900">263532</span>
-              <button
-                onClick={() => copyToClipboard("263532")}
-                className="p-1 hover:bg-blue-100 rounded transition-colors"
-              >
-                <Copy className="w-4 h-4 text-blue-600" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-blue-700 font-semibold">Account Number:</span>
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-blue-900 text-xs">{accountNumber}</span>
-              <button
-                onClick={() => copyToClipboard(accountNumber)}
-                className="p-1 hover:bg-blue-100 rounded transition-colors"
-              >
-                <Copy className="w-4 h-4 text-blue-600" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="text-blue-700 font-semibold">Amount:</span>
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-blue-900">KSH {total.toLocaleString()}</span>
-              <button
-                onClick={() => copyToClipboard(total.toString())}
-                className="p-1 hover:bg-blue-100 rounded transition-colors"
-              >
-                <Copy className="w-4 h-4 text-blue-600" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <p className="text-xs text-blue-600 mt-3 bg-white rounded p-2">
-          Use account number format: {accountNumber}
-        </p>
-      </div>
-
-      {/* Delivery Information */}
-      <div className="bg-gray-50 rounded-xl p-4">
-        <h4 className="font-bold text-gray-900 mb-2 flex items-center gap-2">
-          <Truck className="w-4 h-4" />
-          Delivery & Pickup
-        </h4>
-        <ul className="text-xs text-gray-700 space-y-1">
-          <li>• Free delivery within Nairobi CBD</li>
-          <li>• Pickup: Hazina Trade Centre, 13th Floor</li>
-          <li>• Delivery across Kenya at extra cost</li>
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-// CheckoutSection Component
-interface CheckoutSectionProps {
-  cart: CartItem[];
-  customerInfo: CustomerInfo;
-  errors: Record<string, string>;
-  isSubmitting: boolean;
-  totalAmount: number;
-  onCustomerInfoChange: (info: CustomerInfo) => void;
-  onBackToProducts: () => void;
-  onCompleteOrder: () => void;
-}
-
-function CheckoutSection({
-  cart,
-  customerInfo,
-  errors,
-  isSubmitting,
-  totalAmount,
-  onCustomerInfoChange,
-  onBackToProducts,
-  onCompleteOrder,
-}: CheckoutSectionProps) {
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <button
-          onClick={onBackToProducts}
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-6 font-semibold"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back to Products
-        </button>
-
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Customer Information Form */}
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Customer Information
-            </h2>
-            <CustomerInfoForm
-              customerInfo={customerInfo}
-              errors={errors}
-              onChange={onCustomerInfoChange}
-            />
-
-            <div className="flex gap-4 mt-6">
-              <button
-                onClick={onBackToProducts}
-                className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all"
-              >
-                Back to Products
-              </button>
-              <button
-                onClick={onCompleteOrder}
-                disabled={isSubmitting}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "Processing..." : "Complete Order"}
-              </button>
-            </div>
-
-            {errors.submit && (
-              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-red-600">{errors.submit}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Payment Summary */}
-          {cart.length > 0 && customerInfo.full_name && (
-            <PaymentSummary
-              cart={cart}
-              customerInfo={customerInfo}
-              total={totalAmount}
-            />
-          )}
-        </div>
-      </div>
-      <Footer />
-    </div>
-  );
-}
-
-const validatePhoneNumber = (phone: string): boolean => {
-  const cleaned = phone.replace(/\s+/g, "");
-  const regex = /^(07|01)\d{8}$|^254(7|1)\d{8}$/;
-  return regex.test(cleaned);
-};
-
 export default function MerchandisePage() {
-  // USE THE AUTH CONTEXT INSTEAD OF LOCAL STATE!
   const { user, loading } = useAuth();
   
   const [products, setProducts] = useState<Product[]>([]);
@@ -379,19 +133,42 @@ export default function MerchandisePage() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stkStatus, setStkStatus] = useState<'idle' | 'requesting' | 'waiting' | 'success' | 'failed'>('idle');
+  const [checkoutRequestId, setCheckoutRequestId] = useState<string>('');
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [paymentError, setPaymentError] = useState<string>('');
+  const [alertModal, setAlertModal] = useState<AlertModalType>({
+    show: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+
   const router = useRouter();
-const [stkStatus, setStkStatus] = useState<'idle' | 'requesting' | 'waiting' | 'success' | 'failed'>('idle');
-const [checkoutRequestId, setCheckoutRequestId] = useState<string>('');
-const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
-const [paymentError, setPaymentError] = useState<string>('');
-useEffect(() => {
-  return () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-    }
+
+  // Validate phone number
+  const validatePhoneNumber = (phone: string): boolean => {
+    const cleaned = phone.replace(/\s+/g, "");
+    const regex = /^(07|01)\d{8}$|^254(7|1)\d{8}$/;
+    return regex.test(cleaned);
   };
-}, [pollingInterval]);
-  // Update customer info when user changes
+
+  // Show alert helper
+  const showAlert = (type: 'info' | 'success' | 'error', title: string, message: string, options?: { confirmText?: string; onConfirm?: () => void }) => {
+    setAlertModal({
+      show: true,
+      type,
+      title,
+      message,
+      confirmText: options?.confirmText || 'OK',
+      onConfirm: options?.onConfirm,
+    });
+  };
+
+  const hideAlert = () => {
+    setAlertModal(prev => ({ ...prev, show: false }));
+  };
+
   useEffect(() => {
     if (user) {
       setCustomerInfo(prev => ({
@@ -401,65 +178,42 @@ useEffect(() => {
       }));
     }
   }, [user]);
-useEffect(() => {
-  const fetchProducts = async () => {
-    try {
-      // Add a timestamp to bust cache
-      const timestamp = new Date().getTime();
-      const response = await fetch(`/api/products/list?t=${timestamp}`, {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      if (!response.ok) throw new Error('Failed to fetch products');
-      const data = await response.json();
-      
-      console.log('Fetched products:', data.products); // Debug log
-      setProducts(data.products || []);
-      
-      // Clear any errors if fetch successful
-      setErrors({});
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      setErrors({ fetch: 'Failed to load products. Please refresh the page.' });
-    }
-  };
-
-  fetchProducts();
-}, []); // Empty dependency array means it runs once on mount
 
   useEffect(() => {
-    if ((step === 2 || step === 3) && !user && !loading) {
-      console.log("Redirecting to login, step:", step, "user:", user);
-      router.push(`/login?redirect=${encodeURIComponent(`/merchandise?step=${step}`)}`);
-    }
-  }, [step, user, loading, router]);
-// Save cart before redirect
-const saveCartBeforeRedirect = () => {
-  sessionStorage.setItem('pendingCart', JSON.stringify(cart));
-  sessionStorage.setItem('checkoutIntent', 'true');
-};
-
-// Check for saved cart after login
-useEffect(() => {
-  if (user) {
-    const pendingCart = sessionStorage.getItem('pendingCart');
-    const checkoutIntent = sessionStorage.getItem('checkoutIntent');
-    
-    if (pendingCart && checkoutIntent === 'true') {
+    const fetchProducts = async () => {
       try {
-        setCart(JSON.parse(pendingCart));
-        sessionStorage.removeItem('pendingCart');
-        sessionStorage.removeItem('checkoutIntent');
-        setStep(2); // Go directly to checkout
+        const timestamp = new Date().getTime();
+        const response = await fetch(`/api/products/list?t=${timestamp}`, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) throw new Error('Failed to fetch products');
+        const data = await response.json();
+        
+        console.log('Fetched products:', data.products);
+        setProducts(data.products || []);
+        setErrors({});
       } catch (error) {
-        console.error('Error restoring cart:', error);
+        console.error('Error fetching products:', error);
+        setErrors({ fetch: 'Failed to load products. Please refresh the page.' });
       }
-    }
-  }
-}, [user]);
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
+
   const getAvailableColors = (product: Product) => {
     const uniqueColors = new Map<string, { name: string; hex: string; value: string }>();
     product.variants.forEach(variant => {
@@ -591,209 +345,209 @@ useEffect(() => {
   };
 
   const handleCheckout = () => {
-  if (cart.length === 0) {
-    alert("Your cart is empty!");
-    return;
-  }
-  
-  if (!user) {
-    saveCartBeforeRedirect(); // Save cart
-    router.push("/login?redirect=/merchandise");
-    return;
-  }
-  
-  setStep(2);
-};
-const checkPaymentStatus = async (checkoutId: string, orderId: string) => {
-  try {
-    const response = await fetch(`/api/payments/${checkoutId}`);
-    
-    if (!response.ok) {
-      if (response.status === 404) {
-        // Payment not found yet - still pending
-        return null;
-      }
-      throw new Error('Failed to check payment status');
+    if (cart.length === 0) {
+      alert("Your cart is empty!");
+      return;
     }
     
-    const data = await response.json();
-    console.log('Payment status:', data);
-
-    if (data.status === 'confirmed') {
-      // Payment successful
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
-      }
-      setStkStatus('success');
-      setStep(4); // Show success page
-      return true;
-    } else if (data.status === 'failed') {
-      // Payment failed
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
-      }
-      setStkStatus('failed');
-      setPaymentError('Payment failed. Please try again.');
-      return false;
+    if (!user) {
+      sessionStorage.setItem('pendingCart', JSON.stringify(cart));
+      sessionStorage.setItem('checkoutIntent', 'true');
+      router.push("/login?redirect=/merchandise");
+      return;
     }
     
-    // Still pending, continue polling
-    return null;
-  } catch (error) {
-    console.error('Error checking payment status:', error);
-    return null;
-  }
-};
+    setStep(2);
+  };
 
-// Updated handleCompleteOrder function
-const handleCompleteOrder = async () => {
-  if (!user) {
-    router.push("/login?redirect=/merchandise&checkout=true");
-    return;
-  }
+  // ─── PAYMENT HANDLER ────────────────────────────────────────────────────────
 
-  setIsSubmitting(true);
-  setErrors({});
-  setStkStatus('requesting');
+  const handlePayment = async () => {
+    // Validate customer info
+    if (!customerInfo.phone || !customerInfo.full_name || !customerInfo.email) {
+      setErrors({
+        submit: 'Please fill in all customer information fields'
+      });
+      showAlert('error', 'Missing Information', 'Please fill in all required fields');
+      return;
+    }
 
-  try {
     // Validate phone number
     if (!validatePhoneNumber(customerInfo.phone)) {
-      setErrors({ submit: "Please enter a valid Kenyan phone number (e.g., 0712345678)" });
-      setIsSubmitting(false);
-      setStkStatus('idle');
+      setErrors({
+        submit: 'Please enter a valid Kenyan phone number (e.g., 0712345678)'
+      });
+      showAlert('error', 'Invalid Phone', 'Please enter a valid Kenyan phone number');
       return;
     }
 
-    // Validate all required fields
-    if (!customerInfo.full_name.trim()) {
-      setErrors({ fullName: "Full name is required" });
-      setIsSubmitting(false);
-      setStkStatus('idle');
+    // Check if user is logged in
+    if (!user) {
+      sessionStorage.setItem('pendingCart', JSON.stringify(cart));
+      sessionStorage.setItem('checkoutIntent', 'true');
+      router.push('/login?redirect=/merchandise');
       return;
     }
 
-    if (!customerInfo.email.trim()) {
-      setErrors({ email: "Email is required" });
-      setIsSubmitting(false);
-      setStkStatus('idle');
-      return;
-    }
+    setIsSubmitting(true);
+    setErrors({});
+    setStkStatus('requesting');
 
-    const userId = user.id;
-    if (!userId) {
-      throw new Error("User ID not found. Please login again.");
-    }
+    try {
+      const total = calculateTotal();
 
-    const total = calculateTotal();
-
-    // Step 1: Create the order first
-    console.log('Creating order...');
-    const orderResponse = await fetch('/api/orders/create', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: userId,
-        items: cart,
-        total: total,
-        customer_name: customerInfo.full_name,
-        customer_phone: customerInfo.phone,
-        customer_email: customerInfo.email,
-        shipping_address: "To be provided after payment",
-        status: 'pending'
-      })
-    });
-
-    const orderData = await orderResponse.json();
-
-    if (!orderResponse.ok) {
-      throw new Error(orderData.error || 'Failed to create order');
-    }
-
-    console.log('Order created:', orderData.order?.id);
-
-    // Step 2: Initiate STK Push
-    console.log('Initiating STK Push...');
-    const paymentResponse = await fetch('/api/payments/stk-push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        phoneNumber: customerInfo.phone,
-        amount: total,
-        paymentType: 'merchandise',
-        userId: userId,
-        userEmail: customerInfo.email,
-        userName: customerInfo.full_name,
-        description: `Merchandise Order - ${cart.length} items`,
-        metadata: {
-          order_id: orderData.order?.id,
+      // 1. Create the order first
+      console.log('📝 Creating order...');
+      const orderResponse = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
           items: cart,
           total: total,
           customer_name: customerInfo.full_name,
+          customer_phone: customerInfo.phone,
           customer_email: customerInfo.email,
-          customer_phone: customerInfo.phone
-        }
-      })
-    });
+          shipping_address: "To be provided after payment",
+          status: 'pending'
+        })
+      });
 
-    const paymentData = await paymentResponse.json();
+      const orderData = await orderResponse.json();
 
-    if (!paymentResponse.ok) {
-      throw new Error(paymentData.error || 'Payment initiation failed');
+      if (!orderResponse.ok) {
+        throw new Error(orderData.error || 'Failed to create order');
+      }
+
+      console.log('✅ Order created:', orderData.order?.id);
+
+      // 2. Initiate STK Push
+      console.log('📱 Initiating STK Push...');
+      const paymentResponse = await fetch('/api/payments/stk-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: customerInfo.phone,
+          amount: total,
+          paymentType: 'merchandise',
+          userId: user.id,
+          userEmail: customerInfo.email,
+          userName: customerInfo.full_name,
+          description: `Merchandise Order - ${cart.length} items`,
+          metadata: {
+            order_id: orderData.order?.id,
+            items: cart,
+            total: total,
+            customer_name: customerInfo.full_name,
+            customer_email: customerInfo.email,
+            customer_phone: customerInfo.phone
+          }
+        })
+      });
+
+      const paymentData = await paymentResponse.json();
+
+      if (!paymentResponse.ok) {
+        throw new Error(paymentData.error || 'Payment initiation failed');
+      }
+
+      console.log('✅ STK Push initiated:', paymentData);
+
+      // 3. Start polling for payment status
+      if (paymentData.checkoutRequestId) {
+        setCheckoutRequestId(paymentData.checkoutRequestId);
+        setStkStatus('waiting');
+        
+        // Show M-PESA prompt notification
+        showAlert('info', 'Check Your Phone', 
+          'Enter your M-PESA PIN to complete the payment.',
+          { confirmText: 'OK' }
+        );
+        
+        // Start polling
+        startPolling(paymentData.checkoutRequestId, orderData.order?.id);
+      } else {
+        throw new Error('No checkout request ID received');
+      }
+
+    } catch (error) {
+      console.error('❌ Payment error:', error);
+      setErrors({
+        submit: error instanceof Error ? error.message : 'Failed to process payment'
+      });
+      setStkStatus('failed');
+      showAlert('error', 'Payment Failed', error instanceof Error ? error.message : 'Failed to process payment');
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    console.log('STK Push initiated:', paymentData);
+  // ─── POLLING FUNCTION ──────────────────────────────────────────────────────
 
-    // Step 3: Start polling for payment status
-    if (paymentData.checkoutRequestId) {
-      setCheckoutRequestId(paymentData.checkoutRequestId);
-      setStkStatus('waiting');
-      
-      // Start polling every 3 seconds
-      let pollCount = 0;
-      const maxPolls = 40; // Poll for up to 2 minutes (40 * 3 seconds)
-      
-      const interval = setInterval(async () => {
-        pollCount++;
-        console.log(`Polling attempt ${pollCount}/${maxPolls}`);
-        
-        const result = await checkPaymentStatus(paymentData.checkoutRequestId, orderData.order?.id);
-        
-        if (result === true) {
-          // Payment confirmed
+  const startPolling = (checkoutId: string, orderId: string) => {
+    let pollCount = 0;
+    const maxPolls = 40; // 2 minutes max
+
+    const interval = setInterval(async () => {
+      pollCount++;
+      console.log(`🔄 Polling attempt ${pollCount}/${maxPolls} for:`, checkoutId);
+
+      try {
+        const response = await fetch(`/api/payments/${checkoutId}`);
+        const data = await response.json();
+
+        console.log('📊 Payment status:', data.status);
+
+        if (data.status === 'confirmed') {
+          // Payment successful!
           clearInterval(interval);
           setPollingInterval(null);
-        } else if (result === false) {
+          setStkStatus('success');
+          
+          showAlert('success', 'Payment Successful!', 
+            'Your merchandise order has been confirmed.',
+            { confirmText: 'View Orders' }
+          );
+          
+          // Go to success page after a delay
+          setTimeout(() => {
+            setStep(4);
+          }, 2000);
+          return;
+        }
+
+        if (data.status === 'failed' || data.status === 'cancelled') {
           // Payment failed
           clearInterval(interval);
           setPollingInterval(null);
-        } else if (pollCount >= maxPolls) {
+          setStkStatus('failed');
+          setPaymentError('Payment failed. Please try again.');
+          showAlert('error', 'Payment Failed', 'Payment was not completed. Please try again.');
+          return;
+        }
+
+        if (pollCount >= maxPolls) {
           // Timeout
           clearInterval(interval);
           setPollingInterval(null);
           setStkStatus('failed');
-          setPaymentError('Payment verification timed out. Please check your phone for the M-PESA prompt.');
+          setPaymentError('Payment verification timed out. Please check your M-PESA messages.');
+          showAlert('error', 'Payment Timeout', 'Payment verification timed out. Please check your M-PESA messages.');
         }
-      }, 3000);
-      
-      setPollingInterval(interval);
-    } else {
-      throw new Error('No checkout request ID received');
-    }
 
-  } catch (error) {
-    console.error("Error creating order:", error);
-    setErrors({
-      submit: error instanceof Error ? error.message : "Failed to create order. Please try again."
-    });
-    setStkStatus('failed');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
- 
+      } catch (error) {
+        console.error('❌ Polling error:', error);
+        if (pollCount >= maxPolls) {
+          clearInterval(interval);
+          setPollingInterval(null);
+          setStkStatus('failed');
+          setPaymentError('Failed to verify payment status.');
+        }
+      }
+    }, 3000); // Poll every 3 seconds
+
+    setPollingInterval(interval);
+  };
 
   const resetCart = () => {
     setCart([]);
@@ -805,190 +559,182 @@ const handleCompleteOrder = async () => {
       email: user?.email || "" 
     });
     setErrors({});
+    setStkStatus('idle');
+    setPaymentError('');
   };
-const STKPushModal = () => {
-  if (stkStatus === 'idle') return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-8 text-center">
-        {stkStatus === 'requesting' && (
-          <>
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Initiating Payment...</h3>
-            <p className="text-gray-600">Please wait while we process your request</p>
-          </>
-        )}
+  // ─── ALERT MODAL ──────────────────────────────────────────────────────────
 
-        {stkStatus === 'waiting' && (
-          <>
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-              <ShoppingCart className="w-8 h-8 text-blue-600" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Check Your Phone</h3>
-            <p className="text-gray-600 mb-4">
-              Enter your M-PESA PIN to complete the payment of{' '}
-              <span className="font-bold text-blue-600">KSH {calculateTotal().toLocaleString()}</span>
-            </p>
-            <p className="text-sm text-gray-500 mb-4">
-              M-PESA prompt sent to: <span className="font-semibold">{customerInfo.phone}</span>
-            </p>
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              Waiting for payment confirmation...
-            </div>
-          </>
-        )}
+  const AlertModalComponent = () => {
+    if (!alertModal.show) return null;
 
-        {stkStatus === 'failed' && (
+    const styles = {
+      info: {
+        bg: 'bg-white',
+        border: 'border-[#171717]',
+        iconBg: 'bg-[#F5F5F5]',
+        icon: <Info className="text-[#171717]" size={28} />,
+        btnBg: 'bg-[#171717] hover:bg-[#333333]',
+        titleColor: 'text-[#0B0F1A]',
+      },
+      success: {
+        bg: 'bg-white',
+        border: 'border-[#171717]',
+        iconBg: 'bg-[#E8F4FD]',
+        icon: <CheckCircle className="text-[#171717]" size={28} />,
+        btnBg: 'bg-[#171717] hover:bg-[#333333]',
+        titleColor: 'text-[#0B0F1A]',
+      },
+      error: {
+        bg: 'bg-white',
+        border: 'border-[#E53E3E]',
+        iconBg: 'bg-[#FFF0F0]',
+        icon: <AlertCircle className="text-[#E53E3E]" size={28} />,
+        btnBg: 'bg-[#E53E3E] hover:bg-[#C53030]',
+        titleColor: 'text-[#E53E3E]',
+      },
+    };
+
+    const style = styles[alertModal.type] || styles.info;
+
+    return (
+      <AnimatePresence>
+        {alertModal.show && (
           <>
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-8 h-8 text-red-600" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Payment Failed</h3>
-            <p className="text-gray-600 mb-6">{paymentError || 'Please try again'}</p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setStkStatus('idle');
-                  setPaymentError('');
-                }}
-                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={hideAlert}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+            />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 16 }}
+                className={`${style.bg} border-2 ${style.border} rounded-2xl shadow-2xl max-w-md w-full overflow-hidden`}
               >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setStkStatus('idle');
-                  setPaymentError('');
-                  handleCompleteOrder();
-                }}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-              >
-                Try Again
-              </button>
+                <div className="p-6">
+                  <div className="flex items-start gap-4 mb-5">
+                    <div className={`${style.iconBg} p-3 rounded-xl flex-shrink-0`}>
+                      {style.icon}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className={`text-lg font-bold mb-1 ${style.titleColor}`}>
+                        {alertModal.title}
+                      </h3>
+                      <p className="text-[#6D7A8B] text-sm leading-relaxed">
+                        {alertModal.message}
+                      </p>
+                    </div>
+                    <button
+                      onClick={hideAlert}
+                      className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => {
+                      alertModal.onConfirm?.();
+                      hideAlert();
+                    }}
+                    className={`w-full px-4 py-2.5 ${style.btnBg} text-white font-semibold rounded-xl transition text-sm`}
+                  >
+                    {alertModal.confirmText || 'OK'}
+                  </button>
+                </div>
+              </motion.div>
             </div>
           </>
         )}
-      </div>
-    </div>
-  );
-};
+      </AnimatePresence>
+    );
+  };
+
+  // ─── RENDER ─────────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F7F9FC] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#171717] mx-auto"></div>
+          <p className="mt-4 text-[#6D7A8B]">Loading...</p>
         </div>
       </div>
-    );
-  }
-
-  if (step === 4) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="max-w-2xl mx-auto px-4 py-16">
-          <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-10 h-10 text-green-600" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              Order Placed!
-            </h1>
-            <p className="text-gray-600 mb-8">
-              Your merchandise order has been received. We'll process it once
-              your payment is confirmed. You'll receive updates via email.
-              You can view your orders in your dashboard.
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Link href="/member/dashboard">
-                <button className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-all">
-                  View Orders
-                </button>
-              </Link>
-              <button
-                onClick={resetCart}
-                className="px-6 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all"
-              >
-                Continue Shopping
-              </button>
-            </div>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (step === 3) {
-    const total = calculateTotal();
-    return (
-      <CheckoutSection
-        cart={cart}
-        customerInfo={customerInfo}
-        errors={errors}
-        isSubmitting={isSubmitting}
-        totalAmount={total}
-        onCustomerInfoChange={setCustomerInfo}
-        onBackToProducts={() => setStep(1)}
-        onCompleteOrder={handleCompleteOrder}
-      />
-      
     );
   }
 
   if (step === 2) {
     const total = calculateTotal();
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#F7F9FC]">
+        <AlertModalComponent />
         <Header />
         <div className="max-w-6xl mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
-
-          {user && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-              <p className="text-blue-900 font-semibold">{(user as any).name || user.email}</p>
-              <p className="text-blue-700 text-sm">{user.email}</p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-lg border border-[#E7ECF3] p-6 mb-8"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-[#0B0F1A]">Checkout</h1>
+                <p className="text-[#6D7A8B]">Complete your order details</p>
+              </div>
+              <button
+                onClick={() => setStep(1)}
+                className="flex items-center gap-2 px-4 py-2 border border-[#E7ECF3] rounded-lg hover:bg-[#F7F9FC] transition text-[#6D7A8B]"
+              >
+                <ArrowLeft size={18} />
+                Back to Shop
+              </button>
             </div>
-          )}
+          </motion.div>
 
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Order Summary
-              </h2>
+            <motion.div
+              variants={scaleIn}
+              initial="hidden"
+              animate="visible"
+              className="bg-white rounded-2xl shadow-lg border border-[#E7ECF3] p-6"
+            >
+              <h2 className="text-xl font-bold text-[#0B0F1A] mb-6">Order Summary</h2>
               {cart.map((item, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center py-3 border-b"
+                  className="flex justify-between items-center py-3 border-b border-[#E7ECF3]"
                 >
                   <div>
-                    <p className="font-semibold">{item.name}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="font-semibold text-[#0B0F1A]">{item.name}</p>
+                    <p className="text-sm text-[#6D7A8B]">
                       {item.color_name}, Size: {item.size} | Qty: {item.quantity}
                     </p>
                   </div>
-                  <p className="font-bold">
+                  <p className="font-bold text-[#171717]">
                     Ksh {(item.price * item.quantity).toLocaleString()}
                   </p>
                 </div>
               ))}
               <div className="flex justify-between items-center pt-4 text-lg font-bold">
-                <span>Total</span>
-                <span>Ksh {total.toLocaleString()}</span>
+                <span className="text-[#0B0F1A]">Total</span>
+                <span className="text-[#171717]">Ksh {total.toLocaleString()}</span>
               </div>
-            </div>
+            </motion.div>
 
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Customer Information
-              </h2>
+            <motion.div
+              variants={scaleIn}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-2xl shadow-lg border border-[#E7ECF3] p-6"
+            >
+              <h2 className="text-xl font-bold text-[#0B0F1A] mb-6">Customer Information</h2>
               <form className="space-y-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Full Name
+                  <label className="block text-sm font-semibold text-[#6D7A8B] mb-2">
+                    Full Name *
                   </label>
                   <input
                     type="text"
@@ -999,15 +745,16 @@ const STKPushModal = () => {
                         full_name: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                    className="w-full px-4 py-3 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] bg-white focus:outline-none focus:border-[#171717] transition-all duration-200"
                     placeholder="John Doe"
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Phone Number
+                  <label className="block text-sm font-semibold text-[#6D7A8B] mb-2">
+                    Phone Number *
                   </label>
-                  <p>You'll receive an Mpesa Prompt on this number</p>
+                  <p className="text-xs text-[#6D7A8B] mb-2">You'll receive an Mpesa Prompt on this number</p>
                   <input
                     type="tel"
                     value={customerInfo.phone}
@@ -1017,13 +764,14 @@ const STKPushModal = () => {
                         phone: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                    className="w-full px-4 py-3 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] bg-white focus:outline-none focus:border-[#171717] transition-all duration-200"
                     placeholder="0712345678"
+                    required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Email Address
+                  <label className="block text-sm font-semibold text-[#6D7A8B] mb-2">
+                    Email Address *
                   </label>
                   <input
                     type="email"
@@ -1034,28 +782,34 @@ const STKPushModal = () => {
                         email: e.target.value,
                       })
                     }
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200"
+                    className="w-full px-4 py-3 border-2 border-[#E7ECF3] rounded-xl text-[#0B0F1A] bg-white focus:outline-none focus:border-[#171717] transition-all duration-200"
                     placeholder="john.doe@example.com"
+                    required
                   />
                 </div>
+                {errors.submit && (
+                  <div className="p-3 bg-[#FFF0F0] border border-[#E53E3E]/30 rounded-xl text-[#E53E3E] text-sm">
+                    {errors.submit}
+                  </div>
+                )}
                 <div className="flex gap-4 pt-4">
                   <button
                     type="button"
                     onClick={() => setStep(1)}
-                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all duration-200"
+                    className="flex-1 px-4 py-3 border border-[#E7ECF3] text-[#6D7A8B] font-semibold rounded-xl hover:bg-[#F7F9FC] transition-all duration-200"
                   >
                     Back to Shop
                   </button>
                   <button
                     type="button"
                     onClick={() => setStep(3)}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all duration-200"
+                    className="flex-1 px-4 py-3 bg-[#171717] text-white font-semibold rounded-xl hover:bg-[#333333] transition-all duration-200"
                   >
                     Continue to Payment
                   </button>
                 </div>
               </form>
-            </div>
+            </motion.div>
           </div>
         </div>
         <Footer />
@@ -1063,61 +817,243 @@ const STKPushModal = () => {
     );
   }
 
+  if (step === 3) {
+    const total = calculateTotal();
+    return (
+      <div className="min-h-screen bg-[#F7F9FC]">
+        <AlertModalComponent />
+        <Header />
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-lg border border-[#E7ECF3] p-6 mb-8"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-[#0B0F1A]">Payment</h1>
+                <p className="text-[#6D7A8B]">Complete your purchase</p>
+              </div>
+              <button
+                onClick={() => setStep(2)}
+                className="flex items-center gap-2 px-4 py-2 border border-[#E7ECF3] rounded-lg hover:bg-[#F7F9FC] transition text-[#6D7A8B]"
+              >
+                <ArrowLeft size={18} />
+                Back
+              </button>
+            </div>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <motion.div
+              variants={scaleIn}
+              initial="hidden"
+              animate="visible"
+              className="bg-white rounded-2xl shadow-lg border border-[#E7ECF3] p-6"
+            >
+              <h2 className="text-xl font-bold text-[#0B0F1A] mb-6">M-PESA Payment</h2>
+              
+              <div className="bg-[#F5F5F5] rounded-xl p-4 mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[#6D7A8B]">Amount to Pay</span>
+                  <span className="text-2xl font-bold text-[#171717]">Ksh {total.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#6D7A8B]">Phone Number</span>
+                  <span className="font-semibold text-[#0B0F1A]">{customerInfo.phone}</span>
+                </div>
+              </div>
+
+              {errors.submit && (
+                <div className="mb-4 p-3 bg-[#FFF0F0] border border-[#E53E3E]/30 rounded-xl text-[#E53E3E] text-sm">
+                  {errors.submit}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <button
+                  onClick={handlePayment}
+                  disabled={isSubmitting}
+                  className="w-full px-6 py-4 bg-[#171717] text-white font-bold rounded-xl hover:bg-[#333333] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Smartphone size={20} />
+                      Pay with M-PESA
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setStep(2)}
+                  className="w-full px-6 py-4 border border-[#E7ECF3] text-[#6D7A8B] font-semibold rounded-xl hover:bg-[#F7F9FC] transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+
+            <motion.div
+              variants={scaleIn}
+              initial="hidden"
+              animate="visible"
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-2xl shadow-lg border border-[#E7ECF3] p-6"
+            >
+              <h2 className="text-xl font-bold text-[#0B0F1A] mb-6">Order Summary</h2>
+              {cart.map((item, index) => (
+                <div
+                  key={index}
+                  className="flex justify-between items-center py-3 border-b border-[#E7ECF3]"
+                >
+                  <div>
+                    <p className="font-semibold text-[#0B0F1A]">{item.name}</p>
+                    <p className="text-sm text-[#6D7A8B]">
+                      {item.color_name}, Size: {item.size} | Qty: {item.quantity}
+                    </p>
+                  </div>
+                  <p className="font-bold text-[#171717]">
+                    Ksh {(item.price * item.quantity).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+              <div className="flex justify-between items-center pt-4 text-lg font-bold">
+                <span className="text-[#0B0F1A]">Total</span>
+                <span className="text-[#171717]">Ksh {total.toLocaleString()}</span>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (step === 4) {
+    return (
+      <div className="min-h-screen bg-[#F7F9FC]">
+        <AlertModalComponent />
+        <Header />
+        <div className="max-w-2xl mx-auto px-4 py-16">
+          <motion.div
+            variants={scaleIn}
+            initial="hidden"
+            animate="visible"
+            className="bg-white rounded-2xl shadow-xl p-8 text-center border border-[#E7ECF3]"
+          >
+            <div className="w-16 h-16 bg-[#F5F5F5] rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-10 h-10 text-[#171717]" />
+            </div>
+            <h1 className="text-3xl font-bold text-[#0B0F1A] mb-4">
+              Order Placed! 🎉
+            </h1>
+            <p className="text-[#6D7A8B] mb-8">
+              Your merchandise order has been received and payment confirmed.
+              You'll receive updates via email.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/member/dashboard">
+                <button className="px-6 py-3 bg-[#171717] text-white font-semibold rounded-xl hover:bg-[#333333] transition-all">
+                  View Orders
+                </button>
+              </Link>
+              <button
+                onClick={resetCart}
+                className="px-6 py-3 border border-[#E7ECF3] text-[#6D7A8B] font-semibold rounded-xl hover:bg-[#F7F9FC] transition-all"
+              >
+                Continue Shopping
+              </button>
+            </div>
+          </motion.div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // ─── STEP 1: Products View ──────────────────────────────────────────────────
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#F7F9FC]">
+      <AlertModalComponent />
       <Header />
       <div className="max-w-7xl mx-auto px-4 py-8">
         {user && !loading && (
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-6 mb-8 flex items-center justify-between shadow-xl">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            className="bg-[#F5F5F5] border border-[#E7ECF3] rounded-2xl p-6 mb-8 flex flex-wrap items-center justify-between gap-4"
+          >
             <div className="flex items-center gap-4">
-              <div className="bg-white/20 p-3 rounded-full">
-                <User className="w-6 h-6" />
+              <div className="bg-[#171717] p-3 rounded-full">
+                <User className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Welcome back, {(user as any).name || user.email}!</h2>
-                <p className="text-blue-100">Ready to shop CHRMAA merchandise</p>
+                <h2 className="text-xl font-bold text-[#0B0F1A]">Welcome back, {(user as any).name || user.email}!</h2>
+                <p className="text-[#6D7A8B]">Ready to shop alumni merchandise</p>
               </div>
             </div>
             <Link href="/member/dashboard">
-              <button className="px-6 py-3 bg-white text-blue-600 font-semibold rounded-xl hover:shadow-lg transition-all duration-200">
+              <button className="px-6 py-3 bg-[#171717] text-white font-semibold rounded-xl hover:bg-[#333333] transition-all duration-200">
                 View My Orders
               </button>
             </Link>
-          </div>
+          </motion.div>
         )}
 
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            CHRMAA Merchandise
+        <motion.div
+          variants={fadeUp}
+          initial="hidden"
+          animate="visible"
+          className="text-center mb-12"
+        >
+          <h1 className="text-4xl md:text-5xl font-bold text-[#0B0F1A] mb-4">
+            Alumni Merchandise
           </h1>
-          <p className="text-xl text-gray-600">
-            Show your alumni pride with official CHRMAA branded items
+          <p className="text-xl text-[#6D7A8B]">
+            Show your alumni pride with official branded items
           </p>
-        </div>
+        </motion.div>
 
-        <div className="grid md:grid-cols-4 gap-6 mb-12">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid md:grid-cols-4 gap-6 mb-12"
+        >
           {benefits.map((benefit, index) => (
-            <div
+            <motion.div
               key={index}
-              className="bg-white rounded-xl p-6 shadow-lg text-center hover:shadow-xl transition-shadow"
+              variants={scaleIn}
+              className="bg-white rounded-xl p-6 shadow-lg border border-[#E7ECF3] text-center hover:shadow-xl transition-shadow"
             >
-              <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
-                <benefit.icon className="w-6 h-6 text-blue-600" />
+              <div className="bg-[#F5F5F5] w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                <benefit.icon className="w-6 h-6 text-[#171717]" />
               </div>
-              <h3 className="font-bold text-gray-900 mb-2">{benefit.title}</h3>
-              <p className="text-sm text-gray-600">{benefit.description}</p>
-            </div>
+              <h3 className="font-bold text-[#0B0F1A] mb-2">{benefit.title}</h3>
+              <p className="text-sm text-[#6D7A8B]">{benefit.description}</p>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {errors.fetch && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <p className="text-red-600">{errors.fetch}</p>
+          <div className="bg-[#FFF0F0] border border-[#E53E3E]/30 rounded-xl p-4 mb-6 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-[#E53E3E]" />
+            <p className="text-[#E53E3E]">{errors.fetch}</p>
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
+        >
           {products.map((product) => {
             const selection = selectedProducts[product.id] || {
               color: "",
@@ -1130,41 +1066,50 @@ const STKPushModal = () => {
               : [];
 
             return (
-              <div
+              <motion.div
                 key={product.id}
-                className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
+                variants={scaleIn}
+                whileHover={{ y: -8 }}
+                className="bg-white rounded-2xl shadow-lg border border-[#E7ECF3] overflow-hidden hover:shadow-xl transition-all duration-300"
               >
-                <div className="relative h-64 bg-gray-100">
-                 {selection.color && getProductImage(product, selection.color) && (
-  <Image
-    src={getProductImage(product, selection.color)}
-    alt={product.name}
-    fill
-    className="object-cover"
-  />
-)}
-                  <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full shadow-md">
-                    <p className="text-sm font-bold text-gray-900">
+                <div className="relative h-64 bg-[#F5F5F5]">
+                  {selection.color && getProductImage(product, selection.color) ? (
+                    <Image
+                      src={getProductImage(product, selection.color)}
+                      alt={product.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-[#F5F5F5]">
+                      <div className="text-center">
+                        <Package className="mx-auto text-[#6D7A8B]" size={32} />
+                        <p className="text-xs text-[#6D7A8B] mt-2">No image</p>
+                      </div>
+                    </div>
+                  )}
+                  <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full shadow-md border border-[#E7ECF3]">
+                    <p className="text-sm font-bold text-[#171717]">
                       Ksh {product.base_price.toLocaleString()}
                     </p>
                   </div>
                   {product.is_out_of_stock && (
-                    <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full shadow-md">
+                    <div className="absolute top-4 left-4 bg-[#E53E3E] text-white px-3 py-1 rounded-full shadow-md">
                       <p className="text-sm font-bold">Out of Stock</p>
                     </div>
                   )}
                 </div>
 
                 <div className="p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  <h3 className="text-xl font-bold text-[#0B0F1A] mb-2">
                     {product.name}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-4">
+                  <p className="text-[#6D7A8B] text-sm mb-4">
                     {product.description}
                   </p>
 
                   <div className="mb-4">
-                    <p className="text-sm font-semibold text-gray-700 mb-2">
+                    <p className="text-sm font-semibold text-[#6D7A8B] mb-2">
                       Color
                     </p>
                     <div className="flex gap-2 flex-wrap">
@@ -1174,24 +1119,19 @@ const STKPushModal = () => {
                           onClick={() => handleColorSelect(product.id, color.value)}
                           className={`w-8 h-8 rounded-full border-2 transition-all ${
                             selection.color === color.value
-                              ? "border-amber-500 scale-110"
-                              : "border-gray-300 hover:border-gray-400"
+                              ? "border-[#171717] scale-110"
+                              : "border-[#E7ECF3] hover:border-[#6D7A8B]"
                           }`}
                           style={{ backgroundColor: color.hex }}
                           title={color.name}
                         />
                       ))}
                     </div>
-                    {selection.color && (
-                      <p className="text-xs text-gray-600 mt-2">
-                        {availableColors.find(c => c.value === selection.color)?.name}
-                      </p>
-                    )}
                   </div>
 
                   {selection.color && (
                     <div className="mb-4">
-                      <p className="text-sm font-semibold text-gray-700 mb-2">
+                      <p className="text-sm font-semibold text-[#6D7A8B] mb-2">
                         Size
                       </p>
                       <div className="flex gap-2 flex-wrap">
@@ -1200,29 +1140,18 @@ const STKPushModal = () => {
                             key={sizeInfo.size}
                             onClick={() => handleSizeSelect(product.id, sizeInfo.size, sizeInfo.variant_id)}
                             disabled={!sizeInfo.available}
-                            className={`px-3 py-1 text-sm rounded-xl border transition-all relative ${
+                            className={`px-3 py-1 text-sm rounded-xl border transition-all ${
                               selection.size === sizeInfo.size
-                                ? "bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-amber-500"
+                                ? "bg-[#171717] text-white border-[#171717]"
                                 : sizeInfo.available
-                                ? "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
-                                : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                                ? "bg-white text-[#0B0F1A] border-[#E7ECF3] hover:border-[#6D7A8B]"
+                                : "bg-[#F5F5F5] text-[#6D7A8B] border-[#E7ECF3] cursor-not-allowed"
                             }`}
-                            title={sizeInfo.available ? `${sizeInfo.stock} left` : 'Out of stock'}
                           >
                             {sizeInfo.size}
-                            {sizeInfo.available && (
-                              <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                {sizeInfo.stock}
-                              </span>
-                            )}
                           </button>
                         ))}
                       </div>
-                      {selection.size && (
-                        <p className="text-xs text-gray-600 mt-2">
-                          {availableSizes.find(s => s.size === selection.size)?.stock} items left
-                        </p>
-                      )}
                     </div>
                   )}
 
@@ -1231,22 +1160,27 @@ const STKPushModal = () => {
                     disabled={!selection.color || !selection.size || product.is_out_of_stock}
                     className={`w-full px-4 py-3 font-semibold rounded-xl flex items-center justify-center gap-2 transition-all duration-200 ${
                       !selection.color || !selection.size || product.is_out_of_stock
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg hover:scale-[1.02]"
+                        ? "bg-[#F5F5F5] text-[#6D7A8B] cursor-not-allowed"
+                        : "bg-[#171717] text-white hover:bg-[#333333] hover:shadow-md"
                     }`}
                   >
                     <ShoppingCart className="w-5 h-5" />
                     {product.is_out_of_stock ? 'Out of Stock' : 'Add to Cart'}
                   </button>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
 
         {cart.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            className="bg-white rounded-2xl shadow-xl border border-[#E7ECF3] p-6 mb-8"
+          >
+            <h2 className="text-2xl font-bold text-[#0B0F1A] mb-6">
               Your Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)}{" "}
               items)
             </h2>
@@ -1254,39 +1188,39 @@ const STKPushModal = () => {
               {cart.map((item, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+                  className="flex flex-wrap items-center justify-between p-4 bg-[#F7F9FC] rounded-xl border border-[#E7ECF3] gap-4"
                 >
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900">{item.name}</h3>
-                    <p className="text-sm text-gray-600">
+                  <div className="flex-1 min-w-[200px]">
+                    <h3 className="font-bold text-[#0B0F1A]">{item.name}</h3>
+                    <p className="text-sm text-[#6D7A8B]">
                       {item.color_name} | Size: {item.size} | Ksh{" "}
-                      {item.price.toLocaleString()} | {item.stock_available} available
+                      {item.price.toLocaleString()}
                     </p>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => updateQuantity(index, -1)}
-                        className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 transition-colors"
+                        className="bg-white border border-[#E7ECF3] p-2 rounded-lg hover:bg-[#F7F9FC] transition-colors"
                       >
                         <Minus className="w-4 h-4" />
                       </button>
-                      <span className="w-8 text-center font-bold">
+                      <span className="w-8 text-center font-bold text-[#0B0F1A]">
                         {item.quantity}
                       </span>
                       <button
                         onClick={() => updateQuantity(index, 1)}
-                        className="bg-gray-100 p-2 rounded-lg hover:bg-gray-200 transition-colors"
+                        className="bg-white border border-[#E7ECF3] p-2 rounded-lg hover:bg-[#F7F9FC] transition-colors"
                       >
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>
-                    <p className="font-bold w-24 text-right">
+                    <p className="font-bold w-24 text-right text-[#171717]">
                       Ksh {(item.price * item.quantity).toLocaleString()}
                     </p>
                     <button
                       onClick={() => removeFromCart(index)}
-                      className="px-3 py-1 text-red-600 hover:text-red-700 text-sm font-bold bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+                      className="px-3 py-1 text-[#E53E3E] hover:text-[#C53030] text-sm font-bold bg-[#FFF0F0] hover:bg-[#FFE5E5] rounded-lg transition-colors"
                     >
                       Remove
                     </button>
@@ -1294,22 +1228,22 @@ const STKPushModal = () => {
                 </div>
               ))}
             </div>
-            <div className="flex items-center justify-between mt-6 pt-6 border-t-2">
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="flex flex-wrap items-center justify-between mt-6 pt-6 border-t-2 border-[#E7ECF3] gap-4">
+              <p className="text-2xl font-bold text-[#0B0F1A]">
                 Total:{" "}
-                <span className="text-blue-600">
+                <span className="text-[#171717]">
                   Ksh {calculateTotal().toLocaleString()}
                 </span>
               </p>
               <button
                 onClick={handleCheckout}
-                className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+                className="px-8 py-4 bg-[#171717] text-white font-bold rounded-xl hover:bg-[#333333] transition-all duration-200 flex items-center gap-2"
               >
                 {!user && <LogIn className="w-5 h-5" />}
                 {!user ? "Login to Checkout" : "Proceed to Checkout"}
               </button>
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
       <Footer />

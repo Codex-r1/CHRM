@@ -27,16 +27,16 @@ export default function Header() {
             <div className="flex items-center gap-4">
               <Link href="/" className="flex items-center gap-4">
                 <Image
-                  src="/CHRM LOGO.jpeg"
-                  alt="CHRM College"
+                  src="/  LOGO.jpeg"
+                  alt="  College"
                   width={56}
                   height={56}
                   className="h-14 w-auto object-contain"
                   unoptimized
                 />
                 <Image
-                  src="/CHRMAA LOGO.jpeg"
-                  alt="CHRMAA"
+                  src="/    LOGO.jpeg"
+                  alt="   "
                   width={56}
                   height={56}
                   className="h-14 w-auto object-contain"
@@ -61,16 +61,8 @@ export default function Header() {
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-4">
               <Image
-                src="/CHRM LOGO.jpeg"
-                alt="CHRM College"
-                width={56}
-                height={56}
-                className="h-14 w-auto object-contain"
-                unoptimized
-              />
-              <Image
-                src="/CHRMAA LOGO.jpeg"
-                alt="CHRMAA"
+                src="/"
+                alt="Logo"
                 width={56}
                 height={56}
                 className="h-14 w-auto object-contain"

@@ -78,9 +78,9 @@ const pulseAnimation = {
 
 const glowAnimation = {
   boxShadow: [
-    "0 0 0px rgba(43, 76, 115, 0)",
-    "0 0 25px rgba(43, 76, 115, 0.4)",
-    "0 0 0px rgba(43, 76, 115, 0)"
+    "0 0 0px rgba(23, 23, 23, 0)",
+    "0 0 25px rgba(23, 23, 23, 0.3)",
+    "0 0 0px rgba(23, 23, 23, 0)"
   ],
   transition: {
     duration: 2.5,
@@ -103,8 +103,8 @@ const iconHover = {
 const cardHover = {
   scale: 1.05,
   y: -12,
-  boxShadow: "0 25px 50px rgba(43, 76, 115, 0.1)",
-  borderColor: "#FF7A00",
+  boxShadow: "0 25px 50px rgba(0, 0, 0, 0.1)",
+  borderColor: "#171717",
   transition: {
     type: "spring" as const,
     stiffness: 300,
@@ -115,7 +115,7 @@ const cardHover = {
 const buttonHover = {
   scale: 1.05,
   y: -3,
-  boxShadow: "0 12px 30px rgba(255, 122, 0, 0.25)",
+  boxShadow: "0 12px 30px rgba(0, 0, 0, 0.2)",
   transition: {
     type: "spring" as const,
     stiffness: 400,
@@ -132,46 +132,46 @@ export default function HomePage() {
     {
       icon: Users,
       title: "Networking",
-      description: "Connect with fellow HR professionals and expand your network across industries.",
-      iconColor: "bg-gradient-to-br from-[#2B4C73] to-[#1A3557]",
+      description: "Connect with fellow professionals and expand your network across industries.",
+      iconColor: "bg-gray-900",
       iconTextColor: "text-white",
-      bgColor: "bg-[#E8F4FD]",
-      textColor: "text-[#2B4C73]"
+      bgColor: "bg-gray-50",
+      textColor: "text-gray-900"
     },
     {
       icon: Handshake,
       title: "Mentorship",
       description: "Access experienced mentors for career guidance and professional growth.",
-      iconColor: "bg-gradient-to-br from-[#FF7A00] to-[#E56B00]",
+      iconColor: "bg-gray-800",
       iconTextColor: "text-white",
-      bgColor: "bg-[#FFF4E6]",
-      textColor: "text-[#FF7A00]"
+      bgColor: "bg-gray-50",
+      textColor: "text-gray-900"
     },
     {
       icon: GraduationCap,
       title: "Career Growth",
-      description: "Enjoy 5% discount on all CHRM programs and trainings, helping you continue your professional development at a reduced cost.",
-      iconColor: "bg-gradient-to-br from-[#E53E3E] to-[#CC3636]",
+      description: "Enjoy 5% discount on all   programs and trainings, helping you continue your professional development at a reduced cost.",
+      iconColor: "bg-gray-700",
       iconTextColor: "text-white",
-      bgColor: "bg-[#FFF0F0]",
-      textColor: "text-[#E53E3E]"
+      bgColor: "bg-gray-50",
+      textColor: "text-gray-900"
     },
     {
       icon: Calendar,
       title: "Events",
       description: "Attend exclusive alumni events and workshops.",
-      iconColor: "bg-gradient-to-br from-[#2B4C73] to-[#1A3557]",
+      iconColor: "bg-gray-900",
       iconTextColor: "text-white",
-      bgColor: "bg-[#E8F4FD]",
-      textColor: "text-[#2B4C73]"
+      bgColor: "bg-gray-50",
+      textColor: "text-gray-900"
     }
   ];
 
   const stats = [
-    { value: "500+", label: "Active Members", icon: Users, color: "text-[#2B4C73]" },
-    { value: "20+", label: "Events Yearly", icon: Calendar, color: "text-[#FF7A00]" },
-    { value: "10+", label: "Years Strong", icon: Target, color: "text-[#E53E3E]" },
-    { value: "98%", label: "Satisfaction", icon: Award, color: "text-[#2B4C73]" }
+    { value: "500+", label: "Active Members", icon: Users },
+    { value: "20+", label: "Events Yearly", icon: Calendar },
+    { value: "10+", label: "Years Strong", icon: Target },
+    { value: "98%", label: "Satisfaction", icon: Award }
   ];
 
   return (
@@ -185,17 +185,17 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative bg-gradient-to-br from-white via-[#F7F9FC] to-[#E8F4FD] py-20 px-4 overflow-hidden">
+        <section className="relative bg-gray-50 py-20 px-4 overflow-hidden">
           {/* Background Elements */}
           <motion.div 
             animate={{ rotate: 360 }}
             transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-br from-[#2B4C73]/10 to-[#FF7A00]/10 rounded-full blur-xl"
+            className="absolute top-10 left-10 w-32 h-32 bg-gray-200/50 rounded-full blur-xl"
           />
           <motion.div 
             animate={{ rotate: -360 }}
             transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-            className="absolute bottom-10 right-10 w-40 h-40 bg-gradient-to-br from-[#E53E3E]/10 to-[#2B4C73]/10 rounded-full blur-xl"
+            className="absolute bottom-10 right-10 w-40 h-40 bg-gray-300/40 rounded-full blur-xl"
           />
           
           <div className="max-w-7xl mx-auto text-center relative z-10">
@@ -207,14 +207,14 @@ export default function HomePage() {
           
               <motion.h1
                 variants={fadeUp}
-                className="text-4xl md:text-6xl font-bold text-[#0B0F1A] mb-6 font-poppins leading-tight"
+                className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 font-poppins leading-tight"
               >
-                Welcome to the{" "}
+                Welcome to our{" "}
                 <span className="relative inline-block">
-                  <span className="relative z-10">CHRM Alumni</span>  
+                  <span className="relative z-10">Alumni</span>  
                 </span>
                 <br />
-                <span className="bg-gradient-to-r from-[#2B4C73]  bg-clip-text ">
+                <span className="text-gray-900">
                   Association
                 </span>
               </motion.h1>
@@ -222,10 +222,10 @@ export default function HomePage() {
               <motion.p
                 variants={fadeUp}
                 transition={{ delay: 0.1 }}
-                className="text-xl text-[#6D7A8B] mb-8 max-w-3xl mx-auto leading-relaxed"
+                className="text-xl text-gray-500 mb-8 max-w-3xl mx-auto leading-relaxed"
               >
-                Connecting HR professionals, fostering growth, and building
-                lasting relationships among CHRM College graduates.
+                Connecting professionals, fostering growth, and building
+                lasting relationships among alumni.
               </motion.p>
               
               <motion.div
@@ -239,7 +239,7 @@ export default function HomePage() {
                 >
                   <Link
                     href="/payments"
-                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-[#2B4C73] to-[#1A3557] text-white font-bold rounded-lg hover:shadow-xl transition-all duration-300 text-lg"
+                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gray-900 text-white font-bold rounded-lg hover:shadow-xl transition-all duration-300 text-lg"
                   >
                     Join the Association
                     <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
@@ -253,7 +253,7 @@ export default function HomePage() {
                 >
                   <Link
                     href="/about"
-                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-br from-[#E53E3E] to-[#CC3636] text-white font-bold rounded-lg hover:shadow-xl transition-all duration-300 text-lg"
+                    className="group inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 border-2 border-gray-900 font-bold rounded-lg hover:bg-gray-900 hover:text-white transition-all duration-300 text-lg"
                   >
                     Learn More
                     <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
@@ -265,7 +265,7 @@ export default function HomePage() {
         </section>
 
         {/* Mission & Vision Section */}
-        <section className="py-16 px-4 bg-gradient-to-r from-[#0B0F1A] to-[#1A1F2E] relative overflow-hidden">
+        <section className="py-16 px-4 bg-gray-900 relative overflow-hidden">
           <div className="max-w-7xl mx-auto relative z-10">
             <motion.div
               variants={staggerContainer}
@@ -276,15 +276,15 @@ export default function HomePage() {
             >
               <motion.div
                 variants={fadeUp}
-                className="bg-gradient-to-br from-[#2B4C73]/20 to-transparent p-8 rounded-2xl border border-[#2B4C73]/30"
+                className="bg-white/5 p-8 rounded-2xl border border-white/10"
               >
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-gradient-to-br from-[#2B4C73] to-[#1A3557] rounded-xl">
+                  <div className="p-3 bg-white/10 rounded-xl">
                     <Target className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-2xl font-bold text-white">Our Mission</h3>
                 </div>
-                <blockquote className="text-lg text-gray-300 italic border-l-4 border-[#2B4C73] pl-6 py-2">
+                <blockquote className="text-lg text-gray-300 italic border-l-4 border-gray-500 pl-6 py-2">
                   "To establish and enhance mutually beneficial and enduring relationships between the alumni, students and college fraternity."
                 </blockquote>
               </motion.div>
@@ -292,15 +292,15 @@ export default function HomePage() {
               <motion.div
                 variants={fadeUp}
                 transition={{ delay: 0.1 }}
-                className="bg-gradient-to-br from-[#FF7A00]/20 to-transparent p-8 rounded-2xl border border-[#FF7A00]/30"
+                className="bg-white/5 p-8 rounded-2xl border border-white/10"
               >
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-gradient-to-br from-[#FF7A00] to-[#E56B00] rounded-xl">
+                  <div className="p-3 bg-white/10 rounded-xl">
                     <Sparkles className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-2xl font-bold text-white">Our Vision</h3>
                 </div>
-                <blockquote className="text-lg text-gray-300 italic border-l-4 border-[#FF7A00] pl-6 py-2">
+                <blockquote className="text-lg text-gray-300 italic border-l-4 border-gray-500 pl-6 py-2">
                   "Be the model alumni association in the region."
                 </blockquote>
               </motion.div>
@@ -322,14 +322,14 @@ export default function HomePage() {
               <motion.h2
                 variants={fadeUp}
                 transition={{ delay: 0.1 }}
-                className="text-3xl md:text-4xl font-bold text-[#0B0F1A] font-poppins mb-6"
+                className="text-3xl md:text-4xl font-bold text-gray-900 font-poppins mb-6"
               >
                 What We Offer
               </motion.h2>
               <motion.p
                 variants={fadeUp}
                 transition={{ delay: 0.2 }}
-                className="text-lg text-[#6D7A8B] max-w-2xl mx-auto"
+                className="text-lg text-gray-500 max-w-2xl mx-auto"
               >
                 Discover the exclusive benefits of joining our alumni community
               </motion.p>
@@ -348,7 +348,7 @@ export default function HomePage() {
                   variants={scaleIn}
                   custom={index}
                   whileHover={cardHover}
-                  className={`group ${feature.bgColor} p-8 rounded-xl border border-gray-200 hover:border-[#FF7A00] transition-all duration-300 relative overflow-hidden`}
+                  className={`group ${feature.bgColor} p-8 rounded-xl border border-gray-200 hover:border-gray-900 transition-all duration-300 relative overflow-hidden`}
                 >
                   {/* Feature Icon */}
                   <motion.div
@@ -374,7 +374,7 @@ export default function HomePage() {
                     whileInView="visible"
                     viewport={{ once: true }}
                     transition={{ delay: 0.1 }}
-                    className="text-[#6D7A8B] relative z-10"
+                    className="text-gray-500 relative z-10"
                   >
                     {feature.description}
                   </motion.p>
@@ -383,7 +383,7 @@ export default function HomePage() {
                   <motion.div
                     initial={{ x: -20, opacity: 0 }}
                     whileHover={{ x: 0, opacity: 1 }}
-                    className="absolute bottom-6 right-6 w-12 h-12 bg-gradient-to-r from-[#2B4C73] to-[#1A3557] rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
+                    className="absolute bottom-6 right-6 w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
                   >
                     <ArrowRight size={20} className="text-white" />
                   </motion.div>
@@ -399,7 +399,7 @@ export default function HomePage() {
           whileInView="visible"
           viewport={{ once: true }}
           variants={fadeIn}
-          className="py-16 bg-gradient-to-r from-[#0B0F1A] to-[#1A1F2E]"
+          className="py-16 bg-gray-900"
         >
           <div className="max-w-7xl mx-auto px-4 relative z-10">
             <motion.div
@@ -427,15 +427,11 @@ export default function HomePage() {
                     whileInView={{ scale: 1 }}
                     viewport={{ once: true }}
                     transition={{ type: "spring", stiffness: 100, damping: 15 }}
-                    className={`inline-flex items-center justify-center w-16 h-16 ${
-                      stat.color === "text-[#2B4C73]" ? "bg-[#2B4C73]/20" :
-                      stat.color === "text-[#FF7A00]" ? "bg-[#FF7A00]/20" :
-                      "bg-[#E53E3E]/20"
-                    } rounded-full mb-6`}
+                    className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-full mb-6"
                   >
-                    <stat.icon className={stat.color} size={28} />
+                    <stat.icon className="text-white" size={28} />
                   </motion.div>
-                  <div className={`text-4xl font-bold ${stat.color} mb-3 font-poppins`}>
+                  <div className="text-4xl font-bold text-white mb-3 font-poppins">
                     {stat.value}
                   </div>
                   <div className="text-gray-300 font-medium">{stat.label}</div>
@@ -450,7 +446,7 @@ export default function HomePage() {
           {/* Background */}
           <motion.div
             animate={pulseAnimation}
-            className="absolute inset-0 bg-[#2B4C73]"
+            className="absolute inset-0 bg-gray-900"
           />
           
           <div className="max-w-4xl mx-auto text-center relative z-10">

@@ -21,7 +21,7 @@ type EventType = {
   event_date: string;
   location: string;
   price: number;
-  member_discount: number; // flat Ksh amount, not %
+  member_discount: number;
   max_attendees: number;
   current_attendees: number;
   status: string;
@@ -49,6 +49,22 @@ type CSRType = {
   photos: CSRPhoto[];
 };
 
+// ─── Animation Variants ──────────────────────────────────────────────────────
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } },
+};
+
+const scaleIn: Variants = {
+  hidden: { opacity: 0, scale: 0.92 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
+};
+
+const staggerContainer: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.08 } },
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString("en-US", {
@@ -57,10 +73,10 @@ const formatDate = (dateString: string) =>
 
 const getEventTypeIcon = (type: string) => {
   const icons: Record<string, JSX.Element> = {
-    tree_planting:      <Leaf   className="text-[#2B4C73]" size={14} />,
+    tree_planting:      <Leaf   className="text-[#171717]" size={14} />,
     community_service:  <Heart  className="text-[#FF7A00]" size={14} />,
     charity_drive:      <Award  className="text-[#E53E3E]" size={14} />,
-    educational:        <UsersIcon className="text-[#2B4C73]" size={14} />,
+    educational:        <UsersIcon className="text-[#171717]" size={14} />,
     health_campaign:    <Target className="text-[#FF7A00]" size={14} />,
   };
   return icons[type] ?? <Heart className="text-[#E53E3E]" size={14} />;
@@ -75,10 +91,10 @@ const getEventTypeLabel = (type: string) => ({
 }[type] ?? "CSR Event");
 
 const getEventTypeBadgeClass = (type: string) => ({
-  tree_planting:     "bg-[#E8F4FD] text-[#2B4C73]",
+  tree_planting:     "bg-[#F5F5F5] text-[#171717]",
   community_service: "bg-[#FFF4E6] text-[#FF7A00]",
   charity_drive:     "bg-[#FFF0F0] text-[#E53E3E]",
-  educational:       "bg-[#E8F4FD] text-[#2B4C73]",
+  educational:       "bg-[#F5F5F5] text-[#171717]",
   health_campaign:   "bg-[#FFF4E6] text-[#FF7A00]",
 }[type] ?? "bg-[#F7F9FC] text-[#6D7A8B]");
 
@@ -100,22 +116,18 @@ export default function EventsPage() {
   const [activeTab, setActiveTab] = useState<"upcoming" | "csr">("upcoming");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Regular events
   const [events, setEvents] = useState<EventType[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [eventsError, setEventsError] = useState<string | null>(null);
 
-  // CSR events
   const [csrEvents, setCsrEvents] = useState<CSRType[]>([]);
   const [csrLoading, setCsrLoading] = useState(true);
   const [csrError, setCsrError] = useState<string | null>(null);
 
-  // Modal state
   const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
   const [selectedCSR, setSelectedCSR] = useState<CSRType | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // ── Fetch events independently ──────────────────────────────────────────────
   useEffect(() => {
     const fetchEvents = async () => {
       try {
@@ -170,7 +182,6 @@ export default function EventsPage() {
     fetchCSR();
   }, []);
 
-  // Prevent body scroll when modal open
   useEffect(() => {
     if (selectedEvent || selectedCSR) {
       document.body.style.overflow = "hidden";
@@ -180,7 +191,6 @@ export default function EventsPage() {
     return () => { document.body.style.overflow = ""; };
   }, [selectedEvent, selectedCSR]);
 
-  // ── Filtered lists ──────────────────────────────────────────────────────────
   const now = new Date(); now.setHours(0, 0, 0, 0);
 
   const upcomingEvents = events.filter(e => {
@@ -197,7 +207,6 @@ export default function EventsPage() {
     e.event_type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // ── Slide helpers ───────────────────────────────────────────────────────────
   const allPhotos = (csr: CSRType): CSRPhoto[] => {
     const photos = csr.photos || [];
     if (photos.length === 0 && csr.main_image_url) {
@@ -216,24 +225,22 @@ export default function EventsPage() {
     setSelectedCSR(null);
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-white font-poppins">
+    <div className="min-h-screen bg-[#F7F9FC] font-poppins">
       <Header />
 
-      {/* Hero */}
-      <section className="relative py-12 md:py-16 bg-white overflow-hidden">
+      <section className="relative py-12 md:py-16 bg-white border-b border-[#E7ECF3]">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-10 left-10 w-64 h-64 bg-[#2B4C73]/10 rounded-full blur-3xl opacity-50" />
-          <div className="absolute bottom-10 right-10 w-80 h-80 bg-[#FF7A00]/10 rounded-full blur-3xl opacity-30" />
+          <div className="absolute top-10 left-10 w-64 h-64 bg-[#F5F5F5] rounded-full blur-3xl opacity-50" />
+          <div className="absolute bottom-10 right-10 w-80 h-80 bg-[#F5F5F5] rounded-full blur-3xl opacity-30" />
         </div>
         <div className="relative z-10 max-w-7xl mx-auto px-4 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
             className="text-3xl md:text-4xl font-bold text-[#0B0F1A] mb-4"
           >
-            CHRMAA{" "}
-            <span className="bg-[black] bg-clip-text text-transparent">
+            Alumni{" "}
+            <span className="text-[#171717]">
               Events
             </span>
           </motion.h1>
@@ -241,10 +248,9 @@ export default function EventsPage() {
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
             className="text-lg text-[#6D7A8B] max-w-3xl mx-auto mb-8"
           >
-            Professional networking, workshops, and CSR activities for CHRM alumni
+            Professional networking, workshops, and CSR activities for alumni
           </motion.p>
 
-          {/* Tab buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}
             className="flex flex-wrap justify-center gap-4"
@@ -253,8 +259,8 @@ export default function EventsPage() {
               onClick={() => { setActiveTab("upcoming"); setSearchTerm(""); }}
               className={`px-6 py-2 rounded-full font-medium transition-all ${
                 activeTab === "upcoming"
-                  ? "bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white shadow-md"
-                  : "bg-white border border-[#E7ECF3] text-[#6D7A8B] hover:border-[#2B4C73]"
+                  ? "bg-[#171717] text-white shadow-md"
+                  : "bg-white border border-[#E7ECF3] text-[#6D7A8B] hover:border-[#171717]"
               }`}
             >
               Upcoming Events ({eventsLoading ? "…" : upcomingEvents.length})
@@ -263,20 +269,17 @@ export default function EventsPage() {
               onClick={() => { setActiveTab("csr"); setSearchTerm(""); }}
               className={`px-6 py-2 rounded-full font-medium transition-all ${
                 activeTab === "csr"
-                  ? "bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white shadow-md"
-                  : "bg-white border border-[#E7ECF3] text-[#6D7A8B] hover:border-[#2B4C73]"
+                  ? "bg-[#171717] text-white shadow-md"
+                  : "bg-white border border-[#E7ECF3] text-[#6D7A8B] hover:border-[#171717]"
               }`}
             >
-               Gallery ({csrLoading ? "…" : csrEvents.length})
+              CSR Gallery ({csrLoading ? "…" : csrEvents.length})
             </button>
           </motion.div>
         </div>
       </section>
 
-      {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
-
-        {/* Search bar */}
         <div className="mb-8 bg-white rounded-xl p-4 border border-[#E7ECF3] shadow-sm">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={20} />
@@ -285,12 +288,11 @@ export default function EventsPage() {
               placeholder={activeTab === "csr" ? "Search CSR activities…" : "Search events…"}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-[#F7F9FC] border border-[#E7ECF3] rounded-lg focus:outline-none focus:border-[#2B4C73]"
+              className="w-full pl-10 pr-4 py-2 bg-[#F7F9FC] border border-[#E7ECF3] rounded-lg focus:outline-none focus:border-[#171717]"
             />
           </div>
         </div>
 
-        {/* ── UPCOMING EVENTS TAB ── */}
         {activeTab === "upcoming" && (
           <div>
             <div className="flex items-center justify-between mb-6">
@@ -300,23 +302,20 @@ export default function EventsPage() {
               </span>
             </div>
 
-            {/* Loading skeletons */}
             {eventsLoading && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3].map(i => <CardSkeleton key={i} />)}
               </div>
             )}
 
-            {/* Error */}
             {!eventsLoading && eventsError && (
               <div className="text-center py-12">
                 <p className="text-[#E53E3E] mb-4">{eventsError}</p>
                 <button onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-[#2B4C73] text-white rounded-lg hover:opacity-90">Retry</button>
+                  className="px-4 py-2 bg-[#171717] text-white rounded-lg hover:bg-[#333333]">Retry</button>
               </div>
             )}
 
-            {/* Empty */}
             {!eventsLoading && !eventsError && upcomingEvents.length === 0 && (
               <div className="text-center py-16">
                 <Calendar className="mx-auto mb-4 text-[#E7ECF3]" size={56} />
@@ -325,7 +324,6 @@ export default function EventsPage() {
               </div>
             )}
 
-            {/* Events grid */}
             {!eventsLoading && !eventsError && upcomingEvents.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {upcomingEvents.map((event, i) => (
@@ -336,24 +334,21 @@ export default function EventsPage() {
                     transition={{ duration: 0.4, delay: i * 0.07 }}
                     className="bg-white rounded-xl border border-[#E7ECF3] overflow-hidden hover:shadow-md transition-all hover:-translate-y-1"
                   >
-                    {/* Image */}
-                    <div className="relative h-44 bg-gradient-to-br from-[#E8F4FD] to-[#d4e9fa]">
+                    <div className="relative h-44 bg-[#F5F5F5]">
                       {event.image_url ? (
                         <img src={event.image_url} alt={event.name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <ImageIcon className="text-[#2B4C73]/30" size={48} />
+                          <ImageIcon className="text-[#171717]/30" size={48} />
                         </div>
                       )}
-                      {/* Status badge */}
                       <div className="absolute top-3 left-3">
-                        <span className="px-2 py-1 bg-[#2B4C73] text-white text-xs font-medium rounded-full">
+                        <span className="px-2 py-1 bg-[#171717] text-white text-xs font-medium rounded-full">
                           {event.status === "upcoming" ? "Upcoming" : event.status}
                         </span>
                       </div>
                     </div>
 
-                    {/* Content */}
                     <div className="p-5">
                       <h3 className="text-lg font-semibold text-[#0B0F1A] mb-2 line-clamp-1">{event.name}</h3>
                       <div className="space-y-1 mb-3">
@@ -376,10 +371,9 @@ export default function EventsPage() {
                       </div>
                       <p className="text-[#6D7A8B] text-sm mb-4 line-clamp-2">{event.description}</p>
 
-                      {/* Price */}
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                          <span className="text-lg font-bold text-[#0B0F1A]">Ksh {event.price.toLocaleString()}</span>
+                          <span className="text-lg font-bold text-[#171717]">Ksh {event.price.toLocaleString()}</span>
                           {event.member_discount > 0 && (
                             <span className="ml-2 text-xs text-[#FF7A00] font-medium">
                               Members: Ksh {(event.price - event.member_discount).toLocaleString()}
@@ -390,11 +384,11 @@ export default function EventsPage() {
 
                       <div className="flex gap-2">
                         <Link href={`/events/register/${event.id}`}
-                          className="flex-1 px-4 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white font-medium rounded-lg hover:opacity-90 text-sm text-center">
+                          className="flex-1 px-4 py-2 bg-[#171717] text-white font-medium rounded-lg hover:bg-[#333333] text-sm text-center">
                           Register
                         </Link>
                         <button onClick={() => setSelectedEvent(event)}
-                          className="px-4 py-2 border border-[#E7ECF3] text-[#6D7A8B] font-medium rounded-lg hover:border-[#2B4C73] hover:text-[#2B4C73] text-sm">
+                          className="px-4 py-2 border border-[#E7ECF3] text-[#6D7A8B] font-medium rounded-lg hover:border-[#171717] hover:text-[#171717] text-sm">
                           Details
                         </button>
                       </div>
@@ -406,33 +400,29 @@ export default function EventsPage() {
           </div>
         )}
 
-        {/* ── CSR GALLERY TAB ── */}
         {activeTab === "csr" && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-[#0B0F1A]"> Gallery</h2>
+              <h2 className="text-2xl font-bold text-[#0B0F1A]">CSR Gallery</h2>
               <span className="text-sm text-[#6D7A8B]">
                 {csrLoading ? "Loading…" : `${filteredCSR.length} activit${filteredCSR.length !== 1 ? "ies" : "y"}`}
               </span>
             </div>
 
-            {/* Loading skeletons */}
             {csrLoading && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[1, 2, 3].map(i => <CardSkeleton key={i} />)}
               </div>
             )}
 
-            {/* Error */}
             {!csrLoading && csrError && (
               <div className="text-center py-12">
                 <p className="text-[#E53E3E] mb-4">{csrError}</p>
                 <button onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-[#2B4C73] text-white rounded-lg hover:opacity-90">Retry</button>
+                  className="px-4 py-2 bg-[#171717] text-white rounded-lg hover:bg-[#333333]">Retry</button>
               </div>
             )}
 
-            {/* Empty */}
             {!csrLoading && !csrError && filteredCSR.length === 0 && (
               <div className="text-center py-16">
                 <Heart className="mx-auto mb-4 text-[#E7ECF3]" size={56} />
@@ -441,7 +431,6 @@ export default function EventsPage() {
               </div>
             )}
 
-            {/* CSR grid */}
             {!csrLoading && !csrError && filteredCSR.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCSR.map((csr, i) => {
@@ -457,24 +446,21 @@ export default function EventsPage() {
                       className="bg-white rounded-xl border border-[#E7ECF3] overflow-hidden hover:shadow-md transition-all hover:-translate-y-1 cursor-pointer group"
                       onClick={() => openCSR(csr)}
                     >
-                      {/* Image */}
-                      <div className="relative h-48 bg-gradient-to-br from-[#E8F4FD] to-[#d4e9fa] overflow-hidden">
+                      <div className="relative h-48 bg-[#F5F5F5] overflow-hidden">
                         {coverImage ? (
                           <img src={coverImage} alt={csr.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center">
-                            <ImageIcon className="text-[#2B4C73]/30" size={48} />
+                            <ImageIcon className="text-[#171717]/30" size={48} />
                           </div>
                         )}
-                        {/* Type badge */}
                         <div className="absolute top-3 left-3">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${getEventTypeBadgeClass(csr.event_type)}`}>
                             {getEventTypeIcon(csr.event_type)}
                             {getEventTypeLabel(csr.event_type)}
                           </span>
                         </div>
-                        {/* Photo count */}
                         {photos.length > 0 && (
                           <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
                             <ImageIcon size={10} />
@@ -483,7 +469,6 @@ export default function EventsPage() {
                         )}
                       </div>
 
-                      {/* Content */}
                       <div className="p-5">
                         <h3 className="text-lg font-semibold text-[#0B0F1A] mb-2 line-clamp-1">{csr.title}</h3>
                         <div className="space-y-1 mb-3">
@@ -499,7 +484,7 @@ export default function EventsPage() {
                         <p className="text-[#6D7A8B] text-sm mb-4 line-clamp-2">{csr.description}</p>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-[#6D7A8B]">{photos.length} photo{photos.length !== 1 ? "s" : ""}</span>
-                          <span className="text-[#2B4C73] text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
+                          <span className="text-[#171717] text-sm font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
                             View Gallery <ChevronRight size={14} />
                           </span>
                         </div>
@@ -513,11 +498,7 @@ export default function EventsPage() {
         )}
       </main>
 
-      {/* ════════════════════════════════════════════════════════════════════
-          MODALS
-      ════════════════════════════════════════════════════════════════════ */}
-
-      {/* ── Regular Event Modal ── */}
+      {/* Event Modal */}
       <AnimatePresence>
         {selectedEvent && (
           <motion.div
@@ -532,7 +513,6 @@ export default function EventsPage() {
               onClick={e => e.stopPropagation()}
               className="relative bg-white rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-2xl"
             >
-              {/* Header */}
               <div className="sticky top-0 bg-white border-b border-[#E7ECF3] p-5 z-10">
                 <div className="flex items-start justify-between gap-4">
                   <h3 className="text-xl font-bold text-[#0B0F1A]">{selectedEvent.name}</h3>
@@ -542,7 +522,6 @@ export default function EventsPage() {
                 </div>
               </div>
 
-              {/* Body */}
               <div className="p-6 space-y-6">
                 {selectedEvent.image_url && (
                   <div className="h-48 rounded-xl overflow-hidden">
@@ -552,7 +531,7 @@ export default function EventsPage() {
 
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
-                    <Calendar className="text-[#2B4C73] mt-0.5 shrink-0" size={18} />
+                    <Calendar className="text-[#171717] mt-0.5 shrink-0" size={18} />
                     <div>
                       <p className="font-medium text-[#0B0F1A]">Date</p>
                       <p className="text-[#6D7A8B]">{formatDate(selectedEvent.event_date)}</p>
@@ -560,7 +539,7 @@ export default function EventsPage() {
                   </div>
                   {selectedEvent.location && (
                     <div className="flex items-start gap-3">
-                      <MapPin className="text-[#2B4C73] mt-0.5 shrink-0" size={18} />
+                      <MapPin className="text-[#171717] mt-0.5 shrink-0" size={18} />
                       <div>
                         <p className="font-medium text-[#0B0F1A]">Location</p>
                         <p className="text-[#6D7A8B]">{selectedEvent.location}</p>
@@ -569,7 +548,7 @@ export default function EventsPage() {
                   )}
                   {selectedEvent.max_attendees && (
                     <div className="flex items-start gap-3">
-                      <Users className="text-[#2B4C73] mt-0.5 shrink-0" size={18} />
+                      <Users className="text-[#171717] mt-0.5 shrink-0" size={18} />
                       <div>
                         <p className="font-medium text-[#0B0F1A]">Attendance</p>
                         <p className="text-[#6D7A8B]">{selectedEvent.current_attendees} / {selectedEvent.max_attendees} registered</p>
@@ -583,19 +562,18 @@ export default function EventsPage() {
                   <p className="text-[#6D7A8B] leading-relaxed">{selectedEvent.description}</p>
                 </div>
 
-                {/* Pricing box */}
-                <div className="bg-[#E8F4FD] p-4 rounded-xl border border-[#2B4C73]/20">
+                <div className="bg-[#F5F5F5] p-4 rounded-xl border border-[#E7ECF3]">
                   <h4 className="font-semibold text-[#0B0F1A] mb-3 flex items-center gap-2">
-                    <Ticket size={16} className="text-[#2B4C73]" /> Pricing
+                    <Ticket size={16} className="text-[#171717]" /> Pricing
                   </h4>
                   <div className="space-y-2 mb-4">
                     <div className="flex justify-between">
                       <span className="text-[#6D7A8B]">General</span>
-                      <span className="font-bold text-[#0B0F1A]">Ksh {selectedEvent.price.toLocaleString()}</span>
+                      <span className="font-bold text-[#171717]">Ksh {selectedEvent.price.toLocaleString()}</span>
                     </div>
                     {selectedEvent.member_discount > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-[#6D7A8B]">CHRMAA Members</span>
+                        <span className="text-[#6D7A8B]">Alumni Members</span>
                         <span className="font-bold text-[#FF7A00]">
                           Ksh {(selectedEvent.price - selectedEvent.member_discount).toLocaleString()}
                           <span className="ml-1 text-xs font-normal">(save Ksh {selectedEvent.member_discount.toLocaleString()})</span>
@@ -604,7 +582,7 @@ export default function EventsPage() {
                     )}
                   </div>
                   <Link href={`/events/register/${selectedEvent.id}`}
-                    className="block w-full px-4 py-3 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white font-medium rounded-lg hover:opacity-90 text-center">
+                    className="block w-full px-4 py-3 bg-[#171717] text-white font-medium rounded-lg hover:bg-[#333333] text-center">
                     Register Now
                   </Link>
                 </div>
@@ -614,7 +592,7 @@ export default function EventsPage() {
         )}
       </AnimatePresence>
 
-      {/* ── CSR Gallery Modal ── */}
+      {/* CSR Modal */}
       <AnimatePresence>
         {selectedCSR && (() => {
           const photos = allPhotos(selectedCSR);
@@ -631,7 +609,6 @@ export default function EventsPage() {
                 onClick={e => e.stopPropagation()}
                 className="relative bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
               >
-                {/* Header */}
                 <div className="sticky top-0 bg-white border-b border-[#E7ECF3] p-5 z-10">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -647,16 +624,12 @@ export default function EventsPage() {
                   </div>
                 </div>
 
-                {/* Body */}
                 <div className="p-6">
                   <div className="grid lg:grid-cols-3 gap-6">
-
-                    {/* Gallery */}
                     <div className="lg:col-span-2">
                       {photos.length > 0 ? (
                         <>
-                          {/* Main image */}
-                          <div className="relative h-80 md:h-[420px] bg-[#F7F9FC] rounded-xl overflow-hidden mb-3">
+                          <div className="relative h-80 md:h-[420px] bg-[#F5F5F5] rounded-xl overflow-hidden mb-3">
                             <AnimatePresence mode="wait">
                               <motion.img
                                 key={currentSlide}
@@ -668,7 +641,6 @@ export default function EventsPage() {
                               />
                             </AnimatePresence>
 
-                            {/* Prev / Next */}
                             {photos.length > 1 && (
                               <>
                                 <button
@@ -681,7 +653,6 @@ export default function EventsPage() {
                                   className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition">
                                   <ChevronRightIcon size={20} />
                                 </button>
-                                {/* Dots */}
                                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
                                   {photos.map((_, i) => (
                                     <button key={i} onClick={e => { e.stopPropagation(); setCurrentSlide(i); }}
@@ -691,26 +662,23 @@ export default function EventsPage() {
                               </>
                             )}
 
-                            {/* Counter */}
                             <div className="absolute top-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
                               {currentSlide + 1} / {photos.length}
                             </div>
                           </div>
 
-                          {/* Caption */}
                           {photos[currentSlide].caption && (
                             <p className="text-center text-sm text-[#6D7A8B] mb-3">
                               {photos[currentSlide].caption}
                             </p>
                           )}
 
-                          {/* Thumbnails */}
                           {photos.length > 1 && (
                             <div className="grid grid-cols-5 md:grid-cols-7 gap-1.5">
                               {photos.map((photo, i) => (
                                 <button key={photo.id} onClick={() => setCurrentSlide(i)}
                                   className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                                    i === currentSlide ? "border-[#2B4C73] ring-1 ring-[#2B4C73]" : "border-transparent hover:border-[#6D7A8B]"}`}>
+                                    i === currentSlide ? "border-[#171717] ring-1 ring-[#171717]" : "border-transparent hover:border-[#6D7A8B]"}`}>
                                   <img src={photo.image_url} alt={`Thumb ${i + 1}`} className="w-full h-full object-cover" />
                                 </button>
                               ))}
@@ -718,7 +686,7 @@ export default function EventsPage() {
                           )}
                         </>
                       ) : (
-                        <div className="flex items-center justify-center h-64 bg-[#F7F9FC] rounded-xl">
+                        <div className="flex items-center justify-center h-64 bg-[#F5F5F5] rounded-xl">
                           <div className="text-center">
                             <ImageIcon className="mx-auto mb-2 text-[#E7ECF3]" size={48} />
                             <p className="text-[#6D7A8B] text-sm">No photos available</p>
@@ -727,9 +695,8 @@ export default function EventsPage() {
                       )}
                     </div>
 
-                    {/* Sidebar */}
                     <div className="lg:col-span-1 space-y-4">
-                      <div className="bg-[#F7F9FC] rounded-xl p-5">
+                      <div className="bg-[#F7F9FC] rounded-xl p-5 border border-[#E7ECF3]">
                         <div className="flex items-center gap-2 mb-4">
                           {getEventTypeIcon(selectedCSR.event_type)}
                           <span className="font-semibold text-[#0B0F1A]">{getEventTypeLabel(selectedCSR.event_type)}</span>
@@ -750,8 +717,8 @@ export default function EventsPage() {
                         </div>
                       </div>
 
-                      <div className="bg-[#E8F4FD] rounded-xl p-5 border border-[#2B4C73]/20">
-                        <h4 className="font-semibold text-[#2B4C73] mb-2">About this event</h4>
+                      <div className="bg-[#F5F5F5] rounded-xl p-5 border border-[#E7ECF3]">
+                        <h4 className="font-semibold text-[#171717] mb-2">About this event</h4>
                         <p className="text-[#6D7A8B] text-sm leading-relaxed">{selectedCSR.description}</p>
                       </div>
                     </div>

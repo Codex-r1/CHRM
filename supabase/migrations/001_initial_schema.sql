@@ -555,10 +555,10 @@ CREATE POLICY "Admins only for email logs" ON public.email_logs FOR ALL USING (p
 
 -- Insert Products
 INSERT INTO public.products (name, slug, description, base_price, category, is_active, sort_order) VALUES
-('T-Shirt', 't-shirt', 'Premium cotton CHRMAA t-shirt with embroidered logo', 1000, 'tshirt', true, 1),
-('Polo Shirt', 'polo-shirt', 'Professional CHRMAA polo shirt with embroidered logo', 1500, 'polo', true, 2),
-('Hoodie', 'hoodie', 'Comfortable CHRMAA hoodie with embroidered logo', 1800, 'hoodie', true, 3),
-('Lapel Pin', 'lapel-pin', 'Elegant CHRMAA lapel pin for formal occasions', 1000, 'accessory', true, 4)
+('T-Shirt', 't-shirt', 'Premium cotton     t-shirt with embroidered logo', 1000, 'tshirt', true, 1),
+('Polo Shirt', 'polo-shirt', 'Professional     polo shirt with embroidered logo', 1500, 'polo', true, 2),
+('Hoodie', 'hoodie', 'Comfortable     hoodie with embroidered logo', 1800, 'hoodie', true, 3),
+('Lapel Pin', 'lapel-pin', 'Elegant     lapel pin for formal occasions', 1000, 'accessory', true, 4)
 ON CONFLICT (slug) DO NOTHING;
 
 -- Insert T-Shirt Variants
@@ -641,10 +641,10 @@ BEGIN
   
   -- Red Polos
   INSERT INTO public.product_variants (product_id, color_name, color_value, color_hex, size, stock_quantity, sku, image_url, is_available) VALUES
-  (polo_id, 'Red', 'red', '#dc2626', 'S', 14, 'POL-RED-S', '/chrmred polo.jpeg', true),
-  (polo_id, 'Red', 'red', '#dc2626', 'M', 18, 'POL-RED-M', '/chrmred polo.jpeg', true),
-  (polo_id, 'Red', 'red', '#dc2626', 'L', 12, 'POL-RED-L', '/chrmred polo.jpeg', true),
-  (polo_id, 'Red', 'red', '#dc2626', 'XL', 8, 'POL-RED-XL', '/chrmred polo.jpeg', true);
+  (polo_id, 'Red', 'red', '#dc2626', 'S', 14, 'POL-RED-S', '/ red polo.jpeg', true),
+  (polo_id, 'Red', 'red', '#dc2626', 'M', 18, 'POL-RED-M', '/ red polo.jpeg', true),
+  (polo_id, 'Red', 'red', '#dc2626', 'L', 12, 'POL-RED-L', '/ red polo.jpeg', true),
+  (polo_id, 'Red', 'red', '#dc2626', 'XL', 8, 'POL-RED-XL', '/ red polo.jpeg', true);
   
   -- Gray Polos
   INSERT INTO public.product_variants (product_id, color_name, color_value, color_hex, size, stock_quantity, sku, image_url, is_available) VALUES

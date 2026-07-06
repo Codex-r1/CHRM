@@ -1,3 +1,4 @@
+// app/api/products/list/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
       'Surrogate-Control': 'no-store'
     };
 
-    // Fetch all active products with their variants
+    // Fetch all products - ONLY columns that exist in your table
     const { data: products, error: productsError } = await supabase
       .from('products')
       .select(`
@@ -25,13 +26,9 @@ export async function GET(request: NextRequest) {
         description,
         base_price,
         category,
-        is_active,
-        is_out_of_stock,
-        featured_image_url,
-        sort_order
+        is_out_of_stock
       `)
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true });
+      .order('name', { ascending: true }); // Using name instead of sort_order
 
     if (productsError) {
       console.error('Error fetching products:', productsError);
@@ -41,7 +38,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch variants for all products
+    // Fetch variants for all products - ONLY columns that exist
     const { data: variants, error: variantsError } = await supabase
       .from('product_variants')
       .select(`
@@ -53,8 +50,7 @@ export async function GET(request: NextRequest) {
         size,
         stock_quantity,
         is_available,
-        image_url,
-        price_adjustment
+        image_url
       `)
       .order('color_name', { ascending: true });
 
@@ -66,11 +62,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Combine products with their variants
-    const productsWithVariants = products.map(product => ({
-      ...product,
-      variants: variants?.filter(v => v.product_id === product.id) || []
-    }));
+    // Transform data to match frontend expectations
+    const productsWithVariants = products.map(product => {
+      const productVariants = variants?.filter(v => v.product_id === product.id) || [];
+      
+      return {
+        id: product.id,
+        name: product.name,
+        slug: product.slug,
+        description: product.description || '',
+        base_price: product.base_price,
+        category: product.category,
+        is_out_of_stock: product.is_out_of_stock || false,
+        variants: productVariants.map((variant: any) => ({
+          id: variant.id,
+          color_name: variant.color_name,
+          color_value: variant.color_value,
+          color_hex: variant.color_hex,
+          size: variant.size,
+          stock_quantity: variant.stock_quantity || 0,
+          is_available: variant.is_available !== false,
+          image_url: variant.image_url,
+        })),
+      };
+    });
+
+    console.log(`✅ Found ${productsWithVariants.length} products with variants`);
 
     return NextResponse.json({
       success: true,

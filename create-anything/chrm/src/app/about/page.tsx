@@ -104,11 +104,10 @@ export default function AboutPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen bg-[#F7F9FC] light:bg-[#fff] transition-colors duration-200"
+      className="min-h-screen bg-[#F7F9FC]"
     >
       <Header />
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-12 space-y-8">
         {/* Mission & Vision Section */}
         <motion.section
@@ -116,7 +115,7 @@ export default function AboutPage() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeIn}
-          className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
+          className="bg-white p-8 md:p-12 rounded-2xl border border-[#E7ECF3] shadow-sm"
         >
           <motion.div
             variants={fadeUp}
@@ -127,16 +126,16 @@ export default function AboutPage() {
           >
             <motion.h2
               variants={fadeUp}
-              className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200"
+              className="font-poppins font-bold text-3xl md:text-4xl text-[#0B0F1A] mb-6"
             >
-              About CHRM Alumni Association
+              About Alumni Association
             </motion.h2>
             <motion.p
               variants={fadeUp}
               transition={{ delay: 0.1 }}
-              className="font-poppins text-lg text-[#000] dark:text-[#000] leading-relaxed max-w-4xl mx-auto transition-colors duration-200"
+              className="font-poppins text-lg text-[#6D7A8B] leading-relaxed max-w-4xl mx-auto"
             >
-              CHRMAA was established to provide the Alumni/graduates a platform for
+              It was established to provide the Alumni/graduates a platform for
               networking and mentorship as well as promote the growth of the college.
             </motion.p>
           </motion.div>
@@ -150,8 +149,8 @@ export default function AboutPage() {
           >
             <motion.div
               variants={scaleIn}
-              whileHover="hover"
-              className="text-center p-6 bg-[#E8F4FD] dark:bg-[#1A2F42] rounded-lg transition-colors duration-200"
+              whileHover={{ y: -8 }}
+              className="text-center p-6 bg-[#F7F9FC] rounded-xl border border-[#E7ECF3] transition-all duration-200"
             >
               <motion.div
                 variants={iconAnimation}
@@ -159,7 +158,7 @@ export default function AboutPage() {
                 whileInView="visible"
                 viewport={{ once: true }}
                 whileHover="hover"
-                className="w-16 h-16 bg-[#2B4C73] text-white rounded-full flex items-center justify-center mx-auto mb-4"
+                className="w-16 h-16 bg-[#171717] text-white rounded-full flex items-center justify-center mx-auto mb-4"
               >
                 <Target size={24} />
               </motion.div>
@@ -168,7 +167,7 @@ export default function AboutPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className="font-poppins font-bold text-xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-4 transition-colors duration-200"
+                className="font-poppins font-bold text-xl text-[#0B0F1A] mb-4"
               >
                 Our Mission
               </motion.h3>
@@ -178,7 +177,7 @@ export default function AboutPage() {
                 whileInView="visible"
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="font-poppins text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
+                className="font-poppins text-[#6D7A8B]"
               >
                 "To establish and enhance mutually beneficial and enduring
                 relationship between the alumni, students and college fraternity."
@@ -187,8 +186,8 @@ export default function AboutPage() {
 
             <motion.div
               variants={scaleIn}
-              whileHover="hover"
-              className="text-center p-6 bg-[#FFF4E6] dark:bg-[#3D2B1A] rounded-lg transition-colors duration-200"
+              whileHover={{ y: -8 }}
+              className="text-center p-6 bg-[#FFF4E6] rounded-xl border border-[#FF7A00]/20 transition-all duration-200"
             >
               <motion.div
                 variants={iconAnimation}
@@ -205,7 +204,7 @@ export default function AboutPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className="font-poppins font-bold text-xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-4 transition-colors duration-200"
+                className="font-poppins font-bold text-xl text-[#0B0F1A] mb-4"
               >
                 Our Vision
               </motion.h3>
@@ -215,7 +214,7 @@ export default function AboutPage() {
                 whileInView="visible"
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="font-poppins text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
+                className="font-poppins text-[#6D7A8B]"
               >
                 "Be the model alumni association in the region."
               </motion.p>
@@ -223,8 +222,8 @@ export default function AboutPage() {
 
             <motion.div
               variants={scaleIn}
-              whileHover="hover"
-              className="text-center p-6 bg-[#FFF0F0] dark:bg-[#3D1A1A] rounded-lg transition-colors duration-200"
+              whileHover={{ y: -8 }}
+              className="text-center p-6 bg-[#FFF0F0] rounded-xl border border-[#E53E3E]/20 transition-all duration-200"
             >
               <motion.div
                 variants={iconAnimation}
@@ -241,7 +240,7 @@ export default function AboutPage() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className="font-poppins font-bold text-xl text-[#0B0F1A] dark:text-[#E5E7EB] mb-4 transition-colors duration-200"
+                className="font-poppins font-bold text-xl text-[#0B0F1A] mb-4"
               >
                 Key Functions
               </motion.h3>
@@ -251,7 +250,7 @@ export default function AboutPage() {
                 whileInView="visible"
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="font-poppins text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
+                className="font-poppins text-[#6D7A8B]"
               >
                 Advising college management, linking students to employment,
                 providing mentorship, facilitating networking, and supporting
@@ -267,7 +266,7 @@ export default function AboutPage() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeIn}
-          className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
+          className="bg-white p-8 md:p-12 rounded-2xl border border-[#E7ECF3] shadow-sm"
         >
           <motion.div
             variants={fadeUp}
@@ -278,14 +277,14 @@ export default function AboutPage() {
           >
             <motion.h2
               variants={fadeUp}
-              className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200"
+              className="font-poppins font-bold text-3xl md:text-4xl text-[#0B0F1A] mb-6"
             >
               Our Strategic Goals
             </motion.h2>
             <motion.p
               variants={fadeUp}
               transition={{ delay: 0.1 }}
-              className="font-poppins text-lg text-[#000] dark:text-[#000] max-w-4xl mx-auto transition-colors duration-200"
+              className="font-poppins text-lg text-[#6D7A8B] max-w-4xl mx-auto"
             >
               Four key pillars that guide our association's growth and impact
             </motion.p>
@@ -303,36 +302,36 @@ export default function AboutPage() {
                 icon: Users,
                 title: "Grow Membership",
                 description: "Active & engaged paid up members",
-                bgColor: "bg-[#E8F4FD] dark:bg-[#1A2F42]",
-                iconColor: "bg-[#2B4C73]"
+                bgColor: "bg-[#F7F9FC]",
+                iconColor: "bg-[#171717]"
               },
               {
                 icon: DollarSign,
                 title: "Generate Revenue",
                 description: "Financial Stability & Sustainability",
-                bgColor: "bg-[#FFF4E6] dark:bg-[#3D2B1A]",
+                bgColor: "bg-[#FFF4E6]",
                 iconColor: "bg-[#FF7A00]"
               },
               {
                 icon: TrendingUp,
                 title: "Leadership Development",
                 description: "Strong Alumni Leadership",
-                bgColor: "bg-[#FFF0F0] dark:bg-[#3D1A1A]",
+                bgColor: "bg-[#FFF0F0]",
                 iconColor: "bg-[#E53E3E]"
               },
               {
                 icon: Handshake,
                 title: "Engage & Build Relationships",
                 description: "Strong Partnerships & Collaborations with Stakeholders",
-                bgColor: "bg-[#E8F4FD] dark:bg-[#1A2F42]",
-                iconColor: "bg-[#2B4C73]"
+                bgColor: "bg-[#F7F9FC]",
+                iconColor: "bg-[#171717]"
               }
             ].map((goal, index) => (
               <motion.div
                 key={index}
                 variants={scaleIn}
-                whileHover="hover"
-                className={`text-center p-6 ${goal.bgColor} rounded-lg transition-colors duration-200`}
+                whileHover={{ y: -8 }}
+                className={`text-center p-6 ${goal.bgColor} rounded-xl border border-[#E7ECF3] transition-all duration-200`}
               >
                 <motion.div
                   variants={iconAnimation}
@@ -349,7 +348,7 @@ export default function AboutPage() {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  className="font-poppins font-bold text-lg text-[#0B0F1A] dark:text-[#E5E7EB] mb-3 transition-colors duration-200"
+                  className="font-poppins font-bold text-lg text-[#0B0F1A] mb-3"
                 >
                   {goal.title}
                 </motion.h3>
@@ -359,7 +358,7 @@ export default function AboutPage() {
                   whileInView="visible"
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
-                  className="font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
+                  className="font-poppins text-sm text-[#6D7A8B]"
                 >
                   {goal.description}
                 </motion.p>
@@ -374,7 +373,7 @@ export default function AboutPage() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeIn}
-          className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
+          className="bg-white p-8 md:p-12 rounded-2xl border border-[#E7ECF3] shadow-sm"
         >
           <motion.div
             variants={fadeUp}
@@ -385,16 +384,16 @@ export default function AboutPage() {
           >
             <motion.h2
               variants={fadeUp}
-              className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200"
+              className="font-poppins font-bold text-3xl md:text-4xl text-[#0B0F1A] mb-6"
             >
               Our Core Values
             </motion.h2>
             <motion.p
               variants={fadeUp}
               transition={{ delay: 0.1 }}
-              className="font-poppins text-lg text-[#000] dark:text-[#000] transition-colors duration-200"
+              className="font-poppins text-lg text-[#6D7A8B]"
             >
-              These principles guide all CHRMAA operations and reflect our
+              These principles guide all alumni operations and reflect our
               aspiration to be the Alumni Association of choice in the region.
             </motion.p>
           </motion.div>
@@ -411,36 +410,36 @@ export default function AboutPage() {
                 icon: Users,
                 title: "Relational",
                 description: "Building and maintaining strong relationships with students, staff, alumni, and stakeholders.",
-                bgColor: "bg-[#E8F4FD] dark:bg-[#1A2F42]",
-                iconColor: "bg-[#2B4C73]"
+                bgColor: "bg-[#F7F9FC]",
+                iconColor: "bg-[#171717]"
               },
               {
                 icon: Award,
                 title: "Empower",
                 description: "Providing opportunities for skill development, mentorship, and leadership growth.",
-                bgColor: "bg-[#FFF4E6] dark:bg-[#3D2B1A]",
+                bgColor: "bg-[#FFF4E6]",
                 iconColor: "bg-[#FF7A00]"
               },
               {
                 icon: Target,
                 title: "Professionalism",
                 description: "Promoting ethical conduct, accountability, and high standards.",
-                bgColor: "bg-[#FFF0F0] dark:bg-[#3D1A1A]",
+                bgColor: "bg-[#FFF0F0]",
                 iconColor: "bg-[#E53E3E]"
               },
               {
                 icon: Network,
                 title: "Create Value",
                 description: "Focusing on innovation, creativity, and research that benefits society.",
-                bgColor: "bg-[#E8F4FD] dark:bg-[#1A2F42]",
-                iconColor: "bg-[#2B4C73]"
+                bgColor: "bg-[#F7F9FC]",
+                iconColor: "bg-[#171717]"
               }
             ].map((value, index) => (
               <motion.div
                 key={index}
                 variants={scaleIn}
-                whileHover="hover"
-                className={`text-center p-6 ${value.bgColor} rounded-lg transition-colors duration-200`}
+                whileHover={{ y: -8 }}
+                className={`text-center p-6 ${value.bgColor} rounded-xl border border-[#E7ECF3] transition-all duration-200`}
               >
                 <motion.div
                   variants={iconAnimation}
@@ -457,7 +456,7 @@ export default function AboutPage() {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  className="font-poppins font-bold text-lg text-[#0B0F1A] dark:text-[#E5E7EB] mb-3 transition-colors duration-200"
+                  className="font-poppins font-bold text-lg text-[#0B0F1A] mb-3"
                 >
                   {value.title}
                 </motion.h3>
@@ -467,7 +466,7 @@ export default function AboutPage() {
                   whileInView="visible"
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
-                  className="font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200"
+                  className="font-poppins text-sm text-[#6D7A8B]"
                 >
                   {value.description}
                 </motion.p>
@@ -476,13 +475,13 @@ export default function AboutPage() {
           </motion.div>
         </motion.section>
 
-        {/* Officials Section - Now fetching from database */}
+        {/* Officials Section */}
         <motion.section
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.2 }}
           variants={fadeIn}
-          className="bg-white light:bg-[#fff] p-8 md:p-12 transition-colors duration-200"
+          className="bg-white p-8 md:p-12 rounded-2xl border border-[#E7ECF3] shadow-sm"
         >
           <motion.div
             variants={fadeUp}
@@ -493,14 +492,14 @@ export default function AboutPage() {
           >
             <motion.h2
               variants={fadeUp}
-              className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200"
+              className="font-poppins font-bold text-3xl md:text-4xl text-[#0B0F1A] mb-6"
             >
-              Officials of CHRMAA
+              Alumni Officials
             </motion.h2>
             <motion.p
               variants={fadeUp}
               transition={{ delay: 0.1 }}
-              className="font-poppins text-lg text-[#000] dark:text-[#000] transition-colors duration-200"
+              className="font-poppins text-lg text-[#6D7A8B]"
             >
               Meet the dedicated professionals who lead our alumni association
             </motion.p>
@@ -508,7 +507,7 @@ export default function AboutPage() {
 
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2B4C73]"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#171717]"></div>
             </div>
           ) : (
             <motion.div
@@ -522,11 +521,10 @@ export default function AboutPage() {
                 <motion.div
                   key={official.id}
                   variants={scaleIn}
-                  whileHover={{ scale: 1.03 }}
+                  whileHover={{ y: -8 }}
                   className="flex flex-col items-center"
                 >
-                  {/* Image Card */}
-                  <div className="relative w-full h-[320px] rounded-xl overflow-hidden shadow-lg">
+                  <div className="relative w-full h-[320px] rounded-xl overflow-hidden shadow-lg border border-[#E7ECF3]">
                     <img
                       src={official.image_url}
                       alt={official.name}
@@ -537,13 +535,11 @@ export default function AboutPage() {
                       }}
                     />
                   </div>
-
-                  {/* Name + Position BELOW image */}
                   <div className="mt-4 text-center">
                     <h3 className="font-poppins font-bold text-lg text-[#0B0F1A]">
                       {official.name}
                     </h3>
-                    <p className="font-poppins text-sm text-[#2B4C73] font-semibold mt-1">
+                    <p className="font-poppins text-sm text-[#FF7A00] font-semibold mt-1">
                       {official.position}
                     </p>
                   </div>
@@ -566,7 +562,7 @@ export default function AboutPage() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
           variants={fadeIn}
-          className="bg-gradient-to-r from-[#fff] to-[#FFF] rounded-xl p-8 md:p-12 transition-colors duration-200"
+          className="bg-white p-8 md:p-12 rounded-2xl border border-[#E7ECF3] shadow-sm"
         >
           <motion.div
             variants={fadeUp}
@@ -577,7 +573,7 @@ export default function AboutPage() {
           >
             <motion.h2
               variants={fadeUp}
-              className="font-poppins font-bold text-3xl md:text-4xl text-[#000] dark:text-[#000] mb-6 transition-colors duration-200"
+              className="font-poppins font-bold text-3xl md:text-4xl text-[#0B0F1A] mb-6"
             >
               Our Journey
             </motion.h2>
@@ -595,9 +591,9 @@ export default function AboutPage() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true }}
-              className="font-poppins text-lg text-[#000] dark:text-[#000] mb-6 leading-relaxed transition-colors duration-200"
+              className="font-poppins text-lg text-[#6D7A8B] mb-6 leading-relaxed"
             >
-              Since our establishment, the CHRM Alumni Association has grown
+              Since our establishment, the Alumni Association has grown
               from a small group of passionate HR professionals to a thriving
               network of over 1,000 members across the country. Our alumni have
               gone on to lead major organizations, start successful
@@ -611,7 +607,7 @@ export default function AboutPage() {
               whileInView="visible"
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="font-poppins text-lg text-[#000] dark:text-[#000] mb-8 leading-relaxed transition-colors duration-200"
+              className="font-poppins text-lg text-[#6D7A8B] mb-8 leading-relaxed"
             >
               Through our events, workshops, and networking opportunities, we
               continue to strengthen the bonds between our members and provide
@@ -628,28 +624,28 @@ export default function AboutPage() {
               className="grid md:grid-cols-4 gap-6 text-center"
             >
               {[
-                { value: "1,000+", label: "Alumni Members", color: "text-[#2B4C73]" },
+                { value: "1,000+", label: "Alumni Members", color: "text-[#171717]" },
                 { value: "10+", label: "Programs Offered", color: "text-[#FF7A00]" },
                 { value: "10+", label: "Years of Excellence", color: "text-[#E53E3E]" },
-                { value: "95%", label: "Career Growth", color: "text-[#2B4C73]" }
+                { value: "95%", label: "Career Growth", color: "text-[#171717]" }
               ].map((stat, index) => (
                 <motion.div
                   key={index}
                   variants={scaleIn}
                   whileHover={{ scale: 1.05, y: -5 }}
                   transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className="bg-white/50 dark:bg-black/20 p-6 rounded-lg"
+                  className="bg-[#F7F9FC] p-6 rounded-xl border border-[#E7ECF3]"
                 >
                   <motion.div
                     variants={statAnimation}
                     initial="hidden"
                     whileInView="visible"
                     viewport={{ once: true }}
-                    className={`font-poppins font-bold text-3xl ${stat.color} transition-colors duration-200`}
+                    className={`font-poppins font-bold text-3xl ${stat.color}`}
                   >
                     {stat.value}
                   </motion.div>
-                  <div className="font-poppins text-sm text-[#6D7A8B] dark:text-[#9CA3AF] transition-colors duration-200">
+                  <div className="font-poppins text-sm text-[#6D7A8B]">
                     {stat.label}
                   </div>
                 </motion.div>
@@ -661,14 +657,11 @@ export default function AboutPage() {
         <Footer />
       </main>
 
-      {/* Global styles */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-        
         .font-poppins {
           font-family: 'Poppins', sans-serif;
         }
-        
         html {
           scroll-behavior: smooth;
         }
