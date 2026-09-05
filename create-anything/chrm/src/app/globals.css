@@ -1,12 +1,18 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #0f172a; /* dark slate (Tailwind slate-900) */
-}
+@layer base {
+  :root {
+    --maroon: #800020;
+    --navy: #1B3A6B;
+    --gold: #C9A84C;
+    --white: #FFFFFF;
+  }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-poppins), system-ui, sans-serif;
+  body, p, span, a, button, input, label {
+    font-family: var(--font-montserrat), sans-serif !important;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-playfair), Georgia, serif !important;
+  }
 }

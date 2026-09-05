@@ -10,7 +10,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         
-        poppins: ['var(--font-poppins)', 'Poppins', 'sans-serif'],
+        poppins: ['var(--font-montserrat)', 'Poppins', 'sans-serif'],
       },
     },
   },

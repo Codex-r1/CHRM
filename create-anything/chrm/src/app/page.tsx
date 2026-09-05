@@ -1,503 +1,229 @@
 "use client";
-import Header from "./components/Header";
-import Footer from "./components/Footer";
-import { Users, Calendar, ShoppingBag, Award, ArrowRight, Target, Handshake, GraduationCap, Sparkles, Network } from "lucide-react";
+import Header from "./(frontend)/components/Header";
+import Footer from "./(frontend)/components/Footer";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import type { Variants } from "framer-motion";
-
-// Animation Variants
-const fadeUp: Variants = {
-  hidden: {
-    opacity: 0,
-    y: 40,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.8,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-};
-
-const fadeIn: Variants = {
-  hidden: {
-    opacity: 0,
-  },
-  visible: {
-    opacity: 1,
-    transition: {
-      duration: 0.6,
-    },
-  },
-};
-
-const scaleIn: Variants = {
-  hidden: {
-    opacity: 0,
-    scale: 0.8,
-  },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: {
-      duration: 0.7,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-};
-
-const staggerContainer: Variants = {
-  hidden: {},
-  visible: {
-    transition: {
-      staggerChildren: 0.15,
-    },
-  },
-};
-
-const floatAnimation = {
-  y: [0, -15, 0],
-  transition: {
-    duration: 3,
-    repeat: Infinity as number,
-    ease: "easeInOut" as const
-  }
-};
-
-const pulseAnimation = {
-  scale: [1, 1.05, 1],
-  transition: {
-    duration: 2,
-    repeat: Infinity as number,
-    ease: "easeInOut" as const
-  }
-};
-
-const glowAnimation = {
-  boxShadow: [
-    "0 0 0px rgba(23, 23, 23, 0)",
-    "0 0 25px rgba(23, 23, 23, 0.3)",
-    "0 0 0px rgba(23, 23, 23, 0)"
-  ],
-  transition: {
-    duration: 2.5,
-    repeat: Infinity as number,
-    ease: "easeInOut" as const
-  }
-};
-
-// Hover effects
-const iconHover = {
-  scale: 1.15,
-  rotate: 5,
-  transition: {
-    type: "spring" as const,
-    stiffness: 400,
-    damping: 10,
-  },
-};
-
-const cardHover = {
-  scale: 1.05,
-  y: -12,
-  boxShadow: "0 25px 50px rgba(0, 0, 0, 0.1)",
-  borderColor: "#171717",
-  transition: {
-    type: "spring" as const,
-    stiffness: 300,
-    damping: 20,
-  },
-};
-
-const buttonHover = {
-  scale: 1.05,
-  y: -3,
-  boxShadow: "0 12px 30px rgba(0, 0, 0, 0.2)",
-  transition: {
-    type: "spring" as const,
-    stiffness: 400,
-    damping: 15,
-  },
-};
-
-const buttonTap = {
-  scale: 0.95,
-};
+import { ArrowRight, BookOpen, Globe, Shield, Calendar, ShoppingBag } from "lucide-react";
 
 export default function HomePage() {
-  const features = [
-    {
-      icon: Users,
-      title: "Networking",
-      description: "Connect with fellow professionals and expand your network across industries.",
-      iconColor: "bg-gray-900",
-      iconTextColor: "text-white",
-      bgColor: "bg-gray-50",
-      textColor: "text-gray-900"
-    },
-    {
-      icon: Handshake,
-      title: "Mentorship",
-      description: "Access experienced mentors for career guidance and professional growth.",
-      iconColor: "bg-gray-800",
-      iconTextColor: "text-white",
-      bgColor: "bg-gray-50",
-      textColor: "text-gray-900"
-    },
-    {
-      icon: GraduationCap,
-      title: "Career Growth",
-      description: "Enjoy 5% discount on all   programs and trainings, helping you continue your professional development at a reduced cost.",
-      iconColor: "bg-gray-700",
-      iconTextColor: "text-white",
-      bgColor: "bg-gray-50",
-      textColor: "text-gray-900"
-    },
-    {
-      icon: Calendar,
-      title: "Events",
-      description: "Attend exclusive alumni events and workshops.",
-      iconColor: "bg-gray-900",
-      iconTextColor: "text-white",
-      bgColor: "bg-gray-50",
-      textColor: "text-gray-900"
-    }
+  const stats = [
+    { value: "4,500+", label: "Global Old Turians" },
+    { value: "38", label: "Countries Represented" },
+    { value: "1931", label: "Year Established" },
   ];
 
-  const stats = [
-    { value: "500+", label: "Active Members", icon: Users },
-    { value: "20+", label: "Events Yearly", icon: Calendar },
-    { value: "10+", label: "Years Strong", icon: Target },
-    { value: "98%", label: "Satisfaction", icon: Award }
+  const Pillars = [
+    {
+      title: "Global Network",
+      description:
+        "Connecting Old Turians across East Africa, the UK, North America, and worldwide through dedicated regional chapters.",
+      icon: Globe,
+      link: "/member/dashboard/profile/edit",
+      linkText: "Explore Directory",
+    },
+    {
+      title: "Enduring Heritage",
+      description:
+        "Preserving ninety-five years of tradition, excellence, and the foundational values of St Andrew's School, Turi.",
+      icon: Shield,
+      link: "/about",
+      linkText: "Our History",
+    },
+    {
+      title: "Global Events & Reunions",
+      description:
+        "Annual gatherings, regional dinners, and milestone reunions hosted in Nairobi, London, and on the Turi campus.",
+      icon: Calendar,
+      link: "/events",
+      linkText: "Upcoming Events",
+    },
+    {
+      title: "Official Memorabilia",
+      description:
+        "Tailored blazers, crest ties, and archival publications dispatchable worldwide via DHL international shipping.",
+      icon: ShoppingBag,
+      link: "/merchandise",
+      linkText: "Visit Store",
+    },
   ];
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="min-h-screen bg-white flex flex-col font-poppins overflow-hidden"
-    >
+    <div className="flex min-h-screen flex-col bg-white text-[#1B3A6B]">
       <Header />
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative bg-gray-50 py-20 px-4 overflow-hidden">
-          {/* Background Elements */}
-          <motion.div 
-            animate={{ rotate: 360 }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="absolute top-10 left-10 w-32 h-32 bg-gray-200/50 rounded-full blur-xl"
-          />
-          <motion.div 
-            animate={{ rotate: -360 }}
-            transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-            className="absolute bottom-10 right-10 w-40 h-40 bg-gray-300/40 rounded-full blur-xl"
-          />
-          
-          <div className="max-w-7xl mx-auto text-center relative z-10">
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-            >
-          
-              <motion.h1
-                variants={fadeUp}
-                className="text-4xl md:text-6xl font-bold text-gray-900 mb-6 font-poppins leading-tight"
-              >
-                Welcome to our{" "}
-                <span className="relative inline-block">
-                  <span className="relative z-10">Alumni</span>  
-                </span>
-                <br />
-                <span className="text-gray-900">
-                  Association
-                </span>
-              </motion.h1>
-              
-              <motion.p
-                variants={fadeUp}
-                transition={{ delay: 0.1 }}
-                className="text-xl text-gray-500 mb-8 max-w-3xl mx-auto leading-relaxed"
-              >
-                Connecting professionals, fostering growth, and building
-                lasting relationships among alumni.
-              </motion.p>
-              
-              <motion.div
-                variants={staggerContainer}
-                className="flex flex-col sm:flex-row gap-4 justify-center"
-              >
-                <motion.div
-                  variants={fadeUp}
-                  whileHover={buttonHover}
-                  whileTap={buttonTap}
-                >
-                  <Link
-                    href="/payments"
-                    className="group inline-flex items-center gap-2 px-8 py-4 bg-gray-900 text-white font-bold rounded-lg hover:shadow-xl transition-all duration-300 text-lg"
-                  >
-                    Join the Association
-                    <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
-                  </Link>
-                </motion.div>
-                <motion.div
-                  variants={fadeUp}
-                  transition={{ delay: 0.1 }}
-                  whileHover={buttonHover}
-                  whileTap={buttonTap}
-                >
-                  <Link
-                    href="/about"
-                    className="group inline-flex items-center gap-2 px-8 py-4 bg-white text-gray-900 border-2 border-gray-900 font-bold rounded-lg hover:bg-gray-900 hover:text-white transition-all duration-300 text-lg"
-                  >
-                    Learn More
-                    <ArrowRight className="group-hover:translate-x-1 transition-transform" size={20} />
-                  </Link>
-                </motion.div>
-              </motion.div>
-            </motion.div>
-          </div>
-        </section>
+        {/* HERO SECTION */}
+<section className="relative h-[75vh] min-h-[540px] w-full bg-[url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center">
+  {/* Anchored Crimson/Maroon Block with Gold Accent Bar */}
+  <div className="absolute bottom-0 left-0 w-full max-w-2xl border-t-4 border-[#C9A84C] bg-[#800020] p-8 md:p-12 lg:ml-12 shadow-2xl">
+    <h1 className="font-serif text-3xl font-bold leading-tight text-white md:text-5xl">
+      Welcome Home, <br />
+      Old Turian
+    </h1>
+    <p className="mt-3 text-base font-semibold tracking-wide text-[#C9A84C] md:text-lg">
+      Connecting the Turi community across the world
+    </p>
+  </div>
+</section>
 
-        {/* Mission & Vision Section */}
-        <section className="py-16 px-4 bg-gray-900 relative overflow-hidden">
-          <div className="max-w-7xl mx-auto relative z-10">
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              className="grid md:grid-cols-2 gap-8"
-            >
-              <motion.div
-                variants={fadeUp}
-                className="bg-white/5 p-8 rounded-2xl border border-white/10"
-              >
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-white/10 rounded-xl">
-                    <Target className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white">Our Mission</h3>
-                </div>
-                <blockquote className="text-lg text-gray-300 italic border-l-4 border-gray-500 pl-6 py-2">
-                  "To establish and enhance mutually beneficial and enduring relationships between the alumni, students and college fraternity."
-                </blockquote>
-              </motion.div>
-              
-              <motion.div
-                variants={fadeUp}
-                transition={{ delay: 0.1 }}
-                className="bg-white/5 p-8 rounded-2xl border border-white/10"
-              >
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="p-3 bg-white/10 rounded-xl">
-                    <Sparkles className="w-8 h-8 text-white" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white">Our Vision</h3>
-                </div>
-                <blockquote className="text-lg text-gray-300 italic border-l-4 border-gray-500 pl-6 py-2">
-                  "Be the model alumni association in the region."
-                </blockquote>
-              </motion.div>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Features Section */}
-        <section className="py-20 px-4 bg-white">
-          <div className="max-w-7xl mx-auto">
-            <motion.div
-              variants={scaleIn}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              className="text-center mb-16"
-            >
-              
-              <motion.h2
-                variants={fadeUp}
-                transition={{ delay: 0.1 }}
-                className="text-3xl md:text-4xl font-bold text-gray-900 font-poppins mb-6"
-              >
-                What We Offer
-              </motion.h2>
-              <motion.p
-                variants={fadeUp}
-                transition={{ delay: 0.2 }}
-                className="text-lg text-gray-500 max-w-2xl mx-auto"
-              >
-                Discover the exclusive benefits of joining our alumni community
-              </motion.p>
-            </motion.div>
-
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
-            >
-              {features.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  variants={scaleIn}
-                  custom={index}
-                  whileHover={cardHover}
-                  className={`group ${feature.bgColor} p-8 rounded-xl border border-gray-200 hover:border-gray-900 transition-all duration-300 relative overflow-hidden`}
-                >
-                  {/* Feature Icon */}
-                  <motion.div
-                    whileHover={iconHover}
-                    className={`${feature.iconColor} w-16 h-16 rounded-full flex items-center justify-center mb-6 relative z-10 shadow-lg`}
-                  >
-                    <feature.icon className={feature.iconTextColor} size={32} />
-                  </motion.div>
-                  
-                  {/* Content */}
-                  <motion.h3
-                    variants={fadeUp}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    className={`text-xl font-bold mb-3 font-poppins ${feature.textColor}`}
-                  >
-                    {feature.title}
-                  </motion.h3>
-                  <motion.p
-                    variants={fadeUp}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 }}
-                    className="text-gray-500 relative z-10"
-                  >
-                    {feature.description}
-                  </motion.p>
-                  
-                  {/* Hover Arrow */}
-                  <motion.div
-                    initial={{ x: -20, opacity: 0 }}
-                    whileHover={{ x: 0, opacity: 1 }}
-                    className="absolute bottom-6 right-6 w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300"
-                  >
-                    <ArrowRight size={20} className="text-white" />
-                  </motion.div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* Stats Section */}
-        <motion.section
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={fadeIn}
-          className="py-16 bg-gray-900"
-        >
-          <div className="max-w-7xl mx-auto px-4 relative z-10">
-            <motion.div
-              variants={fadeUp}
-              className="text-center mb-12"
-            >
-              <h3 className="text-3xl font-bold text-white mb-4">Our Community in Numbers</h3>
-              <p className="text-gray-400">Join our successful HR professionals</p>
-            </motion.div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              {stats.map((stat, index) => (
-                <motion.div
-                  key={index}
-                  variants={scaleIn}
-                  custom={index}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  whileHover={{ y: -10 }}
-                  className="text-center p-8 bg-white/5 rounded-2xl backdrop-blur-sm border border-white/10"
-                >
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    whileInView={{ scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ type: "spring", stiffness: 100, damping: 15 }}
-                    className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-full mb-6"
-                  >
-                    <stat.icon className="text-white" size={28} />
-                  </motion.div>
-                  <div className="text-4xl font-bold text-white mb-3 font-poppins">
+        {/* QUICK STATS BAR: Solid Navy Grid with Gold Dividers */}
+        <section className="border-y border-[#1B3A6B]/10 bg-[#1B3A6B] text-white">
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="grid grid-cols-1 divide-y divide-white/10 md:grid-cols-3 md:divide-x md:divide-y-0">
+              {stats.map((stat, idx) => (
+                <div key={idx} className="p-8 text-center">
+                  <span className="block font-serif text-4xl font-bold text-[#C9A84C]">
                     {stat.value}
-                  </div>
-                  <div className="text-gray-300 font-medium">{stat.label}</div>
-                </motion.div>
+                  </span>
+                  <span className="mt-1 block text-xs font-semibold uppercase tracking-widest text-white/80">
+                    {stat.label}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
-        </motion.section>
+        </section>
 
-        {/* CTA Section */}
-        <section className="relative py-20 px-4 overflow-hidden">
-          {/* Background */}
-          <motion.div
-            animate={pulseAnimation}
-            className="absolute inset-0 bg-gray-900"
-          />
-          
-          <div className="max-w-4xl mx-auto text-center relative z-10">
-            <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-            >
-              <motion.h2
-                variants={fadeUp}
-                className="text-3xl md:text-4xl font-bold text-white mb-8 font-poppins"
-              >
-                Ready to Join Our Network?
-              </motion.h2>
-              
-              <motion.p
-                variants={fadeUp}
-                transition={{ delay: 0.1 }}
-                className="text-xl text-white/90 mb-12 max-w-2xl mx-auto leading-relaxed"
-              >
-                Register today and become part of a thriving community of HR
-                professionals. Your journey starts here.
-              </motion.p>
-              
-              <motion.div
-                variants={fadeUp}
-                transition={{ delay: 0.2 }}
-                whileHover={buttonHover}
-                whileTap={buttonTap}
-                className="inline-block"
-              >
+        {/* EDITORIAL STORY & HERITAGE SECTION */}
+        <section className="mx-auto max-w-7xl px-6 py-20 lg:px-12">
+          <div className="mb-12 border-b border-[#1B3A6B]/15 pb-4">
+            <span className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">
+              Heritage & Community
+            </span>
+            <h2 className="mt-1 font-serif text-3xl font-bold text-[#1B3A6B] md:text-4xl">
+              Seeking the Highest in All Endeavours
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-3">
+            {/* Lead Narrative Column */}
+            <div className="space-y-6 lg:col-span-2">
+              <p className="font-serif text-xl leading-relaxed text-[#1B3A6B]">
+                Founded in 1931, St Andrew's School, Turi has shaped generations of leaders across East Africa and beyond. The Old Turians Society serves as a lifelong anchor for alumni—fostering global professional networks, preserving school traditions, and supporting current students.
+              </p>
+              <p className="text-base leading-relaxed text-[#1B3A6B]/80">
+                Whether you attended the Prep School or Senior School, the portal offers direct access to the global alumni directory, official event registration, membership dues, and commemorative memorabilia.
+              </p>
+
+              <div className="pt-4 flex flex-wrap gap-4">
                 <Link
                   href="/payments"
-                  className="group relative inline-flex items-center gap-3 px-10 py-5 bg-black text-white font-bold rounded-xl hover:shadow-2xl transition-all duration-300 text-lg"
+                  className="border-2 border-[#1B3A6B] bg-[#1B3A6B] px-8 py-3.5 text-xs font-semibold uppercase tracking-widest text-white transition-all hover:bg-white hover:text-[#1B3A6B]"
                 >
-                  <span>Register Now</span>
-                  <motion.div
-                    animate={{ x: [0, 5, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <ArrowRight size={20} />
-                  </motion.div>
+                  Register Profile
                 </Link>
-              </motion.div>                        
-            </motion.div>
+                <Link
+                  href="/about"
+                  className="border-2 border-[#1B3A6B] bg-transparent px-8 py-3.5 text-xs font-semibold uppercase tracking-widest text-[#1B3A6B] transition-all hover:bg-[#1B3A6B] hover:text-white"
+                >
+                  About The Society
+                </Link>
+              </div>
+            </div>
+
+            {/* Sidebar Notice Block */}
+            <div className="border-l-2 border-[#C9A84C] pl-8 space-y-8">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#C9A84C]">
+                  Noticeboard
+                </span>
+                <h3 className="font-serif text-lg font-bold text-[#1B3A6B] mt-1">
+                  Annual General Meeting 2026
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-[#1B3A6B]/80">
+                  The upcoming Old Turian Society AGM will be held in Nairobi with hybrid virtual access for international members in London and abroad.
+                </p>
+                <Link
+                  href="/events"
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[#C9A84C] hover:underline"
+                >
+                  View Agenda <ArrowRight size={14} />
+                </Link>
+              </div>
+
+              <div className="border-t border-[#1B3A6B]/10 pt-6">
+                <h3 className="font-serif text-lg font-bold text-[#1B3A6B]">
+                  Life Membership Tiers
+                </h3>
+                <p className="mt-2 text-xs leading-relaxed text-[#1B3A6B]/80">
+                  Support the alumni trust fund and unlock lifelong directory access via M-Pesa or global credit card payments.
+                </p>
+                <Link
+                  href="/payments"
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[#C9A84C] hover:underline"
+                >
+                  Membership Options <ArrowRight size={14} />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* INSTITUTIONAL PILLARS GRID */}
+        <section className="border-t border-[#1B3A6B]/10 bg-[#1B3A6B]/5 py-20">
+          <div className="mx-auto max-w-7xl px-6 lg:px-12">
+            <div className="mb-12 text-center">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">
+                Portal Services
+              </span>
+              <h2 className="mt-1 font-serif text-3xl font-bold text-[#1B3A6B]">
+                Society Pillars
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+              {Pillars.map((pillar, index) => (
+                <div
+                  key={index}
+                  className="flex flex-col justify-between border border-[#1B3A6B]/15 bg-white p-8 transition-all hover:border-[#C9A84C]"
+                >
+                  <div>
+                    <div className="mb-6 inline-flex h-12 w-12 items-center justify-center border border-[#1B3A6B] bg-[#1B3A6B] text-[#C9A84C]">
+                      <pillar.icon size={22} />
+                    </div>
+                    <h3 className="font-serif text-xl font-bold text-[#1B3A6B]">
+                      {pillar.title}
+                    </h3>
+                    <p className="mt-3 text-xs leading-relaxed text-[#1B3A6B]/80">
+                      {pillar.description}
+                    </p>
+                  </div>
+
+                  <div className="mt-8 pt-4 border-t border-[#1B3A6B]/10">
+                    <Link
+                      href={pillar.link}
+                      className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#1B3A6B] hover:text-[#C9A84C] transition-colors"
+                    >
+                      {pillar.linkText} <ArrowRight size={14} />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CALL TO ACTION BANNER */}
+        <section className="border-t-4 border-[#C9A84C] bg-[#1B3A6B] py-16 text-center text-white">
+          <div className="mx-auto max-w-4xl px-6">
+            <h2 className="font-serif text-3xl font-bold text-white md:text-4xl">
+              Are you an Old Turian?
+            </h2>
+            <p className="mt-4 text-sm text-[#C9A84C] md:text-base">
+              Join thousands of alumni across the globe. Keep your contact details updated to receive society updates, reunion invites, and regional event access.
+            </p>
+            <div className="mt-8">
+              <Link
+                href="/payments"
+                className="inline-block border-2 border-[#C9A84C] bg-[#C9A84C] px-10 py-4 text-xs font-semibold uppercase tracking-widest text-[#1B3A6B] transition-all hover:bg-white hover:border-white"
+              >
+                Join The Society Today
+              </Link>
+            </div>
           </div>
         </section>
       </main>
 
       <Footer />
-    </motion.div>
+    </div>
   );
 }
