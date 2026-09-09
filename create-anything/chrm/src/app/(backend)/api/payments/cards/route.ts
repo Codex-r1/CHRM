@@ -1,106 +1,59 @@
-// app/api/payments/card/route.ts
-export const dynamic = 'force-dynamic';
-import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
+export const dynamic = "force-dynamic";
 
-// For testing, we'll use a simple implementation
-// In production, use Stripe, PesaPal, or Flutterwave
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
-    const { cardDetails, amount, paymentType, userId, metadata } = await request.json();
-    
-    // Validate card details (basic validation)
-    const { cardNumber, expiryDate, cvv, cardholderName } = cardDetails;
-    
-    // Simple validation
-    if (!cardNumber || !expiryDate || !cvv || !cardholderName) {
+    const body = await request.json();
+    const { amount, currency = "KES", cardDetails, customerEmail } = body;
+
+    // Sanity check for environment variables inside handler to prevent build failures
+    const apiKey = process.env.CARD_PAYMENT_API_KEY || process.env.STRIPE_SECRET_KEY;
+    if (!apiKey) {
       return NextResponse.json(
-        { error: "All card details are required" },
-        { status: 400 }
-      );
-    }
-    
-    // Simulate payment processing
-    // In production, integrate with payment gateway
-    const paymentResult = await processCardPayment({
-      cardNumber,
-      expiryDate,
-      cvv,
-      cardholderName,
-      amount,
-      description: paymentType === 'registration' ? 'Membership Registration' : 'Event Registration'
-    });
-    
-    if (!paymentResult.success) {
-      return NextResponse.json(
-        { error: paymentResult.message || "Payment failed" },
-        { status: 400 }
-      );
-    }
-    
-    // Save payment record
-    const { data: payment, error } = await supabaseAdmin()
-      .from("payments")
-      .insert({
-        user_id: userId,
-        amount: amount,
-        payment_type: paymentType,
-        status: 'confirmed',
-        description: paymentResult.description,
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-      
-    if (error) {
-      console.error("Error saving payment:", error);
-      return NextResponse.json(
-        { error: "Payment failed to save" },
+        { error: "Payment Gateway API keys are missing on server." },
         { status: 500 }
       );
     }
-    
+
+    const cleanCardNumber = cardDetails.cardNumber.replace(/\s/g, "");
+
+    // Example payload for payment gateway integration
+    const paymentPayload = {
+      amount,
+      currency,
+      email: customerEmail,
+      card: {
+        number: cleanCardNumber,
+        exp_month: cardDetails.expiryDate.split("/")[0],
+        exp_year: `20${cardDetails.expiryDate.split("/")[1]}`,
+        cvc: cardDetails.cvv,
+        name: cardDetails.cardholderName,
+      },
+    };
+
+    // Simulate/Call payment gateway endpoint
+    // Replace this section with your actual merchant provider API call (e.g. Stripe, DPO Group, IPay, Pesapal)
+    const isSuccess = cleanCardNumber.length >= 15; // Example validation check
+
+    if (!isSuccess) {
+      return NextResponse.json(
+        { error: "Card transaction declined by issuing bank." },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      payment: payment,
-      message: "Payment successful"
+      transactionId: `TXN_CARD_${Date.now()}`,
+      status: "COMPLETED",
+      message: "Card payment processed successfully.",
     });
-    
   } catch (error: any) {
-    console.error("Card payment error:", error);
+    console.error("Card Payment Error:", error);
     return NextResponse.json(
-      { error: error.message || "Payment processing failed" },
+      { error: error.message || "Failed to process card payment." },
       { status: 500 }
     );
-  }
-}
-
-// Simulated card payment processor
-async function processCardPayment(details: any) {
-  // In production, integrate with:
-  // - Stripe: https://stripe.com
-  // - PesaPal: https://pesapal.com
-  // - Flutterwave: https://flutterwave.com
-  
-  // Simulate processing delay
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  // Simulate successful payment
-  // Random success/failure for testing
-  const success = Math.random() > 0.1; // 90% success rate
-  
-  if (success) {
-    return {
-      success: true,
-      message: "Payment approved",
-      description: `${details.description} - Card payment`,
-      transactionId: `CARD-${Date.now()}`
-    };
-  } else {
-    return {
-      success: false,
-      message: "Payment declined. Please try a different card."
-    };
   }
 }
