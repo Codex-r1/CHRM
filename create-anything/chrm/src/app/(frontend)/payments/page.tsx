@@ -122,7 +122,7 @@ const formatExpiry = (value: string): string => {
 };
 
 // ─── Fee Logic ────────────────────────────────────────────────────────────────
-const REGISTRATION_FEE = 1500;
+const REGISTRATION_FEE = 1;
 
 // ─── Animation Variants ───────────────────────────────────────────────────────
 const fadeUp: Variants = {
