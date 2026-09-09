@@ -2,7 +2,8 @@
 import Header from "./(frontend)/components/Header";
 import Footer from "./(frontend)/components/Footer";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Globe, Shield, Calendar, ShoppingBag } from "lucide-react";
+import { ArrowRight, BookOpen, Globe, Shield, Calendar, ShoppingBag, Users, Award, MapPin } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function HomePage() {
   const stats = [
@@ -52,18 +53,35 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* HERO SECTION */}
-<section className="relative h-[75vh] min-h-[540px] w-full bg-[url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center">
-  {/* Anchored Crimson/Maroon Block with Gold Accent Bar */}
-  <div className="absolute bottom-0 left-0 w-full max-w-2xl border-t-4 border-[#C9A84C] bg-[#800020] p-8 md:p-12 lg:ml-12 shadow-2xl">
-    <h1 className="font-serif text-3xl font-bold leading-tight text-white md:text-5xl">
-      Welcome Home, <br />
-      Old Turian
-    </h1>
-    <p className="mt-3 text-base font-semibold tracking-wide text-[#C9A84C] md:text-lg">
-      Connecting the Turi community across the world
-    </p>
-  </div>
-</section>
+        <section className="relative h-[75vh] min-h-[540px] w-full overflow-hidden">
+          {/* Background Image */}
+          <div className="absolute inset-0">
+            <img 
+              src="/turi-2.jpg" 
+              alt="St Andrew's Turi - School Grounds" 
+              className="h-full w-full object-cover"
+            />
+            {/* Dark overlay for better text contrast */}
+            <div className="absolute inset-0 bg-black/30" />
+          </div>
+          
+          {/* Anchored Crimson/Maroon Block with Gold Accent Bar */}
+          <div className="absolute bottom-0 left-0 w-full max-w-2xl border-t-4 border-[#C9A84C] bg-[#800020] p-8 md:p-12 lg:ml-12 shadow-2xl">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <h1 className="font-serif text-3xl font-bold leading-tight text-white md:text-5xl">
+                Welcome Home, <br />
+                Old Turian
+              </h1>
+              <p className="mt-3 text-base font-semibold tracking-wide text-[#C9A84C] md:text-lg">
+                Connecting the Turi community across the world
+              </p>
+            </motion.div>
+          </div>
+        </section>
 
         {/* QUICK STATS BAR: Solid Navy Grid with Gold Dividers */}
         <section className="border-y border-[#1B3A6B]/10 bg-[#1B3A6B] text-white">
@@ -71,9 +89,14 @@ export default function HomePage() {
             <div className="grid grid-cols-1 divide-y divide-white/10 md:grid-cols-3 md:divide-x md:divide-y-0">
               {stats.map((stat, idx) => (
                 <div key={idx} className="p-8 text-center">
-                  <span className="block font-serif text-4xl font-bold text-[#C9A84C]">
+                  <motion.span 
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1, duration: 0.5 }}
+                    className="block font-serif text-4xl font-bold text-[#C9A84C]"
+                  >
                     {stat.value}
-                  </span>
+                  </motion.span>
                   <span className="mt-1 block text-xs font-semibold uppercase tracking-widest text-white/80">
                     {stat.label}
                   </span>
@@ -85,18 +108,28 @@ export default function HomePage() {
 
         {/* EDITORIAL STORY & HERITAGE SECTION */}
         <section className="mx-auto max-w-7xl px-6 py-20 lg:px-12">
-          <div className="mb-12 border-b border-[#1B3A6B]/15 pb-4">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-12 border-b border-[#1B3A6B]/15 pb-4"
+          >
             <span className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">
               Heritage & Community
             </span>
             <h2 className="mt-1 font-serif text-3xl font-bold text-[#1B3A6B] md:text-4xl">
               Seeking the Highest in All Endeavours
             </h2>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-3">
             {/* Lead Narrative Column */}
-            <div className="space-y-6 lg:col-span-2">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="space-y-6 lg:col-span-2"
+            >
               <p className="font-serif text-xl leading-relaxed text-[#1B3A6B]">
                 Founded in 1931, St Andrew's School, Turi has shaped generations of leaders across East Africa and beyond. The Old Turians Society serves as a lifelong anchor for alumni—fostering global professional networks, preserving school traditions, and supporting current students.
               </p>
@@ -118,10 +151,15 @@ export default function HomePage() {
                   About The Society
                 </Link>
               </div>
-            </div>
+            </motion.div>
 
             {/* Sidebar Notice Block */}
-            <div className="border-l-2 border-[#C9A84C] pl-8 space-y-8">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="border-l-2 border-[#C9A84C] pl-8 space-y-8"
+            >
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[#C9A84C]">
                   Noticeboard
@@ -145,7 +183,7 @@ export default function HomePage() {
                   Life Membership Tiers
                 </h3>
                 <p className="mt-2 text-xs leading-relaxed text-[#1B3A6B]/80">
-                  Support the alumni trust fund and unlock lifelong directory access via M-Pesa or global credit card payments.
+                  Support the alumni trust fund and unlock lifelong directory access via M-PESA or global credit card payments.
                 </p>
                 <Link
                   href="/payments"
@@ -154,27 +192,36 @@ export default function HomePage() {
                   Membership Options <ArrowRight size={14} />
                 </Link>
               </div>
-            </div>
+            </motion.div>
           </div>
         </section>
 
         {/* INSTITUTIONAL PILLARS GRID */}
         <section className="border-t border-[#1B3A6B]/10 bg-[#1B3A6B]/5 py-20">
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="mb-12 text-center">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="mb-12 text-center"
+            >
               <span className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">
                 Portal Services
               </span>
               <h2 className="mt-1 font-serif text-3xl font-bold text-[#1B3A6B]">
                 Society Pillars
               </h2>
-            </div>
+            </motion.div>
 
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
               {Pillars.map((pillar, index) => (
-                <div
+                <motion.div
                   key={index}
-                  className="flex flex-col justify-between border border-[#1B3A6B]/15 bg-white p-8 transition-all hover:border-[#C9A84C]"
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1, duration: 0.5 }}
+                  whileHover={{ y: -8, transition: { duration: 0.2 } }}
+                  className="flex flex-col justify-between border border-[#1B3A6B]/15 bg-white p-8 transition-all hover:border-[#C9A84C] hover:shadow-lg"
                 >
                   <div>
                     <div className="mb-6 inline-flex h-12 w-12 items-center justify-center border border-[#1B3A6B] bg-[#1B3A6B] text-[#C9A84C]">
@@ -196,7 +243,7 @@ export default function HomePage() {
                       {pillar.linkText} <ArrowRight size={14} />
                     </Link>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -204,7 +251,12 @@ export default function HomePage() {
 
         {/* CALL TO ACTION BANNER */}
         <section className="border-t-4 border-[#C9A84C] bg-[#1B3A6B] py-16 text-center text-white">
-          <div className="mx-auto max-w-4xl px-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mx-auto max-w-4xl px-6"
+          >
             <h2 className="font-serif text-3xl font-bold text-white md:text-4xl">
               Are you an Old Turian?
             </h2>
@@ -219,7 +271,7 @@ export default function HomePage() {
                 Join The Society Today
               </Link>
             </div>
-          </div>
+          </motion.div>
         </section>
       </main>
 

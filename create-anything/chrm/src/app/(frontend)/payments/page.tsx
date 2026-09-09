@@ -87,12 +87,11 @@ interface PaymentMethodSelectorProps {
 // ─── Helper Functions ──────────────────────────────────────────────────────
 const detectCardType = (
   number: string
-): "visa" | "mastercard" | "amex" | "discover" | "unknown" => {
+): "visa" | "mastercard" | "amex" | "unknown" => {
   const clean = number.replace(/\D/g, "");
   if (/^4/.test(clean)) return "visa";
   if (/^(5[1-5]|2[2-7])/.test(clean)) return "mastercard";
   if (/^3[47]/.test(clean)) return "amex";
-  if (/^(6011|65|64[4-9])/.test(clean)) return "discover";
   return "unknown";
 };
 
@@ -188,31 +187,27 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
     switch (cardType) {
       case "visa":
         return (
-          <span className="text-xs font-bold text-[#1B3A6B] bg-[#1B3A6B]/10 px-2.5 py-1 rounded border border-[#1B3A6B]/20">
-            VISA
-          </span>
+           <img
+            src="/images.png"
+            alt="Card"
+            className="w-8 h-6 object-contain opacity-40"
+          />
         );
       case "mastercard":
         return (
-          <div className="flex items-center gap-1.5 bg-[#1B3A6B]/10 px-2.5 py-1 rounded border border-[#1B3A6B]/20">
-            <span className="text-xs font-bold text-[#1B3A6B]">Mastercard</span>
-            <div className="flex">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500 opacity-90 -mr-1" />
-              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 opacity-90" />
-            </div>
-          </div>
+          <img
+            src="/mastercard.png"
+            alt="Card"
+            className="w-8 h-6 object-contain opacity-40"
+          />
         );
       case "amex":
         return (
-          <span className="text-xs font-bold text-white bg-[#0075C2] px-2.5 py-1 rounded">
-            American Express
-          </span>
-        );
-      case "discover":
-        return (
-          <span className="text-xs font-bold text-white bg-[#FF6600] px-2.5 py-1 rounded">
-            Discover
-          </span>
+           <img
+            src="/amex.png"
+            alt="Card"
+            className="w-8 h-6 object-contain opacity-40"
+          />
         );
       default:
         return (
