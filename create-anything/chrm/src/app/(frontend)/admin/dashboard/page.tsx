@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -12,7 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../../(backend)/context/auth";
 import Footer from "@/app/(frontend)/components/Footer";
-import { supabase } from "@/app/(backend)/lib/supabase/client";
+import { supabase } from "../../../../app/(backend)/lib/supabase/client";
 
 type User = {
   id: string; full_name: string; email: string; membership_number?: string;
@@ -265,6 +266,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading: authLoading, logout } = useAuth();
   const fetchedRef = useRef(false);
+  const csrSubmittingRef = useRef(false);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [showProductForm, setShowProductForm] = useState(false);
@@ -317,32 +319,30 @@ export default function AdminDashboard() {
   const [eventImagePreview, setEventImagePreview] = useState<string>('');
   const [creatingEvent, setCreatingEvent] = useState(false);
 
-  // ── FIX: product form state uses BLANK_PRODUCT so it's always a clean slate
   const [newProduct, setNewProduct] = useState({ ...BLANK_PRODUCT });
   const [newVariant, setNewVariant] = useState({ ...BLANK_VARIANT });
   const [productMainImage, setProductMainImage] = useState<File | null>(null);
   const [productMainImagePreview, setProductMainImagePreview] = useState<string>('');
   const [variantImageFiles, setVariantImageFiles] = useState<Map<string, File>>(new Map());
 
-  // Merch UI state
   const [merchSearch, setMerchSearch] = useState("");
   const [merchCategoryFilter, setMerchCategoryFilter] = useState<string>("all");
   const [merchView, setMerchView] = useState<'grid' | 'list'>('grid');
-
-  const [officials, setOfficials] = useState<Official[]>([]);
-  const [showOfficialForm, setShowOfficialForm] = useState(false);
-  const [editingOfficial, setEditingOfficial] = useState<Official | null>(null);
-  const [officialLoading, setOfficialLoading] = useState(false);
-  const [newOfficial, setNewOfficial] = useState({ name: '', position: '', image_url: '', display_order: 0, is_active: true });
-  const [officialImageFile, setOfficialImageFile] = useState<File | null>(null);
-  const [officialImagePreview, setOfficialImagePreview] = useState<string>('');
 
   const [contactMessages, setContactMessages] = useState<ContactMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [messageSearch, setMessageSearch] = useState("");
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
   const [showMessageModal, setShowMessageModal] = useState(false);
-const csrSubmittingRef = useRef(false);
+
+  // Bulk SMS State
+  const [bulkSmsMessage, setBulkSmsMessage] = useState("");
+  const [bulkSmsSending, setBulkSmsSending] = useState(false);
+  const [bulkSmsResult, setBulkSmsResult] = useState<null | { total: number; successful: number; failed: number; failedNumbers: string[] }>(null);
+  const [bulkSmsError, setBulkSmsError] = useState("");
+  const [smsRecipientType, setSmsRecipientType] = useState<'all' | 'specific'>('all');
+  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
+
   // ─── Helpers ───────────────────────────────────────────────────────────────
   const getSessionToken = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -408,14 +408,57 @@ const csrSubmittingRef = useRef(false);
     reader.readAsDataURL(file);
   };
 
-  // ─── Data fetching ─────────────────────────────────────────────────────────
-  const fetchOfficials = useCallback(async () => {
+  // Bulk SMS Handler
+  const handleSendBulkSMS = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkSmsMessage.trim()) {
+      showErrorMessage("Validation", "Please enter a message");
+      return;
+    }
+
+    if (smsRecipientType === 'specific' && selectedRecipients.length === 0) {
+      showErrorMessage("Validation", "Please select at least one recipient");
+      return;
+    }
+
+    setBulkSmsSending(true);
+    setBulkSmsError("");
+    setBulkSmsResult(null);
+
     try {
-      const token = await getSessionToken(); if (!token) return;
-      const res = await fetch('/api/admin/officials', { headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) { const data = await res.json(); setOfficials(data.officials || []); }
-    } catch (err) { console.error('Officials fetch error:', err); }
-  }, []);
+      const token = await getSessionToken();
+      if (!token) throw new Error('No session');
+
+      const response = await fetch('/api/admin/sms/bulk', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: bulkSmsMessage.trim(),
+          type: smsRecipientType,
+          recipientIds: smsRecipientType === 'specific' ? selectedRecipients : undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send SMS');
+      }
+
+      setBulkSmsResult(data);
+      setBulkSmsMessage("");
+      setSelectedRecipients([]);
+      showSuccessMessage("SMS Sent", `Message sent to ${data.successful} recipients`);
+    } catch (err: any) {
+      setBulkSmsError(err.message || 'Failed to send SMS');
+      showErrorMessage("Error", err.message || 'Failed to send SMS');
+    } finally {
+      setBulkSmsSending(false);
+    }
+  };
 
   const fetchContactMessages = useCallback(async () => {
     try {
@@ -446,42 +489,69 @@ const csrSubmittingRef = useRef(false);
   }, []);
 
   const fetchData = useCallback(async () => {
-    try {
-      setDataLoading(true);
-      const token = await getSessionToken(); if (!token) return;
-      const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-      const [usersRes, paymentsRes, ordersRes, eventsRes] = await Promise.all([
-        fetch('/api/admin/users', { headers }),
-        fetch('/api/admin/payments', { headers }),
-        fetch('/api/admin/orders', { headers }),
-        fetch('/api/admin/events', { headers })
-      ]);
+  try {
+    setDataLoading(true);
+    const token = await getSessionToken();
+    if (!token) return;
+    
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    
+    // Fetch all data with proper error handling
+    const [usersRes, paymentsRes, ordersRes, eventsRes] = await Promise.all([
+      fetch('/api/admin/users', { headers }),
+      fetch('/api/admin/payments', { headers }),
+      fetch('/api/admin/orders', { headers }),
+      fetch('/api/admin/events', { headers })
+    ]);
 
-      let fetchedUsers: User[] = [], fetchedPayments: Payment[] = [], fetchedOrders: Order[] = [], fetchedEvents: Event[] = [];
-      if (usersRes.ok) { const d = await usersRes.json(); fetchedUsers = d.users || []; setUsers(fetchedUsers); }
-      if (paymentsRes.ok) { const d = await paymentsRes.json(); fetchedPayments = d.payments || []; setPayments(fetchedPayments); }
-      if (ordersRes.ok) { const d = await ordersRes.json(); fetchedOrders = d.orders || []; setOrders(fetchedOrders); }
-      if (eventsRes.ok) { const d = await eventsRes.json(); fetchedEvents = d.events || []; setEvents(fetchedEvents); }
+    let fetchedUsers: User[] = [], fetchedPayments: Payment[] = [], fetchedOrders: Order[] = [], fetchedEvents: Event[] = [];
+    
+    if (usersRes.ok) { 
+      const d = await usersRes.json(); 
+      fetchedUsers = d.users || []; 
+      setUsers(fetchedUsers); 
+    }
+    
+    if (paymentsRes.ok) { 
+      const d = await paymentsRes.json(); 
+      fetchedPayments = d.payments || []; 
+      setPayments(fetchedPayments); 
+    }
+    
+    if (ordersRes.ok) { 
+      const d = await ordersRes.json(); 
+      fetchedOrders = d.orders || []; 
+      setOrders(fetchedOrders); 
+    }
+    
+    if (eventsRes.ok) { 
+      const d = await eventsRes.json(); 
+      fetchedEvents = d.events || []; 
+      setEvents(fetchedEvents); 
+    }
 
-      await Promise.all([fetchProducts(), fetchCSREvents(), fetchOfficials(), fetchContactMessages()]);
+    // Fetch optional data
+    await Promise.all([fetchProducts(), fetchCSREvents(), fetchContactMessages()]);
 
-      setStats({
-        totalMembers: fetchedUsers.length,
-        activeMembers: fetchedUsers.filter(u => u.status === 'active').length,
-        pendingPayments: fetchedPayments.filter(p => p.status === 'pending').length,
-        totalRevenue: fetchedPayments.filter(p => p.status === 'confirmed').reduce((a, p) => a + p.amount, 0),
-        pendingOrders: fetchedOrders.filter(o => o.status === 'pending').length,
-        totalEvents: fetchedEvents.length,
-        upcomingEvents: fetchedEvents.filter(e => e.status === 'upcoming' && e.is_active).length,
-        monthlyRevenue: fetchedPayments
-          .filter(p => p.status === 'confirmed' && new Date(p.created_at).getMonth() === new Date().getMonth())
-          .reduce((a, p) => a + p.amount, 0),
-      });
-    } catch (err) {
-      console.error("Failed to fetch data:", err);
-      showErrorMessage("Data Fetch Error", "Failed to load dashboard data.");
-    } finally { setDataLoading(false); }
-  }, [fetchProducts, fetchCSREvents, fetchOfficials, fetchContactMessages]);
+    setStats({
+      totalMembers: fetchedUsers.length,
+      activeMembers: fetchedUsers.filter(u => u.status === 'active').length,
+      pendingPayments: fetchedPayments.filter(p => p.status === 'pending').length,
+      totalRevenue: fetchedPayments.filter(p => p.status === 'confirmed').reduce((a, p) => a + p.amount, 0),
+      pendingOrders: fetchedOrders.filter(o => o.status === 'pending').length,
+      totalEvents: fetchedEvents.length,
+      upcomingEvents: fetchedEvents.filter(e => e.status === 'upcoming' && e.is_active).length,
+      monthlyRevenue: fetchedPayments
+        .filter(p => p.status === 'confirmed' && new Date(p.created_at).getMonth() === new Date().getMonth())
+        .reduce((a, p) => a + p.amount, 0),
+    });
+  } catch (err) {
+    console.error("Failed to fetch data:", err);
+    showErrorMessage("Data Fetch Error", "Failed to load dashboard data.");
+  } finally { 
+    setDataLoading(false); 
+  }
+}, [fetchProducts, fetchCSREvents, fetchContactMessages]);
 
   // ─── Event handlers ────────────────────────────────────────────────────────
   const resetEventForm = () => {
@@ -542,99 +612,92 @@ const csrSubmittingRef = useRef(false);
     setCsrMainImage(null); setCsrMainImagePreview(''); setCsrPhotoFiles([]); setCsrPhotoPreviews([]);
     setShowCSREventForm(false); setEditingCSREvent(null);
   };
-// Replace handleCreateCSREvent in your dashboard
-const handleCreateCSREvent = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  // Prevent double submission
-  if (csrSubmittingRef.current) {
-    console.log('Already submitting, ignoring duplicate call');
-    return;
-  }
-  
-  csrSubmittingRef.current = true;
-  setCsrLoading(true);
-  
-  try {
-    const token = await getSessionToken();
-    if (!token) throw new Error('No session');
+
+  const handleCreateCSREvent = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    // Upload main image if provided
-    let mainImageUrl = newCSREvent.main_image_url;
-    if (csrMainImage) {
-      mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `main/${Date.now()}`);
+    if (csrSubmittingRef.current) {
+      console.log('Already submitting, ignoring duplicate call');
+      return;
     }
     
-    // Create the CSR event first
-    const res = await fetch('/api/admin/csr-events', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        ...newCSREvent,
-        main_image_url: mainImageUrl
-      })
-    });
+    csrSubmittingRef.current = true;
+    setCsrLoading(true);
     
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to create CSR event');
-    }
-    
-    const data = await res.json();
-    console.log('CSR event created:', data.event.id);
-    
-    // Upload photos if provided (only during creation, not edit)
-    if (csrPhotoFiles.length > 0) {
-      console.log(`Uploading ${csrPhotoFiles.length} photos...`);
+    try {
+      const token = await getSessionToken();
+      if (!token) throw new Error('No session');
       
-      // Upload files to storage and get URLs
-      const photoUrls = await Promise.all(
-        csrPhotoFiles.map(async (file, index) => {
-          const url = await uploadFile(file, 'csr-events', `photos/${data.event.id}`);
-          return {
-            image_url: url,
-            caption: `Photo ${index + 1}`,
-            display_order: index
-          };
-        })
-      );
+      let mainImageUrl = newCSREvent.main_image_url;
+      if (csrMainImage) {
+        mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `main/${Date.now()}`);
+      }
       
-      console.log('Photo URLs ready:', photoUrls);
-      
-      // Send photos to API
-      const photosRes = await fetch(`/api/admin/csr-events/${data.event.id}/photos`, {
+      const res = await fetch('/api/admin/csr-events', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ photos: photoUrls })
+        body: JSON.stringify({
+          ...newCSREvent,
+          main_image_url: mainImageUrl
+        })
       });
       
-      if (!photosRes.ok) {
-        console.error('Failed to save photos to database');
-      } else {
-        const photosData = await photosRes.json();
-        console.log('Photos saved:', photosData.photos?.length);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to create CSR event');
       }
+      
+      const data = await res.json();
+      console.log('CSR event created:', data.event.id);
+      
+      if (csrPhotoFiles.length > 0) {
+        console.log(`Uploading ${csrPhotoFiles.length} photos...`);
+        
+        const photoUrls = await Promise.all(
+          csrPhotoFiles.map(async (file, index) => {
+            const url = await uploadFile(file, 'csr-events', `photos/${data.event.id}`);
+            return {
+              image_url: url,
+              caption: `Photo ${index + 1}`,
+              display_order: index
+            };
+          })
+        );
+        
+        console.log('Photo URLs ready:', photoUrls);
+        
+        const photosRes = await fetch(`/api/admin/csr-events/${data.event.id}/photos`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ photos: photoUrls })
+        });
+        
+        if (!photosRes.ok) {
+          console.error('Failed to save photos to database');
+        } else {
+          const photosData = await photosRes.json();
+          console.log('Photos saved:', photosData.photos?.length);
+        }
+      }
+      
+      resetCsrForm();
+      showSuccessMessage("Success", "CSR Event created successfully!");
+      await fetchCSREvents();
+      
+    } catch (err: any) {
+      console.error('Error creating CSR event:', err);
+      showErrorMessage("Error", err.message || 'Failed to create CSR event');
+    } finally {
+      setCsrLoading(false);
+      csrSubmittingRef.current = false;
     }
-    
-    // Reset form and reload events
-    resetCsrForm();
-    showSuccessMessage("Success", "CSR Event created successfully!");
-    await fetchCSREvents();
-    
-  } catch (err: any) {
-    console.error('Error creating CSR event:', err);
-    showErrorMessage("Error", err.message || 'Failed to create CSR event');
-  } finally {
-    setCsrLoading(false);
-    csrSubmittingRef.current = false;
-  }
-};
+  };
 
   const handleUpdateCSREvent = async (e: React.FormEvent) => {
     e.preventDefault(); if (!editingCSREvent) return; setCsrLoading(true);
@@ -665,112 +728,68 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
   };
 
   const handleUploadPhotos = async () => {
-  if (!selectedCSREventId || csrPhotoFiles.length === 0) {
-    showErrorMessage("Validation", "Add at least one photo");
-    return;
-  }
-  
-  if (csrLoading) {
-    console.log('Already uploading, ignoring duplicate call');
-    return;
-  }
-  
-  setCsrLoading(true);
-  
-  try {
-    const token = await getSessionToken();
-    if (!token) throw new Error('No session');
-    
-    console.log(`Uploading ${csrPhotoFiles.length} photos to event ${selectedCSREventId}...`);
-    
-    // Upload all files to storage first
-    const photoUrls = await Promise.all(
-      csrPhotoFiles.map(async (file, index) => {
-        const url = await uploadFile(file, 'csr-events', `photos/${selectedCSREventId}`);
-        return {
-          image_url: url,
-          caption: `Photo ${index + 1}`,
-          display_order: index
-        };
-      })
-    );
-    
-    console.log('Photo URLs ready, saving to database:', photoUrls);
-    
-    // Save photo records to database
-    const res = await fetch(`/api/admin/csr-events/${selectedCSREventId}/photos`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ photos: photoUrls })
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Failed to upload photos');
+    if (!selectedCSREventId || csrPhotoFiles.length === 0) {
+      showErrorMessage("Validation", "Add at least one photo");
+      return;
     }
     
-    const data = await res.json();
-    console.log('Photos saved successfully:', data.photos?.length);
+    if (csrLoading) {
+      console.log('Already uploading, ignoring duplicate call');
+      return;
+    }
     
-    showSuccessMessage("Success", `${data.photos?.length || 0} photos uploaded!`);
+    setCsrLoading(true);
     
-    // Clean up and refresh
-    setCsrPhotoFiles([]);
-    setCsrPhotoPreviews([]);
-    setShowPhotoUploadModal(false);
-    setSelectedCSREventId(null);
-    await fetchCSREvents();
-    
-  } catch (err: any) {
-    console.error('Error uploading photos:', err);
-    showErrorMessage("Error", err.message || 'Failed to upload photos');
-  } finally {
-    setCsrLoading(false);
-  }
-};
-
- 
-  const resetOfficialForm = () => {
-    setNewOfficial({ name: '', position: '', image_url: '', display_order: 0, is_active: true });
-    setOfficialImageFile(null); setOfficialImagePreview(''); setEditingOfficial(null); setShowOfficialForm(false);
-  };
-
-  const handleCreateOfficial = async (e: React.FormEvent) => {
-    e.preventDefault(); setOfficialLoading(true);
     try {
-      const token = await getSessionToken(); if (!token) throw new Error('No session');
-      let imageUrl = newOfficial.image_url;
-      if (officialImageFile) imageUrl = await uploadFile(officialImageFile, 'officials', `officials/${Date.now()}`);
-      const res = await fetch('/api/admin/officials', { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newOfficial, image_url: imageUrl }) });
-      if (!res.ok) throw new Error('Failed to create official');
-      resetOfficialForm(); showSuccessMessage("Success", "Official added!"); await fetchOfficials();
-    } catch (err: any) { showErrorMessage("Error", err.message); }
-    finally { setOfficialLoading(false); }
-  };
-
-  const handleUpdateOfficial = async (e: React.FormEvent) => {
-    e.preventDefault(); if (!editingOfficial) return; setOfficialLoading(true);
-    try {
-      const token = await getSessionToken(); if (!token) throw new Error('No session');
-      let imageUrl = newOfficial.image_url;
-      if (officialImageFile) imageUrl = await uploadFile(officialImageFile, 'officials', `officials/${Date.now()}`);
-      const res = await fetch(`/api/admin/officials/${editingOfficial.id}`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newOfficial, image_url: imageUrl }) });
-      if (!res.ok) throw new Error('Failed to update official');
-      resetOfficialForm(); showSuccessMessage("Success", "Official updated!"); await fetchOfficials();
-    } catch (err: any) { showErrorMessage("Error", err.message); }
-    finally { setOfficialLoading(false); }
-  };
-
-  const handleDeleteOfficial = (officialId: string) => {
-    showConfirmation("Delete Official", "Delete this official?", async () => {
-      const token = await getSessionToken(); if (!token) return;
-      const res = await fetch(`/api/admin/officials/${officialId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) { setOfficials(prev => prev.filter(o => o.id !== officialId)); showSuccessMessage("Success", "Official deleted!"); }
-      else { showErrorMessage("Error", "Failed to delete"); }
-    });
+      const token = await getSessionToken();
+      if (!token) throw new Error('No session');
+      
+      console.log(`Uploading ${csrPhotoFiles.length} photos to event ${selectedCSREventId}...`);
+      
+      const photoUrls = await Promise.all(
+        csrPhotoFiles.map(async (file, index) => {
+          const url = await uploadFile(file, 'csr-events', `photos/${selectedCSREventId}`);
+          return {
+            image_url: url,
+            caption: `Photo ${index + 1}`,
+            display_order: index
+          };
+        })
+      );
+      
+      console.log('Photo URLs ready, saving to database:', photoUrls);
+      
+      const res = await fetch(`/api/admin/csr-events/${selectedCSREventId}/photos`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ photos: photoUrls })
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to upload photos');
+      }
+      
+      const data = await res.json();
+      console.log('Photos saved successfully:', data.photos?.length);
+      
+      showSuccessMessage("Success", `${data.photos?.length || 0} photos uploaded!`);
+      
+      setCsrPhotoFiles([]);
+      setCsrPhotoPreviews([]);
+      setShowPhotoUploadModal(false);
+      setSelectedCSREventId(null);
+      await fetchCSREvents();
+      
+    } catch (err: any) {
+      console.error('Error uploading photos:', err);
+      showErrorMessage("Error", err.message || 'Failed to upload photos');
+    } finally {
+      setCsrLoading(false);
+    }
   };
 
   const updatePaymentStatus = (paymentId: string, status: 'confirmed' | 'failed') => {
@@ -798,7 +817,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
     });
   };
 
-  // ── FIX: resetProductForm now fully resets ALL form state ──────────────────
   const resetProductForm = () => {
     setNewProduct({ ...BLANK_PRODUCT, variants: [], images: [] });
     setNewVariant({ ...BLANK_VARIANT });
@@ -809,7 +827,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
     setEditingProduct(null);
   };
 
-  // ── FIX: openProductEdit explicitly resets newVariant to BLANK ─────────────
   const openProductEdit = (p: Product) => {
     setEditingProduct(p);
     setNewProduct({
@@ -819,9 +836,9 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
       variants: p.product_variants ? [...p.product_variants] : [],
       images: p.product_images ? [...p.product_images] : []
     });
-    setNewVariant({ ...BLANK_VARIANT }); // always clear the add-variant form
+    setNewVariant({ ...BLANK_VARIANT });
     setProductMainImagePreview(p.featured_image_url || '');
-    setVariantImageFiles(new Map()); // clear any pending upload files
+    setVariantImageFiles(new Map());
     setShowProductForm(true);
   };
 
@@ -880,7 +897,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
         is_available: newVariant.is_available, image_url: newVariant.image_url
       }]
     }));
-    // ── FIX: reset variant form after adding ──────────────────────────────────
     setNewVariant({ ...BLANK_VARIANT });
   };
 
@@ -915,14 +931,44 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
 
   useEffect(() => {
     if (authLoading || fetchedRef.current) return;
-    if (!user) { router.push("/login"); return; }
+    if (!user) { 
+      router.push("/login"); 
+      return; 
+    }
+
     const checkAndLoad = async () => {
       fetchedRef.current = true;
-      if (user.user_metadata?.role === 'admin') { await fetchData(); return; }
-      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-      if (!profile || profile.role !== 'admin') { router.push("/member/dashboard"); return; }
-      await fetchData();
+      
+      if (user.role === 'admin') { 
+        await fetchData(); 
+        return; 
+      }
+
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (error || !profile) {
+          console.error("Profile fetch error:", error);
+          router.push("/login");
+          return;
+        }
+
+        if (profile.role !== 'admin') {
+          router.push("/member/dashboard");
+          return;
+        }
+
+        await fetchData();
+      } catch (err) {
+        console.error("Error checking admin role:", err);
+        router.push("/login");
+      }
     };
+
     checkAndLoad();
   }, [user, authLoading]); // eslint-disable-line
 
@@ -946,8 +992,8 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
     { id: "events", label: "Events", icon: Calendar },
     { id: "merchandise", label: "Merchandise", icon: Tag },
     { id: "gallery", label: "Gallery", icon: Heart },
-    { id: "officials", label: "Officials", icon: UsersIcon },
     { id: "messages", label: "Messages", icon: MessageSquare },
+    { id: "bulk-sms", label: "Bulk SMS", icon: MessageSquare },
   ];
 
   return (
@@ -957,7 +1003,7 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-[#2B4C73] to-[#FF7A00] rounded-xl flex items-center justify-center shadow-md">
-              <Shield className="text-white" size={22} />
+              
             </div>
             <div>
               <h1 className="text-lg font-bold text-[#0B0F1A] leading-tight">Admin Dashboard</h1>
@@ -1278,7 +1324,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
 
           {activeTab === "merchandise" && (
             <div>
-              {/* Header row */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <div>
                   <h2 className="text-xl font-bold text-[#0B0F1A]">Merchandise</h2>
@@ -1290,7 +1335,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
                 </button>
               </div>
 
-              {/* Filter bar */}
               <div className="flex flex-col sm:flex-row gap-3 mb-6 items-stretch sm:items-center">
                 <div className="relative flex-1 max-w-sm">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={16} />
@@ -1315,7 +1359,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
                 </div>
               </div>
 
-              {/* Summary stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                 {[
                   { label: 'Total Products', value: products.length, color: 'text-[#2B4C73]', bg: 'bg-[#E8F4FD]' },
@@ -1330,7 +1373,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
                 ))}
               </div>
 
-              {/* Product grid / list */}
               {productLoading ? (
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="animate-spin text-[#FF7A00]" size={32} />
@@ -1349,7 +1391,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {filteredProducts.map(p => (
                     <div key={p.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition-shadow group">
-                      {/* Image */}
                       <div className="relative h-44 bg-[#F7F9FC] overflow-hidden">
                         {p.featured_image_url ? (
                           <img src={p.featured_image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -1365,7 +1406,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
                         </div>
                       </div>
 
-                      {/* Info */}
                       <div className="p-4">
                         <h3 className="font-bold text-[#0B0F1A] mb-0.5 truncate">{p.name}</h3>
                         <p className="text-xs text-[#6D7A8B] mb-3 line-clamp-2">{p.description}</p>
@@ -1377,7 +1417,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
                           </span>
                         </div>
 
-                        {/* Color swatches */}
                         {p.product_variants && p.product_variants.length > 0 && (
                           <div className="flex gap-1 mb-3 flex-wrap">
                             {[...new Map(p.product_variants.map(v => [v.color_value, v])).values()].slice(0, 6).map(v => (
@@ -1410,7 +1449,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
                   ))}
                 </div>
               ) : (
-                /* List view */
                 <div className="rounded-xl border border-[#E7ECF3] overflow-hidden">
                   <table className="w-full">
                     <thead>
@@ -1461,7 +1499,7 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
           )}
 
           {/* CSR */}
-          {activeTab === "csr" && (
+          {activeTab === "gallery" && (
             <div>
               <div className="flex justify-between items-center mb-6">
                 <div>
@@ -1508,48 +1546,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
                   <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4"><Heart className="text-green-300" size={28} /></div>
                   <p className="text-[#6D7A8B] mb-4">No photos added yet</p>
                   <button onClick={() => { resetCsrForm(); setShowCSREventForm(true); }} className="px-5 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg text-sm font-medium">Add Event Photos</button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* OFFICIALS */}
-          {activeTab === "officials" && (
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-[#0B0F1A]">Officials</h2>
-                  <p className="text-sm text-[#6D7A8B]">{officials.length} total</p>
-                </div>
-                <button onClick={() => { resetOfficialForm(); setShowOfficialForm(true); }}
-                  className="px-4 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm hover:opacity-90 transition">
-                  <Plus size={16} /> Add Official
-                </button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {officials.map(official => (
-                  <div key={official.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition-shadow text-center">
-                    <div className="h-56 overflow-hidden"><img src={official.image_url} alt={official.name} className="w-full h-full object-cover" /></div>
-                    <div className="p-4">
-                      <h3 className="font-bold text-[#0B0F1A]">{official.name}</h3>
-                      <p className="text-[#2B4C73] font-semibold text-sm mb-3">{official.position}</p>
-                      <div className="flex gap-2">
-                        <button onClick={() => { setEditingOfficial(official); setNewOfficial({ name: official.name, position: official.position, image_url: official.image_url, display_order: official.display_order, is_active: official.is_active }); setOfficialImagePreview(official.image_url); setShowOfficialForm(true); }}
-                          className="flex-1 px-3 py-2 bg-[#2B4C73] text-white rounded-lg text-xs font-semibold hover:bg-[#1E3A5F] transition flex items-center justify-center gap-1">
-                          <Edit size={13} /> Edit
-                        </button>
-                        <button onClick={() => handleDeleteOfficial(official.id)}
-                          className="px-3 py-2 bg-[#FFF0F0] text-[#E53E3E] border border-[#E53E3E]/20 rounded-lg text-xs hover:bg-[#E53E3E] hover:text-white transition"><Trash2 size={13} /></button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {officials.length === 0 && (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 bg-[#E8F4FD] rounded-full flex items-center justify-center mx-auto mb-4"><Users className="text-[#2B4C73] opacity-30" size={28} /></div>
-                  <p className="text-[#6D7A8B] mb-4">No officials added yet</p>
-                  <button onClick={() => { resetOfficialForm(); setShowOfficialForm(true); }} className="px-5 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg text-sm font-medium">Add First Official</button>
                 </div>
               )}
             </div>
@@ -1604,6 +1600,168 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
               </div>
             </div>
           )}
+
+          {/* BULK SMS */}
+          {activeTab === "bulk-sms" && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-[#0B0F1A]">Bulk SMS</h2>
+                  <p className="text-sm text-[#6D7A8B]">Send messages to all alumni members</p>
+                </div>
+                <div className="text-sm text-[#6D7A8B]">
+                  <span className="font-medium">{users.filter(u => u.phone_number).length}</span> members with phone numbers
+                </div>
+              </div>
+
+              <div className="bg-[#F7F9FC] rounded-xl border border-[#E7ECF3] p-6">
+                <form onSubmit={handleSendBulkSMS} className="space-y-5">
+                  {/* Recipient Type */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#1B3A6B] mb-2">
+                      Send to <span className="text-[#C9A84C]">*</span>
+                    </label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          value="all"
+                          checked={smsRecipientType === 'all'}
+                          onChange={() => setSmsRecipientType('all')}
+                          className="accent-[#1B3A6B]"
+                        />
+                        <span className="text-sm text-[#1B3A6B]">All Alumni Members</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          value="specific"
+                          checked={smsRecipientType === 'specific'}
+                          onChange={() => setSmsRecipientType('specific')}
+                          className="accent-[#1B3A6B]"
+                        />
+                        <span className="text-sm text-[#1B3A6B]">Specific Members</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Specific Members Selection */}
+                  {smsRecipientType === 'specific' && (
+                    <div>
+                      <label className="block text-sm font-medium text-[#1B3A6B] mb-2">
+                        Select Members <span className="text-[#C9A84C]">*</span>
+                      </label>
+                      <div className="bg-white border border-[#1B3A6B]/20 rounded-lg p-4 max-h-48 overflow-y-auto">
+                        {users.filter(u => u.phone_number).map(user => (
+                          <label key={user.id} className="flex items-center gap-2 py-1.5 cursor-pointer hover:bg-[#1B3A6B]/5 rounded px-2">
+                            <input
+                              type="checkbox"
+                              checked={selectedRecipients.includes(user.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedRecipients(prev => [...prev, user.id]);
+                                } else {
+                                  setSelectedRecipients(prev => prev.filter(id => id !== user.id));
+                                }
+                              }}
+                              className="accent-[#1B3A6B]"
+                            />
+                            <span className="text-sm text-[#1B3A6B]">{user.full_name}</span>
+                            <span className="text-xs text-[#1B3A6B]/50 ml-auto">{user.phone_number}</span>
+                          </label>
+                        ))}
+                        {users.filter(u => u.phone_number).length === 0 && (
+                          <p className="text-sm text-[#1B3A6B]/50 text-center py-4">No members with phone numbers</p>
+                        )}
+                      </div>
+                      <p className="text-xs text-[#1B3A6B]/50 mt-1">
+                        {selectedRecipients.length} member(s) selected
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Message */}
+                  <div>
+                    <label className="block text-sm font-medium text-[#1B3A6B] mb-2">
+                      Message <span className="text-[#C9A84C]">*</span>
+                    </label>
+                    <textarea
+                      value={bulkSmsMessage}
+                      onChange={(e) => setBulkSmsMessage(e.target.value)}
+                      rows={5}
+                      className="w-full px-4 py-3 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition resize-none bg-white"
+                      placeholder="Type your message to all alumni members..."
+                      required
+                    />
+                    <div className="flex justify-between mt-1">
+                      <p className="text-xs text-[#1B3A6B]/50">
+                        {bulkSmsMessage.length} characters
+                      </p>
+                      <p className="text-xs text-[#1B3A6B]/50">
+                        {bulkSmsMessage.length > 160 ? `${Math.ceil(bulkSmsMessage.length / 160)} SMS parts` : '1 SMS'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Error */}
+                  {bulkSmsError && (
+                    <div className="bg-[#1B3A6B]/5 border border-[#1B3A6B]/20 rounded-lg p-3 flex items-center gap-2">
+                      <AlertCircle className="text-[#1B3A6B]" size={16} />
+                      <p className="text-sm text-[#1B3A6B]">{bulkSmsError}</p>
+                    </div>
+                  )}
+
+                  {/* Result */}
+                  {bulkSmsResult && (
+                    <div className="bg-[#C9A84C]/5 border border-[#C9A84C]/30 rounded-lg p-4">
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                          <p className="text-sm text-[#1B3A6B]/60">Total</p>
+                          <p className="text-2xl font-serif font-bold text-[#1B3A6B]">{bulkSmsResult.total}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-[#1B3A6B]/60">Successful</p>
+                          <p className="text-2xl font-serif font-bold text-[#C9A84C]">{bulkSmsResult.successful}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-[#1B3A6B]/60">Failed</p>
+                          <p className="text-2xl font-serif font-bold text-[#1B3A6B]">{bulkSmsResult.failed}</p>
+                        </div>
+                      </div>
+                      {bulkSmsResult.failedNumbers.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-[#1B3A6B]/10">
+                          <p className="text-xs text-[#1B3A6B]/50">Failed numbers: {bulkSmsResult.failedNumbers.join(', ')}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Submit */}
+                  <button
+                    type="submit"
+                    disabled={bulkSmsSending || !bulkSmsMessage.trim() || (smsRecipientType === 'specific' && selectedRecipients.length === 0)}
+                    className="w-full py-3 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {bulkSmsSending ? (
+                      <>
+                        <Loader2 className="animate-spin" size={18} />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare size={18} />
+                        Send SMS to {smsRecipientType === 'all' ? 'All Alumni' : `${selectedRecipients.length} Members`}
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-xs text-[#1B3A6B]/40 text-center">
+                    SMS credits will be deducted from your account. Standard SMS rates apply.
+                  </p>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1643,9 +1801,7 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          PRODUCT FORM MODAL — with variant bug fix
-      ═══════════════════════════════════════════════════════════════════════ */}
+      {/* Product Form Modal */}
       {showProductForm && (
         <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) resetProductForm(); }}>
           <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -1660,7 +1816,7 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
             <div className="p-6">
               <form onSubmit={editingProduct ? (e) => { e.preventDefault(); handleUpdateProduct(editingProduct.id, { ...newProduct, base_price: parseFloat(newProduct.base_price) }); } : handleCreateProduct} className="space-y-8">
 
-                {/* ── Section 1: Basic Info ── */}
+                {/* Section 1: Basic Info */}
                 <div>
                   <h4 className="text-sm font-bold text-[#0B0F1A] uppercase tracking-wide mb-4 flex items-center gap-2">
                     <span className="w-6 h-6 bg-[#2B4C73] text-white rounded-full text-xs flex items-center justify-center font-bold">1</span>
@@ -1679,7 +1835,7 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
                   </div>
                 </div>
 
-                {/* ── Section 2: Variants ── */}
+                {/* Section 2: Variants */}
                 <div className="border-t border-[#E7ECF3] pt-6">
                   <h4 className="text-sm font-bold text-[#0B0F1A] uppercase tracking-wide mb-1 flex items-center gap-2">
                     <span className="w-6 h-6 bg-[#FF7A00] text-white rounded-full text-xs flex items-center justify-center font-bold">2</span>
@@ -1857,31 +2013,6 @@ const handleCreateCSREvent = async (e: React.FormEvent) => {
                 </button>
                 <button onClick={() => { setShowPhotoUploadModal(false); setCsrPhotoFiles([]); setCsrPhotoPreviews([]); }} className="px-4 py-2 bg-[#F7F9FC] text-[#6D7A8B] rounded-lg hover:bg-[#E7ECF3] border border-[#E7ECF3]">Cancel</button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Official Form */}
-      {showOfficialForm && (
-        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) resetOfficialForm(); }}>
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-[#0B0F1A]">{editingOfficial ? "Edit Official" : "Add Official"}</h3>
-                <button onClick={resetOfficialForm} className="p-2 text-[#6D7A8B] hover:bg-[#F7F9FC] rounded-lg"><X size={20} /></button>
-              </div>
-              <form onSubmit={editingOfficial ? handleUpdateOfficial : handleCreateOfficial} className="space-y-4">
-                <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Name *</label><input type="text" required value={newOfficial.name} onChange={e => setNewOfficial({...newOfficial, name: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Position *</label><input type="text" required value={newOfficial.position} onChange={e => setNewOfficial({...newOfficial, position: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Display Order</label><input type="number" value={newOfficial.display_order} onChange={e => setNewOfficial({...newOfficial, display_order: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                <ImageUploadField label="Official Photo" preview={officialImagePreview} onFileChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f, setOfficialImageFile, setOfficialImagePreview); }} onClear={() => { setOfficialImageFile(null); setOfficialImagePreview(''); }} />
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newOfficial.is_active} onChange={e => setNewOfficial({...newOfficial, is_active: e.target.checked})} className="rounded accent-[#2B4C73]" /><span className="text-sm text-[#6D7A8B]">Active (visible on site)</span></label>
-                <div className="flex gap-3 pt-2">
-                  <button type="submit" disabled={officialLoading} className="px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 flex items-center gap-2 font-medium disabled:opacity-50">{officialLoading && <Loader2 className="animate-spin" size={16} />}{officialLoading ? "Saving..." : editingOfficial ? "Update Official" : "Add Official"}</button>
-                  <button type="button" onClick={resetOfficialForm} className="px-6 py-2 bg-[#F7F9FC] text-[#6D7A8B] rounded-lg hover:bg-[#E7ECF3] border border-[#E7ECF3]">Cancel</button>
-                </div>
-              </form>
             </div>
           </div>
         </div>

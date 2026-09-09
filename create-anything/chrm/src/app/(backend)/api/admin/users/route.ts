@@ -1,93 +1,88 @@
-// app/api/admin/users/route.ts
-export const dynamic = 'force-dynamic'
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
-
-async function verifyAdminAuth(request: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return { error: 'Missing or invalid authorization header', admin: null };
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return { error: 'Invalid or expired token', admin: null };
+    // Verify admin
+    const { data: { user }, error: userError } = await supabaseAdmin().auth.getUser(token);
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile || profile.role !== 'admin') {
-      return { error: 'Unauthorized: Admin access required', admin: null };
-    }
-
-    return { error: null, admin: user };
-  } catch (error) {
-    console.error('Auth verification error:', error);
-    return { error: 'Authentication failed', admin: null };
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const { error: authError, admin } = await verifyAdminAuth(request);
-    if (authError || !admin) {
-      return NextResponse.json(
-        { error: authError || 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get all users with their membership status
-    const { data: users, error } = await supabase
-      .from('profiles')
-      .select(`
-        *,
-        memberships (
-          start_date,
-          expiry_date,
-          is_active
-        )
-      `)
-      .order('created_at', { ascending: false })
+    const { data: users, error } = await supabaseAdmin()
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (error) {
-      console.error('Fetch users error:', error);
+      console.error("Error fetching users:", error);
       return NextResponse.json(
-        { error: 'Failed to fetch users' },
+        { error: "Failed to fetch users" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      users: users || [],
-      count: users?.length || 0
-    });
-
+    return NextResponse.json({ users });
   } catch (error: any) {
-    console.error('Admin users fetch error:', error)
+    console.error("Users API error:", error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch users' },
+      { error: error.message || "Internal server error" },
       { status: 500 }
-    )
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    const { data: { user }, error: userError } = await supabaseAdmin().auth.getUser(token);
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { userId, status } = body;
+
+    if (!userId || !status) {
+      return NextResponse.json(
+        { error: "userId and status are required" },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabaseAdmin()
+      .from("profiles")
+      .update({ status })
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating user:", error);
+      return NextResponse.json(
+        { error: "Failed to update user" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ user: data });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 }
+    );
   }
 }

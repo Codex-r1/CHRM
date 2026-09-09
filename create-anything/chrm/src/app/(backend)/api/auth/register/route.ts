@@ -1,116 +1,117 @@
-// app/api/auth/register/route.ts
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-// app/api/auth/register/route.ts - FIXED VERSION
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const {
-      email,
-      full_name,
-      phone,
-      password,
-      graduation_year,
-      course,
-      country,
-      registration_fee,
-    } = body;
+    const registrationData = await request.json();
+    const { email, password, full_name, phone, graduation_year, course, country, registration_fee } = registrationData;
 
-    // 1. Validate input
-    if (!email || !full_name || !phone || !password || !graduation_year || !country) {
+    if (!email || !password || !full_name || !phone) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: "Email, password, full name, and phone number are required." },
         { status: 400 }
       );
     }
 
-    // 2. Check if user already exists (in profiles, not auth)
-    const { data: existingUser } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', email.toLowerCase())
+    const cleanEmail = email.toLowerCase().trim();
+
+    // 1. Check if user already exists
+    const { data: existingUser } = await supabaseAdmin()
+      .from("profiles")
+      .select("id, status")
+      .eq("email", cleanEmail)
       .maybeSingle();
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User already exists. Please login.' },
+        { code: "USER_EXISTS", error: "An account with this email already exists." },
         { status: 400 }
       );
     }
 
-    // 3. Check if user already exists in auth (just in case)
-    const { data: authUsers } = await supabase.auth.admin.listUsers();
-    const authUserExists = authUsers?.users?.some(u => u.email === email.toLowerCase());
-    
-    if (authUserExists) {
-      return NextResponse.json(
-        { error: 'Email already registered. Please login.' },
-        { status: 400 }
-      );
-    }
-
-    // 4. Store registration data temporarily (DO NOT CREATE USER YET!)
-    const registrationData = {
-      email: email.toLowerCase(),
-      full_name: full_name,
-      phone: phone,
-      graduation_year: parseInt(graduation_year),
-      course: course || '',
-      country: country || 'Kenya',
+    // 2. Create Auth User (Require Email Confirmation)
+    const { data: authData, error: authError } = await supabaseAdmin().auth.admin.createUser({
+      email: cleanEmail,
       password: password,
-    };
+      email_confirm: false, // Ensures confirmation email is sent by Supabase
+      user_metadata: {
+        full_name,
+        phone,
+        graduation_year,
+        course,
+        country,
+      },
+    });
 
-    // 5. Create a temporary payment record with registration data
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .insert({
-        user_id: null, // ← NO USER YET!
-        payment_type: 'registration',
-        amount: registration_fee || 1000,
-        status: 'pending',
-        metadata: {
-          registration_data: registrationData,
-          graduation_year: parseInt(graduation_year),
-          course: course || '',
-          country: country || 'Kenya',
-          email: email.toLowerCase(),
-          full_name: full_name,
-          phone: phone,
-          is_temp: true,
-          created_at: new Date().toISOString(),
-        },
-      })
-      .select()
-      .single();
-
-    if (paymentError) {
-      console.error('Payment creation error:', paymentError);
+    if (authError || !authData?.user) {
       return NextResponse.json(
-        { error: `Failed to create payment record: ${paymentError.message}` },
+        { error: authError?.message || "Failed to create user record." },
+        { status: 400 }
+      );
+    }
+
+    const userId = authData.user.id;
+
+    // 3. Create Pending Profile Record
+    const { error: profileError } = await supabaseAdmin()
+      .from("profiles")
+      .insert({
+        id: userId,
+        email: cleanEmail,
+        full_name,
+        phone,
+        role: "member",
+        status: "pending_payment",
+        is_active: false,
+        graduation_year: graduation_year ? parseInt(graduation_year) : null,
+        course: course || null,
+        country: country || null,
+      });
+
+    if (profileError) {
+      console.error("Profile creation error:", profileError);
+      return NextResponse.json(
+        { error: "Failed to initialize profile: " + profileError.message },
         { status: 500 }
       );
     }
 
-    console.log('✅ Temporary payment record created:', payment.id);
+    // 4. Create Initial Pending Payment Record mapped to User ID
+    const { data: payment, error: paymentError } = await supabaseAdmin()
+      .from("payments")
+      .insert({
+        user_id: userId,
+        payment_type: "registration",
+        amount: registration_fee || 1500,
+        status: "pending",
+        metadata: {
+          registration_data: {
+            ...registrationData,
+            user_id: userId,
+          },
+        },
+      })
+      .select("id")
+      .single();
 
-    // 6. Return payment ID for STK push
+    if (paymentError) {
+      console.error("Payment initialization error:", paymentError);
+      return NextResponse.json(
+        { error: "Failed to initialize payment record: " + paymentError.message },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
+      userId,
       payment_id: payment.id,
-      message: 'Payment record created. Complete payment to activate account.',
+      message: "Registration initiated. Please complete payment.",
     });
-
-  } catch (error) {
-    console.error('Registration API error:', error);
+  } catch (err: any) {
+    console.error("Registration error:", err);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: err.message || "An unexpected error occurred." },
       { status: 500 }
     );
   }

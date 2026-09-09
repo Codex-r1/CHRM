@@ -1,160 +1,205 @@
+// app/(backend)/context/auth.tsx
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { User } from "@supabase/supabase-js";
-import { supabase } from "../lib/supabase/client";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
+interface User {
+  id: string;
+  email: string;
+  full_name?: string;
+  membership_number?: string;
+  role?: string;
+  user_metadata?: {
+    full_name?: string;
+    phone?: string;
+    membership_number?: string;
+  };
+}
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshSession: () => Promise<void>;
+  register: (data: any) => Promise<void>;
+  setUser: (user: User | null) => void;
+  refreshSession: () => Promise<void>; // Add this
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  loading: true,
-  logout: async () => {},
-  refreshSession: async () => {},
-});
-
-const SESSION_TIMEOUT = 30 * 60 * 1000; 
-const ACTIVITY_CHECK_INTERVAL = 60 * 1000; 
-const SESSION_WARNING_TIME = 5 * 60 * 1000; // 5 min
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-
   const router = useRouter();
 
-  const lastActivityRef = useRef<number>(Date.now());
-  const lastActivityWriteRef = useRef<number>(0);
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            setUser(parsedUser);
+            setLoading(false);
+            return;
+          } catch (e) {
+            localStorage.removeItem("user");
+          }
+        }
 
-  const setUserIfChanged = useCallback((next: User | null) => {
-    setUser((prev) => {
-      if (!prev && !next) return prev;
-      if (prev?.id === next?.id && prev?.email === next?.email) return prev; // same user, ignore
-      return next;
-    });
+        const response = await fetch('/api/auth/session', {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.user) {
+            setUser(data.user);
+            localStorage.setItem("user", JSON.stringify(data.user));
+          }
+        }
+      } catch (error) {
+        console.error('Session check error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkSession();
   }, []);
 
-  const updateActivity = useCallback(() => {
-    const now = Date.now();
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include',
+      });
 
-    if (now - lastActivityWriteRef.current < 2000) return;
+      const data = await response.json();
 
-    lastActivityWriteRef.current = now;
-    lastActivityRef.current = now;
-    localStorage.setItem("lastActivity", String(now));
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      setUser(data.user);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('lastActivity', Date.now().toString());
+
+      const redirectPath = data.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
+      window.location.href = redirectPath;
+
+      return data;
+    } catch (error: any) {
+      throw new Error(error.message || 'Login failed');
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      window.location.href = '/';
+    }
+  };
+
+  const register = async (data: any) => {
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Registration failed');
+      }
+
+      return result;
+    } catch (error: any) {
+      throw new Error(error.message || 'Registration failed');
+    }
+  };
+
+  // Add the refreshSession method
+  const refreshSession = async () => {
+    try {
+      // Update the last activity timestamp
+      localStorage.setItem('lastActivity', Date.now().toString());
+      
+      // Optionally, you can also refresh the session with the server
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setUser(data.user);
+          localStorage.setItem('user', JSON.stringify(data.user));
+        }
+      }
+    } catch (error) {
+      console.error('Session refresh error:', error);
+    }
+  };
+
+  // Listen for storage changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'user') {
+        if (e.newValue) {
+          try {
+            setUser(JSON.parse(e.newValue));
+          } catch {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const handleAutoLogout = useCallback(async () => {
-    await supabase.auth.signOut();
-    setUserIfChanged(null);
-    localStorage.removeItem("lastActivity");
-    router.push("/login?reason=session_expired");
-  }, [router, setUserIfChanged]);
-
-  const logout = useCallback(async () => {
-    try {
-      await supabase.auth.signOut();
-      setUserIfChanged(null);
-      localStorage.removeItem("lastActivity");
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
-  }, [setUserIfChanged]);
-
-  const refreshSession = useCallback(async () => {
-    try {
-      const { data: { session }, error } = await supabase.auth.refreshSession();
-      if (error) throw error;
-
-      setUserIfChanged(session?.user ?? null);
-
-      if (session?.user) updateActivity();
-    } catch (error) {
-      console.error("Session refresh error:", error);
-      await handleAutoLogout();
-    }
-  }, [handleAutoLogout, setUserIfChanged, updateActivity]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setUserIfChanged(session?.user ?? null);
-      setLoading(false);
-      if (session?.user) updateActivity();
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserIfChanged(session?.user ?? null);
-      setLoading(false);
-
-      if (session?.user) updateActivity();
-      else localStorage.removeItem("lastActivity");
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [setUserIfChanged, updateActivity]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const events = ["mousedown", "keydown", "scroll", "touchstart", "click"];
-    events.forEach((event) => document.addEventListener(event, updateActivity, { passive: true }));
-
-    return () => {
-      events.forEach((event) => document.removeEventListener(event, updateActivity));
-    };
-  }, [user?.id, updateActivity]);
-
-
-  useEffect(() => {
-    if (!user) return;
-
-    const timer = setInterval(() => {
-      const last = Number(localStorage.getItem("lastActivity") || String(Date.now()));
-      const idle = Date.now() - last;
-
-      if (idle > SESSION_TIMEOUT - SESSION_WARNING_TIME && idle < SESSION_TIMEOUT) {
-        const minutesLeft = Math.ceil((SESSION_TIMEOUT - idle) / 60000);
-        console.warn(`Session will expire in ${minutesLeft} minute(s) due to inactivity`);
-      }
-
-      if (idle > SESSION_TIMEOUT) {
-        console.log("Session expired due to inactivity");
-        handleAutoLogout();
-      }
-    }, ACTIVITY_CHECK_INTERVAL);
-
-    return () => clearInterval(timer);
-  }, [user?.id, handleAutoLogout]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const refreshInterval = setInterval(async () => {
-      const idle = Date.now() - lastActivityRef.current;
-      if (idle < SESSION_TIMEOUT) await refreshSession();
-    }, 15 * 60 * 1000);
-
-    return () => clearInterval(refreshInterval);
-  }, [user?.id, refreshSession]);
-
-  const value = useMemo(
-    () => ({ user, loading, logout, refreshSession }),
-    [user, loading, logout, refreshSession]
+  return (
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login, 
+      logout, 
+      register, 
+      setUser,
+      refreshSession // Add this to the provider value
+    }}>
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};

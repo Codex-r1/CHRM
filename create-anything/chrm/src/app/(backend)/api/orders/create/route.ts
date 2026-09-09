@@ -1,59 +1,74 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '../../../lib/supabase/admin'
+// app/api/orders/create/route.ts
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const {
-      user_id,
-      items,
-      total,
-      customer_name,
-      customer_phone,
-      customer_email,
-      shipping_address,
-      status = 'pending'
-    } = body
+    const body = await request.json();
+    const { user_id, items, total, customer_name, customer_phone, customer_email, shipping_address, status } = body;
 
-    if (!user_id || !items || total === undefined) {
-      return NextResponse.json(
-        { error: 'User ID, items, and total are required' },
-        { status: 400 }
-      )
-    }
-
-    const { data: order, error } = await supabaseAdmin()
-      .from('orders')
+    // Start a transaction
+    const { data: order, error: orderError } = await supabaseAdmin()
+      .from("orders")
       .insert({
         user_id,
         items,
         total,
-        status,
         customer_name,
         customer_phone,
         customer_email,
-        shipping_address: shipping_address || 'To be provided',
-        created_at: new Date().toISOString()
+        shipping_address,
+        status: 'pending',
+        created_at: new Date().toISOString(),
       })
       .select()
-      .single()
+      .single();
 
-    if (error) throw error
+    if (orderError) {
+      return NextResponse.json({ error: orderError.message }, { status: 500 });
+    }
 
-    return NextResponse.json({
-      success: true,
-      order,
-      message: 'Order created successfully'
-    })
+    // Deduct inventory for each item
+    for (const item of items) {
+      // Get current variant
+      const { data: variant, error: variantError } = await supabaseAdmin()
+        .from("product_variants")
+        .select("stock_quantity")
+        .eq("id", item.variant_id)
+        .single();
 
-  } catch (error: any) {
-    console.error('Order creation error:', error)
+      if (variantError) {
+        console.error("Variant fetch error:", variantError);
+        continue;
+      }
+
+      const newStock = Math.max(0, variant.stock_quantity - item.quantity);
+
+      // Update stock
+      const { error: updateError } = await supabaseAdmin()
+        .from("product_variants")
+        .update({ stock_quantity: newStock })
+        .eq("id", item.variant_id);
+
+      if (updateError) {
+        console.error("Stock update error:", updateError);
+      }
+
+      // If stock reaches 0, mark product as out of stock
+      if (newStock === 0) {
+        await supabaseAdmin()
+          .from("products")
+          .update({ is_out_of_stock: true })
+          .eq("id", item.product_id);
+      }
+    }
+
+    return NextResponse.json({ success: true, order });
+  } catch (error) {
+    console.error("Order creation error:", error);
     return NextResponse.json(
-      { 
-        success: false,
-        error: error.message || 'Failed to create order'
-      },
+      { error: "Failed to create order" },
       { status: 500 }
-    )
+    );
   }
 }

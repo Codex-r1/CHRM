@@ -1,144 +1,111 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabase/admin';
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 
-// GET all products (admin)
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    const { data: { user }, error: userError } = await supabaseAdmin().auth.getUser(token);
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { data: products, error } = await supabaseAdmin()
-      .from('products')
+      .from("products")
       .select(`
         *,
-        product_variants(*),
-        product_images(*)
+        product_variants (*),
+        product_images (*)
       `)
-      .order('sort_order', { ascending: true })
-      .order('created_at', { ascending: false });
+      .order("sort_order", { ascending: true });
 
     if (error) {
-      console.error('Error fetching products:', error);
+      console.error("Error fetching products:", error);
       return NextResponse.json(
-        { error: 'Failed to fetch products' },
+        { error: "Failed to fetch products" },
         { status: 500 }
       );
     }
 
     return NextResponse.json({ products });
-  } catch (error) {
-    console.error('Unexpected error:', error);
+  } catch (error: any) {
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }
 }
 
-// POST create new product
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const {
-      name,
-      description,
-      base_price,
-      category,
-      featured_image_url,
-      variants,
-      images
-    } = body;
-
-    // Validate required fields
-    if (!name || !base_price || !category) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Generate slug from name
-    const slug = name.toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+    const token = authHeader.replace('Bearer ', '');
+    
+    const { data: { user }, error: userError } = await supabaseAdmin().auth.getUser(token);
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    // Create product
+    const body = await request.json();
+    
+    // Insert product
     const { data: product, error: productError } = await supabaseAdmin()
-      .from('products')
+      .from("products")
       .insert({
-        name,
-        slug,
-        description,
-        base_price: parseFloat(base_price),
-        category,
-        featured_image_url,
-        is_active: true
+        name: body.name,
+        description: body.description,
+        base_price: body.base_price,
+        category: body.category,
+        featured_image_url: body.featured_image_url,
+        is_active: body.is_active,
+        is_out_of_stock: body.is_out_of_stock,
       })
       .select()
       .single();
 
     if (productError) {
-      console.error('Error creating product:', productError);
+      console.error("Error creating product:", productError);
       return NextResponse.json(
-        { error: 'Failed to create product' },
+        { error: "Failed to create product" },
         { status: 500 }
       );
     }
 
-    // Create variants if provided
-    if (variants && Array.isArray(variants) && variants.length > 0) {
-      const variantsWithProductId = variants.map((variant: any) => ({
-        ...variant,
+    // Insert variants if any
+    if (body.variants && body.variants.length > 0) {
+      const variants = body.variants.map((v: any) => ({
+        ...v,
         product_id: product.id,
-        price_adjustment: variant.price_adjustment || 0,
-        stock_quantity: variant.stock_quantity || 0,
-        is_available: variant.is_available !== undefined ? variant.is_available : true
       }));
 
-      const { error: variantsError } = await supabaseAdmin()
-        .from('product_variants')
-        .insert(variantsWithProductId);
+      const { error: variantError } = await supabaseAdmin()
+        .from("product_variants")
+        .insert(variants);
 
-      if (variantsError) {
-        console.error('Error creating variants:', variantsError);
-        // Continue anyway, product was created
+      if (variantError) {
+        console.error("Error creating variants:", variantError);
+        // Delete the product if variants fail
+        await supabaseAdmin().from("products").delete().eq("id", product.id);
+        return NextResponse.json(
+          { error: "Failed to create variants" },
+          { status: 500 }
+        );
       }
     }
 
-    // Create images if provided
-    if (images && Array.isArray(images) && images.length > 0) {
-      const imagesWithProductId = images.map((image: any, index: number) => ({
-        ...image,
-        product_id: product.id,
-        sort_order: image.sort_order || index,
-        is_primary: image.is_primary || false
-      }));
-
-      const { error: imagesError } = await supabaseAdmin()
-        .from('product_images')
-        .insert(imagesWithProductId);
-
-      if (imagesError) {
-        console.error('Error creating images:', imagesError);
-      }
-    }
-
-    // Fetch complete product with relationships
-    const { data: completeProduct, error: fetchError } = await supabaseAdmin()
-      .from('products')
-      .select(`
-        *,
-        product_variants(*),
-        product_images(*)
-      `)
-      .eq('id', product.id)
-      .single();
-
+    return NextResponse.json({ product });
+  } catch (error: any) {
     return NextResponse.json(
-      { product: completeProduct, message: 'Product created successfully' },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }

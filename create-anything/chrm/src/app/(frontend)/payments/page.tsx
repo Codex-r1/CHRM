@@ -16,24 +16,16 @@ import {
   Smartphone,
   Loader2,
   AlertCircle,
-  Key,
   Eye,
   EyeOff,
   X,
   Info,
-  MapPin,
   GraduationCap,
   Shield,
-  Users,
   ArrowRight,
-  BadgeCheck,
-  Clock,
-  Building,
   Globe,
-  Award,
   CreditCard,
   Wallet,
-  Building2,
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
@@ -42,26 +34,16 @@ import type { Variants } from "framer-motion";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type FormData = {
-  membership_number: string;
   full_name: string;
   email: string;
   phone: string;
-  renewal_year: string;
-  is_alumni_member: string;
   password: string;
   graduation_year: string;
   course: string;
   country: string;
 };
 
-type PaybillInfo = {
-  amount: number;
-  account_number: string;
-  payment_type: "renewal" | "registration";
-  description: string;
-};
-
-type PaymentMethod = 'mpesa' | 'visa' | 'paypal' | 'bank_transfer';
+type PaymentMethod = 'mpesa' | 'visa' | 'paypal';
 type STKPushStatus = 'idle' | 'initiating' | 'pending' | 'success' | 'failed' | 'cancelled';
 type PaymentResponse = {
   success: boolean;
@@ -85,14 +67,62 @@ type AlertModal = {
   cancelText?: string;
 };
 
-// ─── Fee Logic ────────────────────────────────────────────────────────────────
-const getRegistrationFee = (graduationYear: string): number | null => {
-  const year = parseInt(graduationYear, 10);
-  if (!graduationYear || isNaN(year)) return null;
-  return year >= 2021 ? 1 : 1500;
+export interface CardDetails {
+  cardNumber: string;
+  expiryDate: string;
+  cvv: string;
+  cardholderName: string;
+}
+
+interface PaymentMethodSelectorProps {
+  paymentMethod: PaymentMethod;
+  setPaymentMethod: (method: PaymentMethod) => void;
+  cardDetails: CardDetails;
+  setCardDetails: React.Dispatch<React.SetStateAction<CardDetails>>;
+  handleSubmit?: (e: React.FormEvent) => void;
+  isLoading?: boolean;
+  currentFee?: number;
+}
+
+// ─── Helper Functions ──────────────────────────────────────────────────────
+const detectCardType = (
+  number: string
+): "visa" | "mastercard" | "amex" | "discover" | "unknown" => {
+  const clean = number.replace(/\D/g, "");
+  if (/^4/.test(clean)) return "visa";
+  if (/^(5[1-5]|2[2-7])/.test(clean)) return "mastercard";
+  if (/^3[47]/.test(clean)) return "amex";
+  if (/^(6011|65|64[4-9])/.test(clean)) return "discover";
+  return "unknown";
 };
 
-const FEE_RENEWAL = 1;
+const formatCardNumber = (value: string): string => {
+  const clean = value.replace(/\D/g, "");
+  const type = detectCardType(clean);
+
+  if (type === "amex") {
+    return clean
+      .slice(0, 15)
+      .replace(/(\d{4})(\d{0,6})(\d{0,5})/, (_, p1, p2, p3) =>
+        [p1, p2, p3].filter(Boolean).join(" ")
+      );
+  }
+  return clean
+    .slice(0, 16)
+    .replace(/(\d{4})/g, "$1 ")
+    .trim();
+};
+
+const formatExpiry = (value: string): string => {
+  const clean = value.replace(/\D/g, "").slice(0, 4);
+  if (clean.length >= 3) {
+    return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+  }
+  return clean;
+};
+
+// ─── Fee Logic ────────────────────────────────────────────────────────────────
+const REGISTRATION_FEE = 1500;
 
 // ─── Animation Variants ───────────────────────────────────────────────────────
 const fadeUp: Variants = {
@@ -105,35 +135,526 @@ const scaleIn: Variants = {
   visible: { opacity: 1, scale: 1, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } },
 };
 
-const staggerContainer: Variants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.06 } },
+// ─── PaymentMethodSelector Component ──────────────────────────────────────
+const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
+  paymentMethod,
+  setPaymentMethod,
+  cardDetails,
+  setCardDetails,
+  handleSubmit,
+  isLoading,
+  currentFee,
+}) => {
+  const [hoveredMethod, setHoveredMethod] = useState<PaymentMethod | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const paymentMethods = [
+    {
+      id: "mpesa" as PaymentMethod,
+      label: "M-PESA",
+      icon: "/m-pesa-logo_1.png",
+      isImage: true,
+      description: "Kenya",
+    },
+    {
+      id: "visa" as PaymentMethod,
+      label: "Visa / Mastercard",
+      icon: "/mastercard.png",
+      isImage: true,
+      description: "Global",
+    },
+    {
+      id: "paypal" as PaymentMethod,
+      label: "PayPal",
+      icon: "/paypal-3384015_1280.png",
+      isImage: true,
+      description: "Global",
+    },
+  ];
+
+  const cardType = detectCardType(cardDetails.cardNumber);
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCardNumber(e.target.value);
+    setCardDetails((prev) => ({ ...prev, cardNumber: formatted }));
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatExpiry(e.target.value);
+    setCardDetails((prev) => ({ ...prev, expiryDate: formatted }));
+  };
+
+  const getCardLogo = () => {
+    switch (cardType) {
+      case "visa":
+        return (
+          <span className="text-xs font-bold text-[#1B3A6B] bg-[#1B3A6B]/10 px-2.5 py-1 rounded border border-[#1B3A6B]/20">
+            VISA
+          </span>
+        );
+      case "mastercard":
+        return (
+          <div className="flex items-center gap-1.5 bg-[#1B3A6B]/10 px-2.5 py-1 rounded border border-[#1B3A6B]/20">
+            <span className="text-xs font-bold text-[#1B3A6B]">Mastercard</span>
+            <div className="flex">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 opacity-90 -mr-1" />
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 opacity-90" />
+            </div>
+          </div>
+        );
+      case "amex":
+        return (
+          <span className="text-xs font-bold text-white bg-[#0075C2] px-2.5 py-1 rounded">
+            American Express
+          </span>
+        );
+      case "discover":
+        return (
+          <span className="text-xs font-bold text-white bg-[#FF6600] px-2.5 py-1 rounded">
+            Discover
+          </span>
+        );
+      default:
+        return (
+          <img
+            src="/mastercard.png"
+            alt="Card"
+            className="w-8 h-6 object-contain opacity-40"
+          />
+        );
+    }
+  };
+
+  // ─── Validate Card Details ──────────────────────────────────────────────
+  const validateCardDetails = () => {
+    if (!cardDetails.cardNumber || cardDetails.cardNumber.replace(/\s/g, '').length < 15) {
+      alert('Please enter a valid card number');
+      return false;
+    }
+    if (!cardDetails.expiryDate || cardDetails.expiryDate.length < 5) {
+      alert('Please enter a valid expiry date (MM/YY)');
+      return false;
+    }
+    if (!cardDetails.cvv || cardDetails.cvv.length < 3) {
+      alert('Please enter a valid CVV');
+      return false;
+    }
+    if (!cardDetails.cardholderName) {
+      alert('Please enter the cardholder name');
+      return false;
+    }
+    return true;
+  };
+
+  // ─── Handle Card Payment ────────────────────────────────────────────────
+  const handleCardPayment = async () => {
+    if (!validateCardDetails()) return;
+    if (isProcessing || isLoading) return;
+    
+    setIsProcessing(true);
+    try {
+      const paymentData = {
+        paymentMethod: 'visa',
+        cardDetails: {
+          cardNumber: cardDetails.cardNumber,
+          expiryDate: cardDetails.expiryDate,
+          cvv: cardDetails.cvv,
+          cardholderName: cardDetails.cardholderName,
+        },
+      };
+      
+      if (handleSubmit) {
+        const syntheticEvent = new Event('submit') as any;
+        syntheticEvent.paymentData = paymentData;
+        await handleSubmit(syntheticEvent);
+      }
+    } catch (error) {
+      console.error('Card payment error:', error);
+      alert('Payment failed. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ─── Handle PayPal Payment ──────────────────────────────────────────────
+  const handlePayPalPayment = async () => {
+    if (isProcessing || isLoading) return;
+    
+    setIsProcessing(true);
+    try {
+      const paymentData = {
+        paymentMethod: 'paypal',
+      };
+      
+      if (handleSubmit) {
+        const syntheticEvent = new Event('submit') as any;
+        syntheticEvent.paymentData = paymentData;
+        await handleSubmit(syntheticEvent);
+      }
+    } catch (error) {
+      console.error('PayPal payment error:', error);
+      alert('PayPal payment failed. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* SELECTION GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {paymentMethods.map((method) => {
+          const isSelected = paymentMethod === method.id;
+          const isHovered = hoveredMethod === method.id;
+
+          return (
+            <motion.button
+              key={method.id}
+              type="button"
+              onClick={() => setPaymentMethod(method.id)}
+              onMouseEnter={() => setHoveredMethod(method.id)}
+              onMouseLeave={() => setHoveredMethod(null)}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              className={`relative p-4 border-2 rounded-lg transition-all duration-300 text-center group cursor-pointer ${
+                isSelected
+                  ? "border-[#C9A84C] bg-[#C9A84C]/5 shadow-sm"
+                  : "border-[#1B3A6B]/10 hover:border-[#1B3A6B]/20 hover:bg-[#1B3A6B]/5"
+              }`}
+            >
+              {isSelected && (
+                <motion.div
+                  layoutId="payment-selection"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#C9A84C] rounded-full flex items-center justify-center"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <CheckCircle className="w-3 h-3 text-white" />
+                </motion.div>
+              )}
+
+              <motion.div
+                animate={{
+                  scale: isSelected || isHovered ? 1.05 : 1,
+                  rotate: isHovered ? [0, -3, 3, 0] : 0,
+                }}
+                transition={{ duration: 0.3 }}
+                className={`w-14 h-14 mx-auto rounded-xl flex items-center justify-center mb-3 transition-all duration-300 ${
+                  isSelected
+                    ? "bg-[#C9A84C]/10 shadow-md"
+                    : "bg-[#1B3A6B]/5 group-hover:shadow-sm"
+                }`}
+              >
+                {method.isImage ? (
+                  <img
+                    src={method.icon as string}
+                    alt={method.label}
+                    className={`w-10 h-10 object-contain transition-all duration-300 ${
+                      isSelected ? "scale-110" : "group-hover:scale-105"
+                    }`}
+                  />
+                ) : (
+                  <method.icon
+                    className={`transition-transform duration-300 ${
+                      isSelected
+                        ? "text-[#C9A84C]"
+                        : "text-[#1B3A6B]/50 group-hover:text-[#1B3A6B]"
+                    }`}
+                    size={28}
+                  />
+                )}
+              </motion.div>
+
+              <p
+                className={`text-sm font-medium transition-colors duration-300 ${
+                  isSelected
+                    ? "text-[#1B3A6B]"
+                    : "text-[#1B3A6B]/70 group-hover:text-[#1B3A6B]"
+                }`}
+              >
+                {method.label}
+              </p>
+
+              {isSelected && (
+                <motion.div
+                  layoutId="payment-underline"
+                  className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#C9A84C] rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: 32 }}
+                  transition={{ duration: 0.3 }}
+                />
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* METHOD FORMS */}
+      <AnimatePresence mode="wait">
+        {paymentMethod === "mpesa" && (
+          <motion.div
+            key="mpesa"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+            className="p-5 bg-[#1B3A6B]/5 rounded-lg border border-[#1B3A6B]/10"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-[#1B3A6B]/10 rounded-lg mt-0.5">
+                <img
+                  src="/m-pesa-logo_1.png"
+                  alt="M-PESA"
+                  className="w-10 h-8 object-contain"
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-[#1B3A6B]">
+                  <span className="font-semibold">M-PESA Express:</span> You'll
+                  receive an automated prompt on your phone to complete payment.
+                </p>
+                <div className="flex flex-wrap items-center gap-4 mt-3">
+                  <div className="flex items-center gap-2 text-xs text-[#1B3A6B]/50">
+                    <CheckCircle size={12} /> No account needed
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-[#1B3A6B]/50">
+                    <Smartphone size={12} /> STK Push
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading || isProcessing}
+              className="w-full mt-4 py-3 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isLoading || isProcessing ? (
+                <>
+                  <Loader2 className="animate-spin" size={18} />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Smartphone size={18} />
+                  Pay Sh.{currentFee?.toLocaleString()} with M-PESA
+                </>
+              )}
+            </button>
+          </motion.div>
+        )}
+
+        {paymentMethod === "visa" && (
+          <motion.div
+            key="visa"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+            className="p-5 bg-[#1B3A6B]/5 rounded-lg border border-[#1B3A6B]/10 space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider flex items-center gap-2">
+                <CreditCard size={18} className="text-[#C9A84C]" />
+                Card Details
+              </h4>
+              <div className="flex items-center gap-2">{getCardLogo()}</div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                Card Number <span className="text-[#C9A84C]">*</span>
+              </label>
+              <div className="relative">
+                <CreditCard
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30"
+                  size={16}
+                />
+                <input
+                  type="text"
+                  required={paymentMethod === "visa"}
+                  maxLength={19}
+                  value={cardDetails.cardNumber}
+                  onChange={handleCardNumberChange}
+                  className="w-full pl-10 pr-20 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition font-mono bg-white"
+                  placeholder={
+                    cardType === "amex"
+                      ? "3782 822463 10005"
+                      : "4532 0123 4567 8910"
+                  }
+                  autoComplete="cc-number"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {cardType !== "unknown" && (
+                    <span className="text-[10px] font-bold text-[#1B3A6B] bg-[#1B3A6B]/10 px-1.5 py-0.5 rounded uppercase">
+                      {cardType}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                  Expiry Date <span className="text-[#C9A84C]">*</span>
+                </label>
+                <input
+                  type="text"
+                  required={paymentMethod === "visa"}
+                  maxLength={5}
+                  value={cardDetails.expiryDate}
+                  onChange={handleExpiryChange}
+                  className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition bg-white"
+                  placeholder="MM/YY"
+                  autoComplete="cc-exp"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                  CVV <span className="text-[#C9A84C]">*</span>
+                </label>
+                <input
+                  type="password"
+                  required={paymentMethod === "visa"}
+                  maxLength={cardType === "amex" ? 4 : 3}
+                  value={cardDetails.cvv}
+                  onChange={(e) =>
+                    setCardDetails((prev) => ({
+                      ...prev,
+                      cvv: e.target.value.replace(/\D/g, ""),
+                    }))
+                  }
+                  className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition font-mono bg-white"
+                  placeholder={cardType === "amex" ? "1234" : "123"}
+                  autoComplete="cc-csc"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                Cardholder Name <span className="text-[#C9A84C]">*</span>
+              </label>
+              <input
+                type="text"
+                required={paymentMethod === "visa"}
+                value={cardDetails.cardholderName}
+                onChange={(e) =>
+                  setCardDetails((prev) => ({
+                    ...prev,
+                    cardholderName: e.target.value,
+                  }))
+                }
+                className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition bg-white"
+                placeholder="Name on card"
+                autoComplete="cc-name"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCardPayment}
+              disabled={isLoading || isProcessing}
+              className="w-full py-3 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isLoading || isProcessing ? (
+                <>
+                  <Loader2 className="animate-spin" size={18} />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CreditCard size={18} />
+                  Pay Sh. {currentFee?.toLocaleString()} with Card
+                </>
+              )}
+            </button>
+
+            <div className="flex items-center gap-4 pt-2 text-xs text-[#1B3A6B]/40 border-t border-[#1B3A6B]/10">
+              <span className="flex items-center gap-1">
+                <Lock size={12} /> 256-bit SSL encryption
+              </span>
+              <span className="flex items-center gap-1">
+                <Shield size={12} /> PCI compliant
+              </span>
+              {cardType !== "unknown" && cardDetails.cardNumber.length > 2 && (
+                <span className="flex items-center gap-1 text-[#C9A84C]">
+                  <CheckCircle size={12} /> {cardType} detected
+                </span>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {paymentMethod === "paypal" && (
+          <motion.div
+            key="paypal"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+            className="p-5 bg-[#1B3A6B]/5 rounded-lg border border-[#1B3A6B]/10"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-[#1B3A6B]/10 rounded-lg">
+                <img
+                  src="/paypal-3384015_1280.png"
+                  alt="PayPal"
+                  className="w-12 h-10 object-contain"
+                />
+              </div>
+              
+            </div>
+
+            <button
+              type="button"
+              onClick={handlePayPalPayment}
+              disabled={isLoading || isProcessing}
+              className="w-full mt-4 py-3 bg-[#0070BA] text-white font-medium rounded-lg hover:bg-[#005EA6] transition flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {isLoading || isProcessing ? (
+                <>
+                  <Loader2 className="animate-spin" size={18} />
+                  Redirecting to PayPal...
+                </>
+              ) : (
+                <>
+                  <Wallet size={18} />
+                  Pay Sh. {currentFee?.toLocaleString()} with PayPal
+                  <ArrowRight size={14} />
+                </>
+              )}
+            </button>
+            <p className="text-xs text-[#1B3A6B]/40 text-center mt-2">
+              You'll be redirected to PayPal to complete your payment
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function CombinedPaymentsPage() {
-  const [paymentType, setPaymentType] = useState<"renewal" | "registration">("registration");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa');
   const [formData, setFormData] = useState<FormData>({
-    membership_number: "",
     full_name: "",
     email: "",
     phone: "",
-    renewal_year: new Date().getFullYear().toString(),
-    is_alumni_member: "",
     password: "",
     graduation_year: "",
     course: "",
     country: "",
   });
   const [step, setStep] = useState(1);
-  const [paybillInfo, setPaybillInfo] = useState<PaybillInfo>({
+  const [paybillInfo, setPaybillInfo] = useState({
     amount: 0,
     account_number: "",
-    payment_type: "registration",
+    payment_type: "registration" as const,
     description: "",
   });
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [stkStatus, setStkStatus] = useState<STKPushStatus>('idle');
   const [checkoutRequestID, setCheckoutRequestID] = useState<string>('');
@@ -144,24 +665,17 @@ export default function CombinedPaymentsPage() {
     show: false, type: 'error', title: '', message: '',
     confirmText: 'OK', cancelText: 'Cancel'
   });
-  const [cardDetails, setCardDetails] = useState({
+  const [cardDetails, setCardDetails] = useState<CardDetails>({
     cardNumber: '',
     expiryDate: '',
     cvv: '',
     cardholderName: '',
   });
-  const [bankDetails, setBankDetails] = useState({
-    bankName: '',
-    accountNumber: '',
-    referenceNumber: '',
-  });
 
   const router = useRouter();
   const alertTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const registrationFee = useMemo(() => getRegistrationFee(formData.graduation_year), [formData.graduation_year]);
-  const feeLabel = registrationFee !== null ? `KES ${registrationFee.toLocaleString()}` : '—';
-  const currentFee = paymentType === 'registration' ? registrationFee : FEE_RENEWAL;
+  const registrationFee = REGISTRATION_FEE;
 
   useEffect(() => {
     return () => { if (pollingInterval) clearInterval(pollingInterval); };
@@ -209,7 +723,6 @@ export default function CombinedPaymentsPage() {
   // ─── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
     try {
@@ -237,95 +750,33 @@ export default function CombinedPaymentsPage() {
         }
       }
 
-      if (paymentMethod === 'bank_transfer') {
-        if (!bankDetails.bankName || !bankDetails.accountNumber || !bankDetails.referenceNumber) {
-          showAlert('error', 'Missing Bank Details', 'Please fill in all bank transfer details');
-          setLoading(false);
-          return;
-        }
+      // Validate registration form
+      if (!formData.full_name || !formData.email || !formData.password ||
+        !formData.graduation_year || !formData.country) {
+        showAlert('error', 'Missing Information', 'Please fill in all required fields');
+        setLoading(false);
+        return;
       }
-
-      if (paymentType === "registration") {
-        if (!formData.full_name || !formData.email || !formData.password ||
-          !formData.graduation_year || !formData.country) {
-          showAlert('error', 'Missing Information', 'Please fill in all required fields');
-          setLoading(false);
-          return;
-        }
-        if (!formData.phone && (paymentMethod === 'mpesa' || paymentMethod === 'paypal')) {
-          showAlert('error', 'Phone Number Required', 'Please enter your phone number');
-          setLoading(false);
-          return;
-        }
-
-        const fee = getRegistrationFee(formData.graduation_year);
-        if (!fee) {
-          showAlert('error', 'Invalid Graduation Year', 'Please enter a valid graduation year');
-          setLoading(false);
-          return;
-        }
-
-        setPaybillInfo({
-          amount: fee,
-          account_number: "PENDING",
-          payment_type: "registration",
-          description: `New Member Registration - ${formData.full_name}`,
-        });
-
-        await handleRegistrationAndPayment(fee);
+      if (!formData.phone && paymentMethod === 'mpesa') {
+        showAlert('error', 'Phone Number Required', 'Please enter your phone number for M-PESA payment');
+        setLoading(false);
+        return;
+      }
+      if (paymentMethod === 'mpesa' && !validatePhoneNumber(formData.phone)) {
+        showAlert('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
+        setLoading(false);
         return;
       }
 
-      if (paymentType === "renewal") {
-        if (!formData.membership_number || !formData.full_name || !formData.email) {
-          showAlert('error', 'Missing Information', 'Please fill in all required fields');
-          setLoading(false);
-          return;
-        }
-        if (!formData.phone && (paymentMethod === 'mpesa' || paymentMethod === 'paypal')) {
-          showAlert('error', 'Phone Number Required', 'Please enter your phone number');
-          setLoading(false);
-          return;
-        }
-        if (!/^100\d{3}$/.test(formData.membership_number)) {
-          showAlert('error', 'Invalid Membership Number', 'Membership number must be in format 100XXX (e.g., 100121)');
-          setLoading(false);
-          return;
-        }
+      const fee = registrationFee;
+      setPaybillInfo({
+        amount: fee,
+        account_number: "PENDING",
+        payment_type: "registration",
+        description: `New Member Registration - ${formData.full_name}`,
+      });
 
-        try {
-          const lookupRes = await fetch(`/api/users/lookup?membership_number=${formData.membership_number}`);
-          if (!lookupRes.ok) {
-            showAlert('error', 'Member Not Found', 'Membership number not found. Please check and try again.');
-            setLoading(false);
-            return;
-          }
-          const lookupData = await lookupRes.json();
-          const userId = lookupData.user.id;
-          if (lookupData.user.email.toLowerCase() !== formData.email.toLowerCase()) {
-            showAlert('error', 'Email Mismatch', 'Email address does not match our records for this membership number');
-            setLoading(false);
-            return;
-          }
-
-          setPaybillInfo({
-            amount: FEE_RENEWAL,
-            account_number: formData.membership_number,
-            payment_type: "renewal",
-            description: `Membership Renewal - ${formData.renewal_year}`,
-          });
-
-          await initiatePayment(FEE_RENEWAL, 'renewal', userId, {
-            membership_number: formData.membership_number,
-            renewal_year: formData.renewal_year,
-            full_name: formData.full_name,
-            email: formData.email
-          });
-        } catch {
-          showAlert('error', 'Verification Failed', 'Failed to verify membership. Please try again.');
-          setLoading(false);
-        }
-      }
+      await handleRegistrationAndPayment(fee);
     } catch (err) {
       showAlert('error', 'Payment Error', err instanceof Error ? err.message : "Payment initiation failed");
       setLoading(false);
@@ -336,6 +787,7 @@ export default function CombinedPaymentsPage() {
     try {
       setLoading(true);
 
+      // Check if user already exists
       const checkResponse = await fetch(
         `/api/users/check?email=${encodeURIComponent(formData.email)}`
       );
@@ -403,11 +855,7 @@ export default function CombinedPaymentsPage() {
       }
 
       const payment_id = registrationResult.payment_id;
-      await initiatePayment(fee, 'registration', undefined, {
-        graduation_year: formData.graduation_year,
-        course: formData.course,
-        country: formData.country,
-      }, payment_id);
+      await initiatePayment(fee, payment_id);
 
     } catch (err) {
       showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
@@ -417,29 +865,20 @@ export default function CombinedPaymentsPage() {
   };
 
   // ─── Payment Initiation ───────────────────────────────────────────────────
-  const initiatePayment = async (
-    amount: number,
-    type: 'registration' | 'renewal',
-    userId?: string,
-    metadata?: any,
-    payment_id?: string
-  ) => {
+  const initiatePayment = async (amount: number, payment_id?: string) => {
     try {
       setStkStatus('initiating');
 
       const paymentData: any = {
         amount,
-        paymentType: type,
-        userId,
+        paymentType: 'registration',
         userEmail: formData.email,
         userName: formData.full_name,
         paymentMethod,
-        metadata: metadata || {
+        metadata: {
           graduation_year: formData.graduation_year,
           course: formData.course,
           country: formData.country,
-          membership_number: formData.membership_number,
-          renewal_year: formData.renewal_year
         },
         payment_id,
       };
@@ -454,17 +893,11 @@ export default function CombinedPaymentsPage() {
           cvv: cardDetails.cvv,
           cardholderName: cardDetails.cardholderName,
         };
-      } else if (paymentMethod === 'bank_transfer') {
-        paymentData.bankDetails = {
-          bankName: bankDetails.bankName,
-          accountNumber: bankDetails.accountNumber,
-          referenceNumber: bankDetails.referenceNumber,
-        };
       }
 
       const endpoint = paymentMethod === 'mpesa' 
         ? '/api/payments/stk-push'
-        : '/api/payments/global';
+        : '/api/payments/cards';
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -502,32 +935,11 @@ export default function CombinedPaymentsPage() {
             setPaymentId(data.paymentId || '');
             setStkStatus('success');
             showAlert('success', 'Payment Successful!',
-              'Your payment has been processed successfully.',
+              'Your payment has been processed successfully. Redirecting to login...',
               { autoClose: 3000 }
             );
-            setTimeout(() => {
-              if (type === 'registration') {
-                router.push('/login');
-              } else {
-                router.push('/member/dashboard');
-              }
-            }, 3000);
+            setTimeout(() => router.push('/login'), 3000);
           }
-        } else if (paymentMethod === 'bank_transfer') {
-          // Show bank transfer instructions
-          setPaymentId(data.paymentId || '');
-          setStkStatus('success');
-          showAlert('success', 'Bank Transfer Initiated',
-            `Please transfer KES ${amount.toLocaleString()} to the account provided. Reference: ${bankDetails.referenceNumber}`,
-            { autoClose: 8000 }
-          );
-          setTimeout(() => {
-            if (type === 'registration') {
-              router.push('/login');
-            } else {
-              router.push('/member/dashboard');
-            }
-          }, 3000);
         }
       } else {
         throw new Error(data.message || 'Payment initiation failed');
@@ -556,33 +968,20 @@ export default function CombinedPaymentsPage() {
         const response = await fetch(`/api/payments/${checkoutID}?verify_user=true`);
         const data = await response.json();
 
-        if (data.status === 'confirmed' && data.user_created === true && data.user_id) {
-          setStkStatus('success'); clearInterval(interval); setPollingInterval(null);
-          if (data.membership_number) setFormData(prev => ({ ...prev, membership_number: data.membership_number }));
+        if (data.status === 'confirmed') {
+          setStkStatus('success');
+          if (pollingInterval) clearInterval(pollingInterval);
+          setPollingInterval(null);
 
-          if (paymentType === 'registration') {
-            if (data.membership_number) setFormData(prev => ({ ...prev, membership_number: data.membership_number }));
-            showAlert('success', 'Welcome to Old Turians!',
-              `Your account has been created! ${data.membership_number ? `Membership Number: ${data.membership_number}.` : ''} Redirecting to login...`,
-              { autoClose: 3000 }
-            );
-            setTimeout(() => router.push('/login'), 3000);
-          } else {
-            showAlert('success', 'Renewal Successful!',
-              'Your membership has been renewed! Redirecting to dashboard...',
-              { autoClose: 3000 }
-            );
-            setTimeout(() => router.push('/member/dashboard'), 3000);
-          }
-        } else if (data.status === 'confirmed' && data.user_created === false) {
-          clearInterval(interval); setPollingInterval(null); setStkStatus('failed');
-          showAlert('error', 'Account Creation Failed', 'Payment was received but account creation failed. Please contact the admin with your M-PESA receipt.', { autoClose: 6000 });
-        } else if (data.status === 'failed') {
-          clearInterval(interval); setPollingInterval(null); setStkStatus('failed');
-          showAlert('error', 'Payment Failed', 'The payment was not completed. Please try again.');
-        } else if (data.status === 'cancelled') {
-          clearInterval(interval); setPollingInterval(null); setStkStatus('cancelled');
-          showAlert('warning', 'Payment Cancelled', 'The payment was cancelled.');
+          showAlert(
+            'success',
+            'Registration & Payment Complete! 🎉',
+            'Your payment was confirmed. We have sent a confirmation link to your email address. Please open your inbox, click the confirmation link, and then log in to access your dashboard.',
+            {
+              confirmText: 'Go to Login',
+              onConfirm: () => router.push('/login'),
+            }
+          );
         }
       } catch (err) { console.error('Polling error:', err); }
     }, 3000);
@@ -677,190 +1076,6 @@ export default function CombinedPaymentsPage() {
     );
   };
 
-  // ─── Payment Method Selection ────────────────────────────────────────────
-  const PaymentMethodSelector = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { id: 'mpesa' as PaymentMethod, label: 'M-PESA', icon: Smartphone, description: 'Kenya', color: '#1B3A6B' },
-          { id: 'visa' as PaymentMethod, label: 'Visa / Mastercard', icon: CreditCard, description: 'Global', color: '#1B3A6B' },
-          { id: 'paypal' as PaymentMethod, label: 'PayPal', icon: Wallet, description: 'Global', color: '#1B3A6B' },
-          { id: 'bank_transfer' as PaymentMethod, label: 'Bank Transfer', icon: Building2, description: 'Global', color: '#1B3A6B' },
-        ].map(method => (
-          <button
-            key={method.id}
-            type="button"
-            onClick={() => setPaymentMethod(method.id)}
-            className={`p-4 border-2 rounded-lg transition-all duration-200 text-center ${
-              paymentMethod === method.id
-                ? 'border-[#C9A84C] bg-[#C9A84C]/5'
-                : 'border-[#1B3A6B]/10 hover:border-[#1B3A6B]/20'
-            }`}
-          >
-            <method.icon className={`mx-auto mb-2 ${
-              paymentMethod === method.id ? 'text-[#C9A84C]' : 'text-[#1B3A6B]/50'
-            }`} size={24} />
-            <p className={`text-sm font-medium ${
-              paymentMethod === method.id ? 'text-[#1B3A6B]' : 'text-[#1B3A6B]/70'
-            }`}>
-              {method.label}
-            </p>
-            <p className="text-xs text-[#1B3A6B]/40">{method.description}</p>
-          </button>
-        ))}
-      </div>
-
-      {/* Payment method specific forms */}
-      {paymentMethod === 'mpesa' && (
-        <div className="p-4 bg-[#1B3A6B]/5 rounded-lg border border-[#1B3A6B]/10">
-          <p className="text-sm text-[#1B3A6B]">
-            <span className="font-medium">M-PESA:</span> You'll receive a prompt on your phone to complete payment.
-          </p>
-        </div>
-      )}
-
-      {paymentMethod === 'visa' && (
-        <div className="p-4 bg-[#1B3A6B]/5 rounded-lg border border-[#1B3A6B]/10 space-y-4">
-          <h4 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">Card Details</h4>
-          <div>
-            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-              Card Number <span className="text-[#C9A84C]">*</span>
-            </label>
-            <input
-              type="text"
-              required={paymentMethod === 'visa'}
-              maxLength={19}
-              value={cardDetails.cardNumber}
-              onChange={(e) => {
-                const value = e.target.value.replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim();
-                setCardDetails({...cardDetails, cardNumber: value});
-              }}
-              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30 font-mono"
-              placeholder="1234 5678 9012 3456"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                Expiry Date <span className="text-[#C9A84C]">*</span>
-              </label>
-              <input
-                type="text"
-                required={paymentMethod === 'visa'}
-                maxLength={5}
-                value={cardDetails.expiryDate}
-                onChange={(e) => setCardDetails({...cardDetails, expiryDate: e.target.value})}
-                className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                placeholder="MM/YY"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                CVV <span className="text-[#C9A84C]">*</span>
-              </label>
-              <input
-                type="password"
-                required={paymentMethod === 'visa'}
-                maxLength={4}
-                value={cardDetails.cvv}
-                onChange={(e) => setCardDetails({...cardDetails, cvv: e.target.value})}
-                className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                placeholder="***"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-              Cardholder Name <span className="text-[#C9A84C]">*</span>
-            </label>
-            <input
-              type="text"
-              required={paymentMethod === 'visa'}
-              value={cardDetails.cardholderName}
-              onChange={(e) => setCardDetails({...cardDetails, cardholderName: e.target.value})}
-              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-              placeholder="Name on card"
-            />
-          </div>
-          <p className="text-xs text-[#1B3A6B]/50 flex items-center gap-1">
-            <Lock size={12} /> Your payment is secured with SSL encryption
-          </p>
-        </div>
-      )}
-
-      {paymentMethod === 'paypal' && (
-        <div className="p-4 bg-[#1B3A6B]/5 rounded-lg border border-[#1B3A6B]/10">
-          <p className="text-sm text-[#1B3A6B]">
-            <span className="font-medium">PayPal:</span> You'll be redirected to PayPal to complete your payment securely.
-          </p>
-          <button
-            type="button"
-            className="mt-3 px-6 py-2 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition text-sm"
-            onClick={() => {
-              // Trigger PayPal redirect
-              handleSubmit(new Event('submit') as any);
-            }}
-          >
-            Pay with PayPal
-          </button>
-        </div>
-      )}
-
-      {paymentMethod === 'bank_transfer' && (
-        <div className="p-4 bg-[#1B3A6B]/5 rounded-lg border border-[#1B3A6B]/10 space-y-4">
-          <h4 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">Bank Transfer Details</h4>
-          <div>
-            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-              Bank Name <span className="text-[#C9A84C]">*</span>
-            </label>
-            <select
-              required={paymentMethod === 'bank_transfer'}
-              value={bankDetails.bankName}
-              onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})}
-              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition bg-white"
-            >
-              <option value="">Select bank</option>
-              <option value="Equity Bank">Equity Bank</option>
-              <option value="KCB Bank">KCB Bank</option>
-              <option value="Cooperative Bank">Cooperative Bank</option>
-              <option value="Absa Bank">Absa Bank</option>
-              <option value="Standard Chartered">Standard Chartered</option>
-              <option value="Citibank">Citibank</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-              Account Number <span className="text-[#C9A84C]">*</span>
-            </label>
-            <input
-              type="text"
-              required={paymentMethod === 'bank_transfer'}
-              value={bankDetails.accountNumber}
-              onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})}
-              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-              placeholder="Enter account number"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-              Reference Number <span className="text-[#C9A84C]">*</span>
-            </label>
-            <input
-              type="text"
-              required={paymentMethod === 'bank_transfer'}
-              value={bankDetails.referenceNumber}
-              onChange={(e) => setBankDetails({...bankDetails, referenceNumber: e.target.value})}
-              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-              placeholder="e.g. TURI-REG-2024"
-            />
-          </div>
-          <p className="text-xs text-[#1B3A6B]/50">Reference will be used to identify your payment</p>
-        </div>
-      )}
-    </div>
-  );
-
   // ─── Step 2: Waiting for payment ──────────────────────────────────────────
   if (step === 2) {
     return (
@@ -885,10 +1100,8 @@ export default function CombinedPaymentsPage() {
                     <Smartphone className="text-white" size={32} />
                   ) : paymentMethod === 'visa' ? (
                     <CreditCard className="text-white" size={32} />
-                  ) : paymentMethod === 'paypal' ? (
-                    <Wallet className="text-white" size={32} />
                   ) : (
-                    <Building2 className="text-white" size={32} />
+                    <Wallet className="text-white" size={32} />
                   )}
                 </div>
                 <h2 className="text-2xl font-serif font-bold">Processing Payment</h2>
@@ -896,7 +1109,6 @@ export default function CombinedPaymentsPage() {
                   {paymentMethod === 'mpesa' && 'M-PESA prompt sent to'}
                   {paymentMethod === 'visa' && 'Processing card payment for'}
                   {paymentMethod === 'paypal' && 'Redirecting to PayPal for'}
-                  {paymentMethod === 'bank_transfer' && 'Bank transfer initiated for'}
                 </p>
                 {paymentMethod === 'mpesa' && (
                   <p className="text-[#C9A84C] font-serif text-xl mt-1">{formData.phone}</p>
@@ -995,6 +1207,7 @@ export default function CombinedPaymentsPage() {
 
       <main className="flex-1 py-16 px-4">
         <div className="max-w-3xl mx-auto">
+          {/* Header */}
           <motion.div
             variants={fadeUp}
             initial="hidden"
@@ -1007,12 +1220,10 @@ export default function CombinedPaymentsPage() {
               </div>
               <div>
                 <h1 className="text-3xl md:text-4xl font-serif font-bold text-[#1B3A6B]">
-                  {paymentType === "registration" ? "Join the Old Turians" : "Renew Your Membership"}
+                  Join the Old Turians
                 </h1>
                 <p className="text-[#1B3A6B]/60 text-sm mt-1">
-                  {paymentType === "registration"
-                    ? "Become part of a distinguished community of Turi alumni worldwide"
-                    : "Maintain your connection to the Turi community"}
+                  Become part of a distinguished community of Turi alumni worldwide
                 </p>
               </div>
             </div>
@@ -1023,319 +1234,22 @@ export default function CombinedPaymentsPage() {
             variants={scaleIn}
             initial="hidden"
             animate="visible"
-            className="grid grid-cols-2 gap-4 mb-8"
-          >
-            {[
-              {
-                id: "registration" as const,
-                label: "New Member",
-                icon: GraduationCap,
-                description: "First-time registration"
-              },
-              {
-                id: "renewal" as const,
-                label: "Renew Membership",
-                icon: BadgeCheck,
-                description: "Annual renewal"
-              },
-            ].map(t => (
-              <button
-                key={t.id}
-                onClick={() => setPaymentType(t.id)}
-                className={`p-5 text-left border-2 rounded-lg transition-all duration-200 ${
-                  paymentType === t.id
-                    ? "border-[#C9A84C] bg-[#C9A84C]/5"
-                    : "border-[#1B3A6B]/10 hover:border-[#1B3A6B]/20"
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-lg ${
-                    paymentType === t.id ? "bg-[#C9A84C]/20" : "bg-[#1B3A6B]/5"
-                  }`}>
-                    <t.icon className={paymentType === t.id ? "text-[#C9A84C]" : "text-[#1B3A6B]"} size={20} />
-                  </div>
-                  <div>
-                    <p className={`font-serif font-bold ${
-                      paymentType === t.id ? "text-[#1B3A6B]" : "text-[#1B3A6B]/80"
-                    }`}>
-                      {t.label}
-                    </p>
-                    <p className="text-xs text-[#1B3A6B]/50">{t.description}</p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </motion.div>
-
-          <motion.div
-            variants={scaleIn}
-            initial="hidden"
-            animate="visible"
             className="bg-white border border-[#1B3A6B]/10 rounded-lg shadow-sm overflow-hidden"
           >
             <form onSubmit={handleSubmit}>
-              {paymentType === "registration" ? (
-                <div className="p-6 md:p-8 space-y-6">
-                  <div>
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="w-8 h-8 bg-[#1B3A6B] text-white rounded-full flex items-center justify-center text-xs font-serif font-bold">
-                        1
-                      </div>
-                      <h2 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
-                        Personal Details
-                      </h2>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                          Full Name <span className="text-[#C9A84C]">*</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            required
-                            value={formData.full_name}
-                            onChange={e => setFormData({...formData, full_name: e.target.value})}
-                            className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                            placeholder="Your full name"
-                          />
-                          <User className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                          Email Address <span className="text-[#C9A84C]">*</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="email"
-                            required
-                            value={formData.email}
-                            onChange={e => setFormData({...formData, email: e.target.value})}
-                            className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                            placeholder="you@email.com"
-                          />
-                          <Mail className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
-                        </div>
-                      </div>
-
-                      {paymentMethod === 'mpesa' && (
-                        <div>
-                          <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                            Phone Number <span className="text-[#C9A84C]">*</span>
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="tel"
-                              required={paymentMethod === 'mpesa'}
-                              value={formData.phone}
-                              onChange={e => setFormData({...formData, phone: e.target.value})}
-                              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                              placeholder="0712345678"
-                            />
-                            <Phone className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
-                          </div>
-                          <p className="text-xs text-[#1B3A6B]/50 mt-1">M-PESA prompt will be sent here</p>
-                        </div>
-                      )}
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                          Create Password <span className="text-[#C9A84C]">*</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showPassword ? "text" : "password"}
-                            required
-                            minLength={6}
-                            value={formData.password}
-                            onChange={e => setFormData({...formData, password: e.target.value})}
-                            className="w-full px-4 py-2.5 pr-10 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                            placeholder="Min. 6 characters"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30 hover:text-[#1B3A6B]/60 transition"
-                          >
-                            {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-[#1B3A6B]/10 pt-6">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="w-8 h-8 bg-[#C9A84C] text-white rounded-full flex items-center justify-center text-xs font-serif font-bold">
-                        2
-                      </div>
-                      <h2 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
-                        Academic Details
-                      </h2>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      <div>
-                        <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                          Graduation Year <span className="text-[#C9A84C]">*</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="number"
-                            min="2000"
-                            max="2030"
-                            required
-                            value={formData.graduation_year}
-                            onChange={e => setFormData({...formData, graduation_year: e.target.value})}
-                            className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                            placeholder="e.g. 2023"
-                          />
-                          <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                          Course of Study <span className="text-[#1B3A6B]/50">(Optional)</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={formData.course}
-                            onChange={e => setFormData({...formData, course: e.target.value})}
-                            className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                            placeholder="Your course"
-                          />
-                          <BookOpen className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
-                        </div>
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                          Country of Residence <span className="text-[#C9A84C]">*</span>
-                        </label>
-                        <div className="relative">
-                          <select
-                            required
-                            value={formData.country}
-                            onChange={e => setFormData({...formData, country: e.target.value})}
-                            className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition bg-white appearance-none"
-                          >
-                            <option value="">Select your country</option>
-                            {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                          <Globe className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30 pointer-events-none" size={16} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Method Section */}
-                  <div className="border-t border-[#1B3A6B]/10 pt-6">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="w-8 h-8 bg-[#C9A84C] text-white rounded-full flex items-center justify-center text-xs font-serif font-bold">
-                        3
-                      </div>
-                      <h2 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
-                        Payment Method
-                      </h2>
-                    </div>
-                    <PaymentMethodSelector />
-                  </div>
-
-                  <div className={`border-2 rounded-lg p-5 transition-all duration-300 ${
-                    currentFee !== null
-                      ? currentFee === 1
-                        ? 'border-[#C9A84C] bg-[#C9A84C]/5'
-                        : 'border-[#1B3A6B]/20 bg-[#1B3A6B]/5'
-                      : 'border-[#1B3A6B]/10 bg-[#1B3A6B]/5'
-                  }`}>
-                    <div className="flex items-center gap-3 mb-4">
-                      <Gift className={currentFee === 1 ? "text-[#C9A84C]" : "text-[#1B3A6B]"} size={20} />
-                      <p className="font-serif font-bold text-[#1B3A6B]">Membership Benefits</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-                      {[
-                        "Lifetime membership access",
-                        "Networking opportunities",
-                        "Exclusive events & workshops",
-                        "Member resources & discounts"
-                      ].map(b => (
-                        <div key={b} className="flex items-start gap-2">
-                          <CheckCircle size={14} className="text-[#C9A84C] mt-0.5 flex-shrink-0" />
-                          <span className="text-[#1B3A6B]/70 text-xs">{b}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="border-t border-[#1B3A6B]/10 pt-4 flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase tracking-wider text-[#1B3A6B]/50 font-medium">
-                          {paymentType === 'registration' ? 'Registration Fee' : 'Renewal Fee'}
-                        </p>
-                        <AnimatePresence mode="wait">
-                          <motion.p
-                            key={feeLabel}
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            className={`text-2xl font-serif font-bold ${
-                              currentFee === 1 ? 'text-[#C9A84C]' :
-                              currentFee === 1500 ? 'text-[#1B3A6B]' : 'text-[#1B3A6B]/50'
-                            }`}
-                          >
-                            {currentFee !== null ? `KES ${currentFee.toLocaleString()}` : '—'}
-                          </motion.p>
-                        </AnimatePresence>
-                      </div>
-                      {currentFee === 1 && (
-                        <div className="px-3 py-1 bg-[#C9A84C] text-white text-xs font-medium rounded-full">
-                          Free Registration
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <p className="text-sm text-[#1B3A6B]/60 text-center">
-                    Already have an account?{" "}
-                    <Link href="/login" className="text-[#C9A84C] font-medium hover:underline">
-                      Login here
-                    </Link>
-                  </p>
-                </div>
-              ) : (
-                <div className="p-6 md:p-8 space-y-6">
+              <div className="p-6 md:p-8 space-y-6">
+                {/* Personal Details */}
+                <div>
                   <div className="flex items-center gap-3 mb-5">
                     <div className="w-8 h-8 bg-[#1B3A6B] text-white rounded-full flex items-center justify-center text-xs font-serif font-bold">
                       1
                     </div>
                     <h2 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
-                      Verify Membership
+                      Personal Details
                     </h2>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                      <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                        Membership Number <span className="text-[#C9A84C]">*</span>
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          required
-                          value={formData.membership_number}
-                          onChange={e => setFormData({...formData, membership_number: e.target.value})}
-                          className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition font-mono placeholder:text-[#1B3A6B]/30"
-                          placeholder="e.g. 100121"
-                          pattern="^100\d{3}$"
-                        />
-                        <BadgeCheck className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
-                      </div>
-                      <p className="text-xs text-[#1B3A6B]/50 mt-1">Format: 100XXX</p>
-                    </div>
-
                     <div>
                       <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
                         Full Name <span className="text-[#C9A84C]">*</span>
@@ -1347,7 +1261,7 @@ export default function CombinedPaymentsPage() {
                           value={formData.full_name}
                           onChange={e => setFormData({...formData, full_name: e.target.value})}
                           className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                          placeholder="John Doe"
+                          placeholder="Your full name"
                         />
                         <User className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
                       </div>
@@ -1364,7 +1278,7 @@ export default function CombinedPaymentsPage() {
                           value={formData.email}
                           onChange={e => setFormData({...formData, email: e.target.value})}
                           className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                          placeholder="john@email.com"
+                          placeholder="you@email.com"
                         />
                         <Mail className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
                       </div>
@@ -1390,87 +1304,156 @@ export default function CombinedPaymentsPage() {
                       </div>
                     )}
 
-                    <div className="md:col-span-2">
+                    <div>
                       <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                        Renewal Year <span className="text-[#C9A84C]">*</span>
+                        Create Password <span className="text-[#C9A84C]">*</span>
                       </label>
                       <div className="relative">
-                        <select
+                        <input
+                          type={showPassword ? "text" : "password"}
                           required
-                          value={formData.renewal_year}
-                          onChange={e => setFormData({...formData, renewal_year: e.target.value})}
-                          className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition bg-white appearance-none"
+                          minLength={6}
+                          value={formData.password}
+                          onChange={e => setFormData({...formData, password: e.target.value})}
+                          className="w-full px-4 py-2.5 pr-10 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
+                          placeholder="Min. 6 characters"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30 hover:text-[#1B3A6B]/60 transition"
                         >
-                          {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() + i).map(y => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                        <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30 pointer-events-none" size={16} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Method Section for Renewal */}
-                  <div className="border-t border-[#1B3A6B]/10 pt-6">
-                    <div className="flex items-center gap-3 mb-5">
-                      <div className="w-8 h-8 bg-[#C9A84C] text-white rounded-full flex items-center justify-center text-xs font-serif font-bold">
-                        2
-                      </div>
-                      <h2 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
-                        Payment Method
-                      </h2>
-                    </div>
-                    <PaymentMethodSelector />
-                  </div>
-
-                  <div className="border-2 border-[#1B3A6B]/10 rounded-lg p-5 bg-[#1B3A6B]/5">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-serif font-bold text-[#1B3A6B]">Annual Membership Renewal</p>
-                        <p className="text-sm text-[#1B3A6B]/60 mt-0.5">
-                          Paid via {paymentMethod === 'mpesa' ? 'M-PESA' : paymentMethod === 'visa' ? 'Card' : paymentMethod === 'paypal' ? 'PayPal' : 'Bank Transfer'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-serif font-bold text-[#1B3A6B]">
-                          KES {FEE_RENEWAL.toLocaleString()}
-                        </p>
+                          {showPassword ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
 
-              <div className={`px-6 md:px-8 pb-6 md:pb-8 ${paymentType === 'registration' ? '' : 'pt-0'}`}>
-                <button
-                  type="submit"
-                  disabled={loading || (paymentType === 'registration' && currentFee === null)}
-                  className={`w-full py-4 bg-[#1B3A6B] text-white font-serif font-bold rounded-lg transition shadow-sm flex items-center justify-center gap-3 text-base ${
-                    !loading && currentFee !== null ? 'hover:bg-[#152e55]' : 'opacity-50 cursor-not-allowed'
-                  }`}
-                >
-                  {loading ? (
-                    <><Loader2 className="animate-spin" size={18} />Processing...</>
-                  ) : (
-                    <>
-                      {paymentMethod === 'mpesa' && <Smartphone size={18} />}
-                      {paymentMethod === 'visa' && <CreditCard size={18} />}
-                      {paymentMethod === 'paypal' && <Wallet size={18} />}
-                      {paymentMethod === 'bank_transfer' && <Building2 size={18} />}
-                      {paymentType === "registration"
-                        ? `Register & Pay ${currentFee ? `KES ${currentFee.toLocaleString()}` : ''}`
-                        : `Pay KES ${FEE_RENEWAL.toLocaleString()}`}
-                      <ArrowRight size={18} />
-                    </>
-                  )}
-                </button>
-                <p className="text-xs text-[#1B3A6B]/40 text-center mt-3 flex items-center justify-center gap-1">
-                  <Lock size={12} /> Secure payment processed via {
-                    paymentMethod === 'mpesa' ? 'M-PESA' :
-                    paymentMethod === 'visa' ? 'Stripe/PesaPal' :
-                    paymentMethod === 'paypal' ? 'PayPal' :
-                    'Bank Transfer'
-                  }
+                {/* Academic Details */}
+                <div className="border-t border-[#1B3A6B]/10 pt-6">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-8 h-8 bg-[#C9A84C] text-white rounded-full flex items-center justify-center text-xs font-serif font-bold">
+                      2
+                    </div>
+                    <h2 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
+                      Academic Details
+                    </h2>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                        Graduation Year <span className="text-[#C9A84C]">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="2000"
+                          max="2030"
+                          required
+                          value={formData.graduation_year}
+                          onChange={e => setFormData({...formData, graduation_year: e.target.value})}
+                          className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
+                          placeholder="e.g. 2023"
+                        />
+                        <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                        Course of Study <span className="text-[#1B3A6B]/50">(Optional)</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={formData.course}
+                          onChange={e => setFormData({...formData, course: e.target.value})}
+                          className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
+                          placeholder="Your course"
+                        />
+                        <BookOpen className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                        Country of Residence <span className="text-[#C9A84C]">*</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          required
+                          value={formData.country}
+                          onChange={e => setFormData({...formData, country: e.target.value})}
+                          className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition bg-white appearance-none"
+                        >
+                          <option value="">Select your country</option>
+                          {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <Globe className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30 pointer-events-none" size={16} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Method Section */}
+                <div className="border-t border-[#1B3A6B]/10 pt-6">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-8 h-8 bg-[#C9A84C] text-white rounded-full flex items-center justify-center text-xs font-serif font-bold">
+                      3
+                    </div>
+                    <h2 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
+                      Payment Method
+                    </h2>
+                  </div>
+                  <PaymentMethodSelector 
+                    paymentMethod={paymentMethod}
+                    setPaymentMethod={setPaymentMethod}
+                    cardDetails={cardDetails}
+                    setCardDetails={setCardDetails}
+                    handleSubmit={handleSubmit}
+                    isLoading={loading}
+                    currentFee={registrationFee}
+                  />
+                </div>
+
+                {/* Registration Summary */}
+                <div className="border-2 border-[#C9A84C]/30 bg-[#C9A84C]/5 rounded-lg p-5 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Gift className="text-[#C9A84C]" size={20} />
+                    <p className="font-serif font-bold text-[#1B3A6B]">Membership Benefits</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                    {[
+                      "Lifetime membership access",
+                      "Networking opportunities",
+                      "Exclusive events & workshops",
+                      "Member resources & discounts"
+                    ].map(b => (
+                      <div key={b} className="flex items-start gap-2">
+                        <CheckCircle size={14} className="text-[#C9A84C] mt-0.5 flex-shrink-0" />
+                        <span className="text-[#1B3A6B]/70 text-xs">{b}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-[#C9A84C]/20 pt-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-wider text-[#1B3A6B]/50 font-medium">
+                        Registration Fee
+                      </p>
+                      <p className="text-2xl font-serif font-bold text-[#1B3A6B]">
+                        KES {registrationFee.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-sm text-[#1B3A6B]/60 text-center">
+                  Already have an account?{" "}
+                  <Link href="/login" className="text-[#C9A84C] font-medium hover:underline">
+                    Login here
+                  </Link>
                 </p>
               </div>
             </form>

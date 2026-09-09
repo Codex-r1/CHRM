@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Footer from "../../../../components/Footer";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../../../../(backend)/lib/supabase/client";
-import { useAuth } from "../../../../../(backend)/context/auth";
+import { useAuth } from '../../../../../(backend)/context/auth';
 import {
   User,
   Phone,

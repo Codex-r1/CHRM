@@ -18,8 +18,8 @@ export default function Footer() {
           <div>
             <h4 className="font-serif text-base font-semibold tracking-wider text-[#C9A84C] uppercase">Quick Links</h4>
             <ul className="mt-4 space-y-2 text-xs uppercase tracking-wider text-white/80">
-              <li><Link href="/member/dashboard/profile/edit" className="hover:text-[#C9A84C]">Alumni Directory</Link></li>
-              <li><Link href="/payments" className="hover:text-[#C9A84C]">Membership Tiers</Link></li>
+              <li><Link href="/login" className="hover:text-[#C9A84C]">Alumni Directory</Link></li>
+              <li><Link href="/payments" className="hover:text-[#C9A84C]">Membership </Link></li>
               <li><Link href="/events" className="hover:text-[#C9A84C]">Global Events</Link></li>
               <li><Link href="/merchandise" className="hover:text-[#C9A84C]">Official Store</Link></li>
             </ul>
@@ -36,10 +36,21 @@ export default function Footer() {
             </p>
           </div>
         </div>
-
-        <div className="mt-12 border-t border-white/10 pt-6 text-center text-xs text-white/60">
-          © {new Date().getFullYear()} St Andrew's School, Turi. All rights reserved. Built for Old Turians Worldwide.
-        </div>
+<div className="flex items-center gap-4">
+  <img 
+    src="/St-Andrews-Turi.png" 
+    alt="St Andrew's Turi" 
+    className="h-12 w-auto object-contain"
+  />
+  <div>
+    <h3 className="font-serif text-lg font-bold text-[#1B3A6B]">
+      St Andrew's Turi
+    </h3>
+    <p className="text-xs text-[#1B3A6B]/60">
+      Est. 1931 · Seeking the Highest
+    </p>
+  </div>
+</div>
       </div>
     </footer>
   );

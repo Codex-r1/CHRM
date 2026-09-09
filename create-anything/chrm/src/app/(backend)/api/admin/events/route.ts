@@ -1,249 +1,76 @@
-// app/api/admin/events/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, 
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
-
-// Verify admin authentication
-async function verifyAdminAuth(request: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return { error: 'Missing or invalid authorization header', admin: null };
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
     
-    // Verify the JWT token
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return { error: 'Invalid or expired token', admin: null };
+    const { data: { user }, error: userError } = await supabaseAdmin().auth.getUser(token);
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user is admin
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    const { data: events, error } = await supabaseAdmin()
+      .from("events")
+      .select("*")
+      .order("event_date", { ascending: true });
 
-    if (profileError || !profile || profile.role !== 'admin') {
-      return { error: 'Unauthorized: Admin access required', admin: null };
-    }
-
-    return { error: null, admin: user };
-  } catch (error) {
-    console.error('Auth verification error:', error);
-    return { error: 'Authentication failed', admin: null };
-  }
-}
-
-// Helper function to calculate event status based on date
-function calculateEventStatus(eventDate: string | null): string {
-  if (!eventDate) return 'upcoming';
-  
-  const now = new Date();
-  const event = new Date(eventDate);
-  
-  // Clear time portion for accurate date comparison
-  now.setHours(0, 0, 0, 0);
-  event.setHours(0, 0, 0, 0);
-  
-  if (event < now) {
-    return 'completed';
-  } else if (event.getTime() === now.getTime()) {
-    return 'ongoing';
-  } else {
-    return 'upcoming';
-  }
-}
-
-// POST - Create a new event
-export async function POST(request: NextRequest) {
-  try {
-    // Verify admin authentication
-    const { error: authError, admin } = await verifyAdminAuth(request);
-    if (authError || !admin) {
+    if (error) {
+      console.error("Error fetching events:", error);
       return NextResponse.json(
-        { error: authError || 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Parse request body
-    const body = await request.json();
-    
-    // Validate required fields
-    const {
-      name,
-      description,
-      price,
-      event_date,
-      location,
-      member_discount,
-      max_attendees,
-      image_url,
-      is_active,
-      status
-    } = body;
-
-    if (!name || !description || price === undefined) {
-      return NextResponse.json(
-        { error: 'Missing required fields: name, description, and price are required' },
-        { status: 400 }
-      );
-    }
-
-    // Validate price
-    if (typeof price !== 'number' || price < 0) {
-      return NextResponse.json(
-        { error: 'Price must be a positive number' },
-        { status: 400 }
-      );
-    }
-
-    // Auto-calculate status based on event_date if not provided
-    const calculatedStatus = status || calculateEventStatus(event_date);
-
-    // Prepare event data
-    const eventData = {
-      name,
-      description,
-      event_date: event_date || null,
-      location: location || null,
-      price: parseFloat(price.toFixed(2)),
-      member_discount: member_discount ? parseInt(member_discount) : 5,
-      max_attendees: max_attendees ? parseInt(max_attendees) : null,
-      current_attendees: 0,
-      image_url: image_url || null,
-      is_active: is_active !== undefined ? is_active : true,
-      status: calculatedStatus,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    // Insert event into database
-    const { data: event, error: insertError } = await supabase
-      .from('events')
-      .insert([eventData])
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Event creation error:', insertError);
-      return NextResponse.json(
-        { error: 'Failed to create event', details: insertError.message },
+        { error: "Failed to fetch events" },
         { status: 500 }
       );
     }
 
-    // Log admin action
-    await supabase.from('admin_logs').insert({
-      admin_id: admin.id,
-      action: 'create_event',
-      resource_type: 'event',
-      resource_id: event.id,
-      details: { event_name: name },
-      created_at: new Date().toISOString()
-    });
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Event created successfully',
-        event
-      },
-      { status: 201 }
-    );
-
+    return NextResponse.json({ events });
   } catch (error: any) {
-    console.error('Create event error:', error);
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }
 }
 
-// GET - Fetch all events (admin view with filters)
-export async function GET(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    // Verify admin authentication
-    const { error: authError, admin } = await verifyAdminAuth(request);
-    if (authError || !admin) {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    const { data: { user }, error: userError } = await supabaseAdmin().auth.getUser(token);
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    
+    const { data, error } = await supabaseAdmin()
+      .from("events")
+      .insert(body)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating event:", error);
       return NextResponse.json(
-        { error: authError || 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const isActive = searchParams.get('is_active');
-
-    // Build query
-    let query = supabase
-      .from('events')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    // Apply filters
-    if (status) {
-      query = query.eq('status', status);
-    }
-    if (isActive !== null) {
-      query = query.eq('is_active', isActive === 'true');
-    }
-
-    const { data: events, error: fetchError } = await query;
-
-    if (fetchError) {
-      console.error('Fetch events error:', fetchError);
-      return NextResponse.json(
-        { error: 'Failed to fetch events' },
+        { error: "Failed to create event" },
         { status: 500 }
       );
     }
 
-    // Auto-update event statuses based on current date
-    const updatedEvents = (events || []).map(event => {
-      const autoStatus = calculateEventStatus(event.event_date);
-      
-      // If status has changed, update in database (async, don't wait)
-      if (autoStatus !== event.status) {
-        supabase
-          .from('events')
-          .update({ status: autoStatus, updated_at: new Date().toISOString() })
-          .eq('id', event.id)
-          .then(() => console.log(`Updated event ${event.id} status to ${autoStatus}`))
-        
-        // Return updated status immediately in response
-        return { ...event, status: autoStatus };
-      }
-      
-      return event;
-    });
-
-    return NextResponse.json({
-      success: true,
-      events: updatedEvents,
-      count: updatedEvents.length
-    });
-
+    return NextResponse.json({ event: data });
   } catch (error: any) {
-    console.error('Get events error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }

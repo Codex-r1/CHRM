@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../(backend)/context/auth';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X, RefreshCw, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SESSION_TIMEOUT = 20 * 60 * 1000; // 20 minutes
@@ -13,6 +12,7 @@ export default function SessionWarning() {
   const { user, refreshSession } = useAuth();
   const [showWarning, setShowWarning] = useState(false);
   const [minutesLeft, setMinutesLeft] = useState(5);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -34,10 +34,37 @@ export default function SessionWarning() {
     return () => clearInterval(checkInterval);
   }, [user]);
 
+  // Update last activity on user interaction
+  useEffect(() => {
+    const updateActivity = () => {
+      localStorage.setItem('lastActivity', Date.now().toString());
+    };
+
+    // Update activity on any user interaction
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('scroll', updateActivity);
+    window.addEventListener('mousemove', updateActivity);
+
+    return () => {
+      window.removeEventListener('click', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+      window.removeEventListener('scroll', updateActivity);
+      window.removeEventListener('mousemove', updateActivity);
+    };
+  }, []);
+
   const handleStayLoggedIn = async () => {
-    localStorage.setItem('lastActivity', Date.now().toString());
-    await refreshSession();
-    setShowWarning(false);
+    setIsRefreshing(true);
+    try {
+      localStorage.setItem('lastActivity', Date.now().toString());
+      await refreshSession();
+      setShowWarning(false);
+    } catch (error) {
+      console.error('Failed to refresh session:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
@@ -47,30 +74,44 @@ export default function SessionWarning() {
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -100, opacity: 0 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4"
         >
-          <div className="bg-amber-50 border-2 border-amber-300 rounded-lg shadow-lg p-4">
-            <div className="flex items-start gap-3">
+          <div className="bg-white border-2 border-[#C9A84C] rounded-lg shadow-xl p-5">
+            <div className="flex items-start gap-4">
               <div className="flex-shrink-0">
-                <AlertTriangle className="text-amber-600" size={24} />
+                <div className="w-10 h-10 bg-[#C9A84C]/10 rounded-full flex items-center justify-center">
+                  <Clock className="text-[#C9A84C]" size={20} />
+                </div>
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-amber-900 mb-1">
+                <h3 className="font-serif font-bold text-[#1B3A6B] text-lg mb-1">
                   Session Expiring Soon
                 </h3>
-                <p className="text-sm text-amber-800 mb-3">
-                  Your session will expire in {minutesLeft} minute{minutesLeft !== 1 ? 's' : ''} due to inactivity.
+                <p className="text-sm text-[#1B3A6B]/70 mb-3">
+                  Your session will expire in <span className="font-bold text-[#1B3A6B]">{minutesLeft}</span> minute{minutesLeft !== 1 ? 's' : ''} due to inactivity.
                 </p>
                 <button
                   onClick={handleStayLoggedIn}
-                  className="px-4 py-2 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition-colors text-sm"
+                  disabled={isRefreshing}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Stay Logged In
+                  {isRefreshing ? (
+                    <>
+                      <RefreshCw className="animate-spin" size={16} />
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={16} />
+                      Stay Logged In
+                    </>
+                  )}
                 </button>
               </div>
               <button
                 onClick={() => setShowWarning(false)}
-                className="flex-shrink-0 text-amber-600 hover:text-amber-800"
+                className="flex-shrink-0 text-[#1B3A6B]/30 hover:text-[#1B3A6B] transition-colors"
               >
                 <X size={20} />
               </button>

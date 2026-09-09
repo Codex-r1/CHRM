@@ -1,93 +1,93 @@
-// app/api/admin/payments/route.ts
-export const dynamic = 'force-dynamic'
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
-
-async function verifyAdminAuth(request: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return { error: 'Missing or invalid authorization header', admin: null };
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const token = authHeader.replace('Bearer ', '');
     
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return { error: 'Invalid or expired token', admin: null };
+    const { data: { user }, error: userError } = await supabaseAdmin().auth.getUser(token);
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile || profile.role !== 'admin') {
-      return { error: 'Unauthorized: Admin access required', admin: null };
-    }
-
-    return { error: null, admin: user };
-  } catch (error) {
-    console.error('Auth verification error:', error);
-    return { error: 'Authentication failed', admin: null };
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const { error: authError, admin } = await verifyAdminAuth(request);
-    if (authError || !admin) {
-      return NextResponse.json(
-        { error: authError || 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get all payments with user info
-    const { data: payments, error } = await supabase
-      .from('payments')
+    const { data: payments, error } = await supabaseAdmin()
+      .from("payments")
       .select(`
         *,
-        profiles (
+        profiles:user_id (
           full_name,
           email,
           membership_number
         )
       `)
-      .order('created_at', { ascending: false })
+      .order("created_at", { ascending: false });
 
     if (error) {
-      console.error('Fetch payments error:', error);
+      console.error("Error fetching payments:", error);
       return NextResponse.json(
-        { error: 'Failed to fetch payments' },
+        { error: "Failed to fetch payments" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      payments: payments || [],
-      count: payments?.length || 0
-    });
-
+    return NextResponse.json({ payments });
   } catch (error: any) {
-    console.error('Admin payments fetch error:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch payments' },
+      { error: error.message || "Internal server error" },
       { status: 500 }
-    )
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    const { data: { user }, error: userError } = await supabaseAdmin().auth.getUser(token);
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { paymentId, status } = body;
+
+    if (!paymentId || !status) {
+      return NextResponse.json(
+        { error: "paymentId and status are required" },
+        { status: 400 }
+      );
+    }
+
+    const { data, error } = await supabaseAdmin()
+      .from("payments")
+      .update({ status })
+      .eq("id", paymentId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error updating payment:", error);
+      return NextResponse.json(
+        { error: "Failed to update payment" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ payment: data });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 }
+    );
   }
 }

@@ -22,10 +22,17 @@ import {
   Smartphone,
   Loader2,
   Info,
-  Sparkles,
-  Award,
+  TrashIcon,
   BadgeCheck,
   ChevronRight,
+  Globe,
+  MapPin,
+  Building2,
+  Mail,
+  Phone,
+  Clock,
+  CreditCard,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -83,10 +90,26 @@ type CartItem = {
   stock_available: number;
 };
 
+type ShippingAddress = {
+  full_name: string;
+  email: string;
+  phone: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code: string;
+};
+
+type ShippingMethod = 'dhl_express' | 'dhl_economy' | 'standard' | 'pickup';
+
 type CustomerInfo = {
   full_name: string;
   phone: string;
   email: string;
+  shipping: ShippingAddress;
+  shippingMethod: ShippingMethod;
 };
 
 type AlertModalType = {
@@ -97,6 +120,46 @@ type AlertModalType = {
   confirmText?: string;
   onConfirm?: () => void;
 };
+
+const shippingMethods: { id: ShippingMethod; label: string; price: number; time: string; description: string }[] = [
+  {
+    id: 'dhl_express',
+    label: 'DHL Express',
+    price: 45,
+    time: '2-4 business days',
+    description: 'Fastest delivery with tracking and signature'
+  },
+  {
+    id: 'dhl_economy',
+    label: 'DHL Economy',
+    price: 25,
+    time: '5-8 business days',
+    description: 'Affordable international shipping with tracking'
+  },
+  {
+    id: 'standard',
+    label: 'Standard Shipping',
+    price: 10,
+    time: '3-7 business days',
+    description: 'For deliveries within Kenya'
+  },
+  {
+    id: 'pickup',
+    label: 'Pickup from Office',
+    price: 0,
+    time: 'Ready in 2-3 business days',
+    description: 'Collect from our Nairobi office'
+  },
+];
+
+const countries = [
+  "Kenya", "United States", "United Kingdom", "Canada", "Australia", 
+  "Germany", "France", "Italy", "Spain", "Netherlands", "Sweden", 
+  "Norway", "Denmark", "Finland", "Belgium", "Switzerland", "Austria",
+  "South Africa", "Nigeria", "Uganda", "Tanzania", "Rwanda", 
+  "Ethiopia", "Egypt", "UAE", "Saudi Arabia", "Singapore", 
+  "Malaysia", "India", "China", "Japan", "South Korea", "Brazil"
+];
 
 const benefits = [
   {
@@ -110,9 +173,9 @@ const benefits = [
     description: "Exclusive prices for alumni members"
   },
   {
-    icon: Truck,
-    title: "Fast Delivery",
-    description: "Free delivery within Kenya"
+    icon: Globe,
+    title: "Worldwide Shipping",
+    description: "Delivered globally"
   },
   {
     icon: Shield,
@@ -134,6 +197,18 @@ export default function MerchandisePage() {
     full_name: "",
     phone: "",
     email: "",
+    shipping: {
+      full_name: "",
+      email: "",
+      phone: "",
+      address_line1: "",
+      address_line2: "",
+      city: "",
+      state: "",
+      country: "Kenya",
+      postal_code: "",
+    },
+    shippingMethod: 'standard',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -177,6 +252,11 @@ export default function MerchandisePage() {
         ...prev,
         full_name: (user as any).name || (user as any).user_metadata?.name || "",
         email: user.email || "",
+        shipping: {
+          ...prev.shipping,
+          full_name: (user as any).name || (user as any).user_metadata?.name || "",
+          email: user.email || "",
+        }
       }));
     }
   }, [user]);
@@ -340,8 +420,17 @@ export default function MerchandisePage() {
     setCart(cart.filter((_, index) => index !== itemIndex));
   };
 
-  const calculateTotal = () => {
+  const calculateSubtotal = () => {
     return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  };
+
+  const getShippingCost = () => {
+    const method = shippingMethods.find(m => m.id === customerInfo.shippingMethod);
+    return method ? method.price : 0;
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal() + getShippingCost();
   };
 
   const handleCheckout = () => {
@@ -361,18 +450,25 @@ export default function MerchandisePage() {
   };
 
   const handlePayment = async () => {
-    if (!customerInfo.phone || !customerInfo.full_name || !customerInfo.email) {
-      setErrors({
-        submit: 'Please fill in all customer information fields'
-      });
+    // Validate customer info
+    if (!customerInfo.full_name || !customerInfo.phone || !customerInfo.email) {
+      setErrors({ submit: 'Please fill in all required fields' });
       showAlert('error', 'Missing Information', 'Please fill in all required fields.');
       return;
     }
 
+    // Validate shipping address
+    const shipping = customerInfo.shipping;
+    if (customerInfo.shippingMethod !== 'pickup') {
+      if (!shipping.address_line1 || !shipping.city || !shipping.country || !shipping.postal_code) {
+        setErrors({ submit: 'Please fill in your complete shipping address' });
+        showAlert('error', 'Missing Shipping Address', 'Please fill in your complete shipping address.');
+        return;
+      }
+    }
+
     if (!validatePhoneNumber(customerInfo.phone)) {
-      setErrors({
-        submit: 'Please enter a valid Kenyan phone number (e.g., 0712345678)'
-      });
+      setErrors({ submit: 'Please enter a valid Kenyan phone number (e.g., 0712345678)' });
       showAlert('error', 'Invalid Phone', 'Please enter a valid Kenyan phone number.');
       return;
     }
@@ -389,19 +485,34 @@ export default function MerchandisePage() {
     setStkStatus('requesting');
 
     try {
+      const subtotal = calculateSubtotal();
+      const shippingCost = getShippingCost();
       const total = calculateTotal();
+      const shippingMethod = shippingMethods.find(m => m.id === customerInfo.shippingMethod);
 
+      // Create order with shipping details
       const orderResponse = await fetch('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user.id,
           items: cart,
+          subtotal: subtotal,
+          shipping_cost: shippingCost,
           total: total,
           customer_name: customerInfo.full_name,
           customer_phone: customerInfo.phone,
           customer_email: customerInfo.email,
-          shipping_address: "To be provided after payment",
+          shipping_address: customerInfo.shippingMethod === 'pickup' 
+            ? 'Pickup from office' 
+            : `${shipping.address_line1}, ${shipping.address_line2 || ''}, ${shipping.city}, ${shipping.state || ''}, ${shipping.country}, ${shipping.postal_code}`,
+          shipping_method: customerInfo.shippingMethod,
+          shipping_details: {
+            method: shippingMethod?.label,
+            tracking_number: null,
+            carrier: customerInfo.shippingMethod.startsWith('dhl') ? 'DHL' : 'Standard',
+            estimated_delivery: shippingMethod?.time || '3-7 business days',
+          },
           status: 'pending'
         })
       });
@@ -412,6 +523,7 @@ export default function MerchandisePage() {
         throw new Error(orderData.error || 'Failed to create order');
       }
 
+      // Initiate payment
       const paymentResponse = await fetch('/api/payments/stk-push', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -422,14 +534,20 @@ export default function MerchandisePage() {
           userId: user.id,
           userEmail: customerInfo.email,
           userName: customerInfo.full_name,
-          description: `Merchandise Order - ${cart.length} items`,
+          description: `Merchandise Order - ${cart.length} items (${shippingMethod?.label})`,
           metadata: {
             order_id: orderData.order?.id,
             items: cart,
+            subtotal: subtotal,
+            shipping_cost: shippingCost,
             total: total,
             customer_name: customerInfo.full_name,
             customer_email: customerInfo.email,
-            customer_phone: customerInfo.phone
+            customer_phone: customerInfo.phone,
+            shipping_method: customerInfo.shippingMethod,
+            shipping_address: customerInfo.shippingMethod === 'pickup' 
+              ? 'Pickup from office' 
+              : `${shipping.address_line1}, ${shipping.city}, ${shipping.country}`,
           }
         })
       });
@@ -437,11 +555,18 @@ export default function MerchandisePage() {
       const paymentData = await paymentResponse.json();
 
       if (!paymentResponse.ok) {
-        throw new Error(paymentData.error || 'Payment initiation failed');
+        throw new Error(paymentData.error || paymentData.message || 'Payment initiation failed');
       }
 
-      if (paymentData.checkoutRequestId) {
-        setCheckoutRequestId(paymentData.checkoutRequestId);
+      const checkoutId = 
+        paymentData.checkoutRequestID || 
+        paymentData.checkoutRequestId || 
+        paymentData.CheckoutRequestID || 
+        paymentData.data?.checkoutRequestID || 
+        paymentData.data?.CheckoutRequestID;
+
+      if (checkoutId) {
+        setCheckoutRequestId(checkoutId);
         setStkStatus('waiting');
         
         showAlert('info', 'Check Your Phone', 
@@ -449,7 +574,7 @@ export default function MerchandisePage() {
           { confirmText: 'OK' }
         );
         
-        startPolling(paymentData.checkoutRequestId, orderData.order?.id);
+        startPolling(checkoutId, orderData.order?.id);
       } else {
         throw new Error('No checkout request ID received');
       }
@@ -483,7 +608,7 @@ export default function MerchandisePage() {
           setStkStatus('success');
           
           showAlert('success', 'Payment Successful!', 
-            'Your merchandise order has been confirmed.',
+            'Your merchandise order has been confirmed. You will receive tracking information via email.',
             { confirmText: 'View Orders' }
           );
           
@@ -531,7 +656,19 @@ export default function MerchandisePage() {
     setCustomerInfo({ 
       full_name: (user as any)?.name || "",
       phone: "", 
-      email: user?.email || "" 
+      email: user?.email || "",
+      shipping: {
+        full_name: "",
+        email: "",
+        phone: "",
+        address_line1: "",
+        address_line2: "",
+        city: "",
+        state: "",
+        country: "Kenya",
+        postal_code: "",
+      },
+      shippingMethod: 'standard',
     });
     setErrors({});
     setStkStatus('idle');
@@ -626,6 +763,177 @@ export default function MerchandisePage() {
     );
   };
 
+  // In merchandise page - updated ShippingMethodSelector
+const ShippingMethodSelector = () => (
+  <div className="space-y-3">
+    <h3 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
+      Shipping Method <span className="text-xs font-normal text-[#1B3A6B]/50 ml-2">(From Nakuru → Nairobi Hub → You)</span>
+    </h3>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      {shippingMethods.map((method) => {
+        const isSelected = customerInfo.shippingMethod === method.id;
+        const isDHL = method.id.startsWith('dhl');
+        
+        return (
+          <button
+            key={method.id}
+            type="button"
+            onClick={() => setCustomerInfo(prev => ({ ...prev, shippingMethod: method.id }))}
+            className={`p-4 border-2 rounded-lg text-left transition-all ${
+              isSelected
+                ? 'border-[#C9A84C] bg-[#C9A84C]/5'
+                : 'border-[#1B3A6B]/10 hover:border-[#1B3A6B]/20'
+            }`}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  {isDHL && (
+                    <span className="text-xs font-bold text-[#C9A84C] bg-[#C9A84C]/10 px-2 py-0.5 rounded">
+                      DHL
+                    </span>
+                  )}
+                  <span className={`font-semibold text-sm ${isSelected ? 'text-[#1B3A6B]' : 'text-[#1B3A6B]/70'}`}>
+                    {method.label}
+                  </span>
+                </div>
+                <p className="text-xs text-[#1B3A6B]/50 mt-1">{method.time}</p>
+                <p className="text-xs text-[#1B3A6B]/40 mt-0.5">{method.description}</p>
+                {isDHL && (
+                  <p className="text-[10px] text-[#1B3A6B]/30 mt-1 flex items-center gap-1">
+                    <Truck size={10} /> Nakuru → Nairobi Hub → Global
+                  </p>
+                )}
+              </div>
+              <div className="text-right">
+                <p className={`font-serif font-bold ${isSelected ? 'text-[#1B3A6B]' : 'text-[#1B3A6B]/50'}`}>
+                  {method.price === 0 ? 'FREE' : `KES ${method.price.toLocaleString()}`}
+                </p>
+                {isSelected && (
+                  <CheckCircle className="text-[#C9A84C] mt-1 ml-auto" size={14} />
+                )}
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  </div>
+);
+
+  // Shipping Address Form
+  const ShippingAddressForm = () => (
+    <div className="space-y-4">
+      <h3 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
+        Shipping Address
+      </h3>
+      
+      {customerInfo.shippingMethod === 'pickup' ? (
+        <div className="bg-[#C9A84C]/10 border border-[#C9A84C]/30 rounded-lg p-4">
+          <p className="text-sm text-[#1B3A6B] flex items-center gap-2">
+            <Building2 size={16} className="text-[#C9A84C]" />
+            Pickup from our Nairobi office. You'll receive confirmation when your order is ready.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+              Address Line 1 <span className="text-[#C9A84C]">*</span>
+            </label>
+            <input
+              type="text"
+              value={customerInfo.shipping.address_line1}
+              onChange={(e) => setCustomerInfo(prev => ({
+                ...prev,
+                shipping: { ...prev.shipping, address_line1: e.target.value }
+              }))}
+              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
+              placeholder="Street address, P.O. Box"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+              Address Line 2 <span className="text-[#1B3A6B]/50">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={customerInfo.shipping.address_line2}
+              onChange={(e) => setCustomerInfo(prev => ({
+                ...prev,
+                shipping: { ...prev.shipping, address_line2: e.target.value }
+              }))}
+              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
+              placeholder="Apartment, suite, unit, etc."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+              City <span className="text-[#C9A84C]">*</span>
+            </label>
+            <input
+              type="text"
+              value={customerInfo.shipping.city}
+              onChange={(e) => setCustomerInfo(prev => ({
+                ...prev,
+                shipping: { ...prev.shipping, city: e.target.value }
+              }))}
+              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
+              placeholder="City"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+              State/Province <span className="text-[#1B3A6B]/50">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={customerInfo.shipping.state}
+              onChange={(e) => setCustomerInfo(prev => ({
+                ...prev,
+                shipping: { ...prev.shipping, state: e.target.value }
+              }))}
+              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
+              placeholder="State/Province"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+              Country <span className="text-[#C9A84C]">*</span>
+            </label>
+            <select
+              value={customerInfo.shipping.country}
+              onChange={(e) => setCustomerInfo(prev => ({
+                ...prev,
+                shipping: { ...prev.shipping, country: e.target.value }
+              }))}
+              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition bg-white"
+            >
+              {countries.map(country => (
+                <option key={country} value={country}>{country}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+              Postal/ZIP Code <span className="text-[#C9A84C]">*</span>
+            </label>
+            <input
+              type="text"
+              value={customerInfo.shipping.postal_code}
+              onChange={(e) => setCustomerInfo(prev => ({
+                ...prev,
+                shipping: { ...prev.shipping, postal_code: e.target.value }
+              }))}
+              className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
+              placeholder="Postal/ZIP Code"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -640,7 +948,10 @@ export default function MerchandisePage() {
   // ─── CHECKOUT STEPS ─────────────────────────────────────────────────────────
 
   if (step === 2) {
+    const subtotal = calculateSubtotal();
+    const shippingCost = getShippingCost();
     const total = calculateTotal();
+
     return (
       <div className="min-h-screen bg-white">
         <AlertModalComponent />
@@ -654,7 +965,7 @@ export default function MerchandisePage() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-serif font-bold text-[#1B3A6B]">Checkout</h1>
-                <p className="text-[#1B3A6B]/60 text-sm mt-1">Complete your order details</p>
+                <p className="text-[#1B3A6B]/60 text-sm mt-1">Complete your order and shipping details</p>
               </div>
               <button
                 onClick={() => setStep(1)}
@@ -671,28 +982,55 @@ export default function MerchandisePage() {
               variants={scaleIn}
               initial="hidden"
               animate="visible"
-              className="border border-[#1B3A6B]/10 rounded-lg p-6"
+              className="space-y-6"
             >
-              <h2 className="text-xl font-serif font-bold text-[#1B3A6B] mb-6">Order Summary</h2>
-              {cart.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center py-3 border-b border-[#1B3A6B]/10 last:border-0"
-                >
+              {/* Customer Info */}
+              <div className="border border-[#1B3A6B]/10 rounded-lg p-6">
+                <h2 className="text-xl font-serif font-bold text-[#1B3A6B] mb-6">Customer Information</h2>
+                <div className="space-y-4">
                   <div>
-                    <p className="font-serif font-semibold text-[#1B3A6B]">{item.name}</p>
-                    <p className="text-sm text-[#1B3A6B]/60">
-                      {item.color_name}, Size: {item.size} | Qty: {item.quantity}
-                    </p>
+                    <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                      Full Name <span className="text-[#C9A84C]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customerInfo.full_name}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, full_name: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
+                      placeholder="John Doe"
+                    />
                   </div>
-                  <p className="font-serif font-bold text-[#1B3A6B]">
-                    KES {(item.price * item.quantity).toLocaleString()}
-                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                      Email Address <span className="text-[#C9A84C]">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={customerInfo.email}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
+                      placeholder="john@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                      Phone Number <span className="text-[#C9A84C]">*</span>
+                    </label>
+                    <p className="text-xs text-[#1B3A6B]/50 mb-1.5">You'll receive an M-PESA prompt on this number</p>
+                    <input
+                      type="tel"
+                      value={customerInfo.phone}
+                      onChange={(e) => setCustomerInfo({ ...customerInfo, phone: e.target.value })}
+                      className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
+                      placeholder="0712345678"
+                    />
+                  </div>
                 </div>
-              ))}
-              <div className="flex justify-between items-center pt-4 text-lg font-serif font-bold">
-                <span className="text-[#1B3A6B]">Total</span>
-                <span className="text-[#1B3A6B]">KES {total.toLocaleString()}</span>
+              </div>
+
+              {/* Shipping Method */}
+              <div className="border border-[#1B3A6B]/10 rounded-lg p-6">
+                <ShippingMethodSelector />
               </div>
             </motion.div>
 
@@ -701,87 +1039,58 @@ export default function MerchandisePage() {
               initial="hidden"
               animate="visible"
               transition={{ delay: 0.1 }}
-              className="border border-[#1B3A6B]/10 rounded-lg p-6"
+              className="space-y-6"
             >
-              <h2 className="text-xl font-serif font-bold text-[#1B3A6B] mb-6">Customer Information</h2>
-              <form className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                    Full Name <span className="text-[#C9A84C]">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={customerInfo.full_name}
-                    onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        full_name: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
-                    placeholder="John Doe"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                    Phone Number <span className="text-[#C9A84C]">*</span>
-                  </label>
-                  <p className="text-xs text-[#1B3A6B]/50 mb-1.5">You'll receive an M-PESA prompt on this number</p>
-                  <input
-                    type="tel"
-                    value={customerInfo.phone}
-                    onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        phone: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
-                    placeholder="0712345678"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
-                    Email Address <span className="text-[#C9A84C]">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={customerInfo.email}
-                    onChange={(e) =>
-                      setCustomerInfo({
-                        ...customerInfo,
-                        email: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition"
-                    placeholder="john.doe@example.com"
-                    required
-                  />
-                </div>
-                {errors.submit && (
-                  <div className="p-3 bg-[#1B3A6B]/5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] text-sm">
-                    {errors.submit}
+              {/* Shipping Address */}
+              <div className="border border-[#1B3A6B]/10 rounded-lg p-6">
+                <ShippingAddressForm />
+              </div>
+
+              {/* Order Summary */}
+              <div className="border border-[#1B3A6B]/10 rounded-lg p-6">
+                <h2 className="text-xl font-serif font-bold text-[#1B3A6B] mb-6">Order Summary</h2>
+                {cart.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between items-center py-3 border-b border-[#1B3A6B]/10 last:border-0"
+                  >
+                    <div>
+                      <p className="font-serif font-semibold text-[#1B3A6B]">{item.name}</p>
+                      <p className="text-sm text-[#1B3A6B]/60">
+                        {item.color_name}, Size: {item.size} | Qty: {item.quantity}
+                      </p>
+                    </div>
+                    <p className="font-serif font-bold text-[#1B3A6B]">
+                      KES {(item.price * item.quantity).toLocaleString()}
+                    </p>
                   </div>
-                )}
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="flex-1 px-4 py-3 border border-[#1B3A6B]/20 text-[#1B3A6B] font-medium rounded-lg hover:bg-[#1B3A6B]/5 transition"
-                  >
-                    Back to Shop
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStep(3)}
-                    className="flex-1 px-4 py-3 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition"
-                  >
-                    Continue to Payment
-                  </button>
+                ))}
+                <div className="space-y-2 pt-4 border-t border-[#1B3A6B]/10">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#1B3A6B]/60">Subtotal</span>
+                    <span className="text-[#1B3A6B]">KES {subtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#1B3A6B]/60">
+                      Shipping ({shippingMethods.find(m => m.id === customerInfo.shippingMethod)?.label})
+                    </span>
+                    <span className="text-[#1B3A6B]">
+                      {shippingCost === 0 ? 'FREE' : `KES ${shippingCost.toLocaleString()}`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 text-lg font-serif font-bold">
+                    <span className="text-[#1B3A6B]">Total</span>
+                    <span className="text-[#1B3A6B]">KES {total.toLocaleString()}</span>
+                  </div>
                 </div>
-              </form>
+
+                <button
+                  onClick={() => setStep(3)}
+                  className="w-full mt-6 px-4 py-3 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition"
+                >
+                  Continue to Payment
+                </button>
+              </div>
             </motion.div>
           </div>
         </div>
@@ -791,7 +1100,10 @@ export default function MerchandisePage() {
   }
 
   if (step === 3) {
+    const subtotal = calculateSubtotal();
+    const shippingCost = getShippingCost();
     const total = calculateTotal();
+
     return (
       <div className="min-h-screen bg-white">
         <AlertModalComponent />
@@ -894,9 +1206,23 @@ export default function MerchandisePage() {
                   </p>
                 </div>
               ))}
-              <div className="flex justify-between items-center pt-4 text-lg font-serif font-bold">
-                <span className="text-[#1B3A6B]">Total</span>
-                <span className="text-[#1B3A6B]">KES {total.toLocaleString()}</span>
+              <div className="space-y-2 pt-4 border-t border-[#1B3A6B]/10">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#1B3A6B]/60">Subtotal</span>
+                  <span className="text-[#1B3A6B]">KES {subtotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#1B3A6B]/60">
+                    Shipping ({shippingMethods.find(m => m.id === customerInfo.shippingMethod)?.label})
+                  </span>
+                  <span className="text-[#1B3A6B]">
+                    {shippingCost === 0 ? 'FREE' : `KES ${shippingCost.toLocaleString()}`}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 text-lg font-serif font-bold">
+                  <span className="text-[#1B3A6B]">Total</span>
+                  <span className="text-[#1B3A6B]">KES {total.toLocaleString()}</span>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -907,6 +1233,8 @@ export default function MerchandisePage() {
   }
 
   if (step === 4) {
+    const shippingMethod = shippingMethods.find(m => m.id === customerInfo.shippingMethod);
+    
     return (
       <div className="min-h-screen bg-white">
         <AlertModalComponent />
@@ -922,12 +1250,42 @@ export default function MerchandisePage() {
               <CheckCircle className="w-10 h-10 text-[#C9A84C]" />
             </div>
             <h1 className="text-3xl font-serif font-bold text-[#1B3A6B] mb-4">
-              Order Placed!
+              Order Confirmed!
             </h1>
-            <p className="text-[#1B3A6B]/60 mb-8">
+            <p className="text-[#1B3A6B]/60 mb-6">
               Your merchandise order has been received and payment confirmed.
-              You'll receive updates via email.
             </p>
+            
+            <div className="bg-[#1B3A6B]/5 rounded-lg p-4 mb-6 text-left border border-[#1B3A6B]/10">
+              <h3 className="font-serif font-semibold text-[#1B3A6B] mb-3">Shipping Details</h3>
+              <div className="space-y-1.5 text-sm">
+                <p className="text-[#1B3A6B]/60">
+                  <span className="font-medium text-[#1B3A6B]">Method:</span> {shippingMethod?.label}
+                </p>
+                <p className="text-[#1B3A6B]/60">
+                  <span className="font-medium text-[#1B3A6B]">Estimated Delivery:</span> {shippingMethod?.time}
+                </p>
+                {customerInfo.shippingMethod !== 'pickup' && (
+                  <>
+                    <p className="text-[#1B3A6B]/60">
+                      <span className="font-medium text-[#1B3A6B]">Address:</span> {customerInfo.shipping.address_line1}
+                      {customerInfo.shipping.address_line2 && `, ${customerInfo.shipping.address_line2}`}
+                    </p>
+                    <p className="text-[#1B3A6B]/60">
+                      {customerInfo.shipping.city}, {customerInfo.shipping.country} {customerInfo.shipping.postal_code}
+                    </p>
+                  </>
+                )}
+                {customerInfo.shippingMethod === 'pickup' && (
+                  <p className="text-[#C9A84C] font-medium">Pickup from Nairobi office</p>
+                )}
+              </div>
+            </div>
+
+            <p className="text-sm text-[#1B3A6B]/50 mb-8">
+              You'll receive a confirmation email with tracking information once your order ships.
+            </p>
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/member/dashboard">
                 <button className="px-6 py-3 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition">
@@ -958,7 +1316,6 @@ export default function MerchandisePage() {
       {/* Hero Section */}
       <section className="bg-[#1B3A6B] py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -974,7 +1331,8 @@ export default function MerchandisePage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg text-white/70 max-w-2xl mx-auto leading-relaxed"
           >
-            Show your Turi pride with official alumni-branded merchandise
+            Show your Turi pride with official alumni-branded merchandise. 
+            <span className="block text-sm mt-1 text-white/50">Global shipping </span>
           </motion.p>
         </div>
       </section>
@@ -1010,19 +1368,19 @@ export default function MerchandisePage() {
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
-          className="grid md:grid-cols-4 gap-6 mb-12"
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-12"
         >
           {benefits.map((benefit, index) => (
             <motion.div
               key={index}
               variants={scaleIn}
-              className="border border-[#1B3A6B]/10 rounded-lg p-6 text-center hover:shadow-sm transition"
+              className="border border-[#1B3A6B]/10 rounded-lg p-4 md:p-6 text-center hover:shadow-sm transition"
             >
-              <div className="bg-[#1B3A6B]/5 w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4">
-                <benefit.icon className="w-6 h-6 text-[#1B3A6B]" />
+              <div className="bg-[#1B3A6B]/5 w-10 h-10 md:w-12 md:h-12 rounded-lg flex items-center justify-center mx-auto mb-2 md:mb-4">
+                <benefit.icon className="w-5 h-5 md:w-6 md:h-6 text-[#1B3A6B]" />
               </div>
-              <h3 className="font-serif font-bold text-[#1B3A6B] mb-2">{benefit.title}</h3>
-              <p className="text-sm text-[#1B3A6B]/60">{benefit.description}</p>
+              <h3 className="font-serif font-bold text-[#1B3A6B] text-sm md:text-base mb-1">{benefit.title}</h3>
+              <p className="text-xs md:text-sm text-[#1B3A6B]/60">{benefit.description}</p>
             </motion.div>
           ))}
         </motion.div>
@@ -1091,7 +1449,55 @@ export default function MerchandisePage() {
                   <p className="text-[#1B3A6B]/60 text-sm mb-4 line-clamp-2">
                     {product.description}
                   </p>
-
+ {/* ─── LIVE INVENTORY DISPLAY ─── */}
+  {selection.color && selection.size && (() => {
+    const selectedVariant = product.variants.find(
+      v => v.id === selection.variant_id
+    );
+    if (!selectedVariant) return null;
+    
+    const stock = selectedVariant.stock_quantity;
+    const isLowStock = stock <= 5 && stock > 0;
+    const isOutOfStock = stock <= 0;
+    
+    return (
+      <div className="mb-4 pb-3 border-b border-[#1B3A6B]/10">
+        <div className="flex items-center gap-2">
+          {isOutOfStock ? (
+            <span className="text-xs font-semibold text-[#E53E3E] flex items-center gap-1.5">
+              <AlertCircle size={14} />
+              Out of Stock
+            </span>
+          ) : isLowStock ? (
+            <span className="text-xs font-semibold text-[#FF7A00] flex items-center gap-1.5">
+              <AlertCircle size={14} />
+              Only {stock} left in stock - Order soon!
+            </span>
+          ) : (
+            <span className="text-xs font-medium text-[#1B3A6B]/60 flex items-center gap-1.5">
+              <CheckCircle size={14} className="text-[#C9A84C]" />
+              {stock} in stock
+            </span>
+          )}
+          {/* Stock indicator bar */}
+          <div className="flex-1 h-1.5 bg-[#1B3A6B]/10 rounded-full overflow-hidden max-w-[80px]">
+            <div 
+              className={`h-full rounded-full transition-all duration-500 ${
+                isOutOfStock ? 'bg-[#E53E3E]' : 
+                isLowStock ? 'bg-[#FF7A00]' : 
+                'bg-[#C9A84C]'
+              }`}
+              style={{ 
+                width: isOutOfStock ? '0%' : 
+                       isLowStock ? `${(stock / 5) * 100}%` : 
+                       '100%' 
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  })()}
                   <div className="mb-4">
                     <p className="text-xs uppercase tracking-wider text-[#1B3A6B]/50 font-medium mb-2">
                       Color
@@ -1202,19 +1608,23 @@ export default function MerchandisePage() {
                       KES {(item.price * item.quantity).toLocaleString()}
                     </p>
                     <button
-                      onClick={() => removeFromCart(index)}
-                      className="px-3 py-1 text-[#1B3A6B]/60 hover:text-[#1B3A6B] text-sm font-medium bg-[#1B3A6B]/10 hover:bg-[#1B3A6B]/20 rounded-lg transition"
-                    >
-                      Remove
-                    </button>
+  onClick={() => removeFromCart(index)}
+  className="p-2 text-[#1B3A6B]/40 hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 rounded-lg transition"
+  aria-label="Remove item"
+>
+  <TrashIcon size={16} />
+</button>
                   </div>
                 </div>
               ))}
             </div>
             <div className="flex flex-wrap items-center justify-between mt-6 pt-6 border-t-2 border-[#1B3A6B]/10 gap-4">
-              <p className="text-2xl font-serif font-bold text-[#1B3A6B]">
-                Total: <span className="text-[#1B3A6B]">KES {calculateTotal().toLocaleString()}</span>
-              </p>
+              <div>
+                <p className="text-2xl font-serif font-bold text-[#1B3A6B]">
+                  Total: <span className="text-[#1B3A6B]">KES {calculateTotal().toLocaleString()}</span>
+                </p>
+                <p className="text-xs text-[#1B3A6B]/50 mt-1">Shipping calculated at checkout</p>
+              </div>
               <button
                 onClick={handleCheckout}
                 className="px-8 py-3 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition flex items-center gap-2"
