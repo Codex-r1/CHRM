@@ -60,6 +60,186 @@ function formatDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+// ─── EMAIL HELPERS ──────────────────────────────────────────────────────────
+function getWelcomeEmail(name: string, membershipNumber: string, email: string) {
+  return {
+    to: email,
+    subject: 'Welcome to the Old Turians Society! 🎓',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Georgia', serif; color: #1B3A6B; }
+          .container { max-width: 600px; margin: 0 auto; padding: 40px; }
+          .header { border-bottom: 4px solid #C9A84C; padding-bottom: 20px; }
+          .content { padding: 30px 0; }
+          .button { 
+            display: inline-block; 
+            padding: 12px 30px; 
+            background: #1B3A6B; 
+            color: white !important; 
+            text-decoration: none; 
+            border-radius: 6px; 
+            font-weight: bold;
+          }
+          .footer { border-top: 2px solid #1B3A6B/10; padding-top: 20px; font-size: 12px; color: #1B3A6B/60; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="font-family: 'Georgia', serif; color: #1B3A6B;">Welcome to the Old Turians Society</h1>
+          </div>
+          <div class="content">
+            <h2>Dear ${name},</h2>
+            <p>Welcome to the Old Turians Society! Your membership has been successfully activated.</p>
+            <p><strong>Membership Number:</strong> ${membershipNumber}</p>
+            <p>You can now log in to your account and access all member benefits.</p>
+            <p>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/login" class="button">
+                Login to Your Account
+              </a>
+            </p>
+            <p>If you have any questions, please contact us at alumni@turi.ac.ke</p>
+            <p>Warm regards,<br><strong>The Old Turians Society</strong></p>
+          </div>
+          <div class="footer">
+            <p>St Andrew's Turi · Est. 1931 · Seeking the Highest</p>
+            <p>© ${new Date().getFullYear()} Old Turians Society. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+}
+
+function getEventRegistrationEmail(name: string, eventName: string, eventDate: string, eventLocation: string, email: string) {
+  return {
+    to: email,
+    subject: `Event Registration Confirmed: ${eventName} 🎫`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Georgia', serif; color: #1B3A6B; }
+          .container { max-width: 600px; margin: 0 auto; padding: 40px; }
+          .header { border-bottom: 4px solid #C9A84C; padding-bottom: 20px; }
+          .content { padding: 30px 0; }
+          .event-details { background: #1B3A6B/5; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .button { 
+            display: inline-block; 
+            padding: 12px 30px; 
+            background: #1B3A6B; 
+            color: white !important; 
+            text-decoration: none; 
+            border-radius: 6px; 
+            font-weight: bold;
+          }
+          .footer { border-top: 2px solid #1B3A6B/10; padding-top: 20px; font-size: 12px; color: #1B3A6B/60; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="font-family: 'Georgia', serif; color: #1B3A6B;">Event Registration Confirmed</h1>
+          </div>
+          <div class="content">
+            <h2>Dear ${name},</h2>
+            <p>Your registration for the following event has been confirmed:</p>
+            
+            <div class="event-details">
+              <h3 style="margin-top: 0;">${eventName}</h3>
+              <p><strong>Date:</strong> ${eventDate}</p>
+              <p><strong>Location:</strong> ${eventLocation}</p>
+            </div>
+            
+            <p>We look forward to seeing you there!</p>
+            
+            <p>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/events" class="button">
+                View All Events
+              </a>
+            </p>
+            
+            <p>Warm regards,<br><strong>The Old Turians Society</strong></p>
+          </div>
+          <div class="footer">
+            <p>St Andrew's Turi · Est. 1931 · Seeking the Highest</p>
+            <p>© ${new Date().getFullYear()} Old Turians Society. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+}
+
+function getMerchandiseOrderEmail(name: string, totalAmount: string, shippingAddress: string, email: string) {
+  return {
+    to: email,
+    subject: 'Your Merchandise Order Confirmation 🛍️',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Georgia', serif; color: #1B3A6B; }
+          .container { max-width: 600px; margin: 0 auto; padding: 40px; }
+          .header { border-bottom: 4px solid #C9A84C; padding-bottom: 20px; }
+          .content { padding: 30px 0; }
+          .order-details { background: #1B3A6B/5; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .button { 
+            display: inline-block; 
+            padding: 12px 30px; 
+            background: #1B3A6B; 
+            color: white !important; 
+            text-decoration: none; 
+            border-radius: 6px; 
+            font-weight: bold;
+          }
+          .footer { border-top: 2px solid #1B3A6B/10; padding-top: 20px; font-size: 12px; color: #1B3A6B/60; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1 style="font-family: 'Georgia', serif; color: #1B3A6B;">Order Confirmation</h1>
+          </div>
+          <div class="content">
+            <h2>Dear ${name},</h2>
+            <p>Thank you for your merchandise order! Your order has been confirmed and is being processed.</p>
+            
+            <div class="order-details">
+              <p><strong>Total Amount:</strong> KES ${totalAmount}</p>
+              <p><strong>Shipping Address:</strong> ${shippingAddress}</p>
+            </div>
+            
+            <p>You will receive a shipping confirmation with tracking details once your order ships.</p>
+            
+            <p>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/member/dashboard" class="button">
+                View Order Status
+              </a>
+            </p>
+            
+            <p>Thank you for supporting the Old Turians Society!</p>
+            <p>Warm regards,<br><strong>The Old Turians Society</strong></p>
+          </div>
+          <div class="footer">
+            <p>St Andrew's Turi · Est. 1931 · Seeking the Highest</p>
+            <p>© ${new Date().getFullYear()} Old Turians Society. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+}
+
+// ─── MAIN CALLBACK HANDLER ──────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   console.log('========================================');
   console.log(' M-PESA CALLBACK RECEIVED AT:', new Date().toISOString());
@@ -449,15 +629,12 @@ async function handleRegistrationPayment(payment: any) {
     console.log('📧 Sending welcome email...');
     if (registrationData.email) {
       try {
-        await sendEmail({
-          to: registrationData.email.toLowerCase(),
-          type: 'welcome',
-          data: {
-            name: registrationData.full_name || 'Member',
-            membership_number: membershipNumber,
-            email: registrationData.email.toLowerCase()
-          }
-        });
+        const emailData = getWelcomeEmail(
+          registrationData.full_name || 'Member',
+          membershipNumber,
+          registrationData.email.toLowerCase()
+        );
+        await sendEmail(emailData);
         console.log('✅ Welcome email sent');
       } catch (emailError: any) {
         console.error('⚠️ Email send failed (non-critical):', emailError.message);
@@ -629,21 +806,19 @@ async function handleEventPayment(payment: any) {
     
     if (attendeeEmail) {
       try {
-        await sendEmail({
-          to: attendeeEmail,
-          type: 'event_registration',
-          data: {
-            name: attendeeName || 'Attendee',
-            event_name: metadata.event_name || event.name,
-            event_date: new Date(event.event_date).toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            }),
-            event_location: event.location || 'TBA',
-          }
-        });
+        const emailData = getEventRegistrationEmail(
+          attendeeName || 'Attendee',
+          metadata.event_name || event.name,
+          new Date(event.event_date).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }),
+          event.location || 'TBA',
+          attendeeEmail
+        );
+        await sendEmail(emailData);
         console.log(' Event email sent');
       } catch (emailError: any) {
         console.error(' Event email failed:', emailError.message);
@@ -692,15 +867,13 @@ async function handleMerchandisePayment(payment: any) {
     
     if (customerEmail) {
       try {
-        await sendEmail({
-          to: customerEmail,
-          type: 'merchandise_order',
-          data: {
-            name: customerName || 'Customer',
-            total_amount: order.total.toLocaleString(),
-            shipping_address: order.shipping_address || 'N/A',
-          }
-        });
+        const emailData = getMerchandiseOrderEmail(
+          customerName || 'Customer',
+          order.total.toLocaleString(),
+          order.shipping_address || 'N/A',
+          customerEmail
+        );
+        await sendEmail(emailData);
         console.log('Order confirmation email sent');
       } catch (emailError: any) {
         console.error(' Order email failed:', emailError.message);

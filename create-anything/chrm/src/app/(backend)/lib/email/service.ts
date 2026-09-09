@@ -5,6 +5,8 @@ export interface EmailData {
   to: string;
   subject: string;
   html: string;
+  type?: 'welcome' | 'registration' | 'payment' | 'event';
+  data?: Record<string, any>;
 }
 
 export async function sendEmail(emailData: EmailData) {
