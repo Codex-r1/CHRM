@@ -348,7 +348,6 @@ const PaymentMethodSelector = ({
         {paymentMethods.map((method) => {
           const isSelected = paymentMethod === method.id;
           const isHovered = hoveredMethod === method.id;
-
           return (
             <motion.button
               key={method.id}
