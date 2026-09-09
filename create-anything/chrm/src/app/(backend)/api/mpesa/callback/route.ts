@@ -330,17 +330,17 @@ export async function POST(req: NextRequest) {
       let userId = payment.user_id;
       
       try {
-        console.log('🔄 Processing payment type:', payment.payment_type);
+        console.log(' Processing payment type:', payment.payment_type);
         
         switch (payment.payment_type) {
           case 'registration': {
-            console.log('🎓 Starting registration handler...');
+            console.log(' Starting registration handler...');
             const result = await handleRegistrationPayment(payment);
             
             if (result?.userId) {
               userId = result.userId;
-              console.log('✅ User created/activated successfully with ID:', userId);
-              console.log('✅ Membership number:', result.membershipNumber);
+              console.log('User created/activated successfully with ID:', userId);
+              console.log(' Membership number:', result.membershipNumber);
             } else {
               throw new Error('Registration handler did not return userId');
             }
@@ -394,38 +394,34 @@ export async function POST(req: NextRequest) {
       }
       
       // Update payment to confirmed
-      const updateData: any = {
-        status: 'confirmed',
-        receipt_number: receiptNumber,
-        paid_at: new Date().toISOString(),
-        confirmed_at: new Date().toISOString(),
-        callback_data: body,
-        updated_at: new Date().toISOString()
-      };
-      
-      if (userId) {
-        updateData.user_id = userId;
-        console.log('🔗 Linking payment to user:', userId);
-      }
-      
-      console.log('📝 Updating payment status to confirmed...');
-      console.log('  Update data:', updateData);
-      
-      const { error: updateError } = await supabaseAdmin()
-        .from('payments')
-        .update(updateData)
-        .eq('checkout_request_id', CheckoutRequestID);
+const updateData: any = {
+  status: 'confirmed',
+  receipt_number: receiptNumber,
+  paid_at: new Date().toISOString(),
+  confirmed_at: new Date().toISOString(),
+  callback_data: body,
+  updated_at: new Date().toISOString()
+};
 
-      if (updateError) {
-        console.error('❌ Payment update failed:', updateError);
-        return NextResponse.json({ 
-          ResultCode: 1, 
-          ResultDesc: 'Database update failed: ' + updateError.message 
-        });
-      }
+if (userId) {
+  updateData.user_id = userId;
+  console.log(' Linking payment to user:', userId);
+}
+
+const { error: updateError } = await supabaseAdmin()
+  .from('payments')
+  .update(updateData)
+  .eq('id', payment.id);  
+
+if (updateError) {
+  console.error(' Payment update failed:', updateError);
+  return NextResponse.json({ 
+    ResultCode: 1, 
+    ResultDesc: 'Database update failed: ' + updateError.message 
+  });
+}
       
-      console.log('✅ Payment confirmed successfully!');
-      console.log('========================================');
+      console.log(' Payment confirmed successfully!');
       
       return NextResponse.json({ 
         ResultCode: 0,
@@ -433,7 +429,7 @@ export async function POST(req: NextRequest) {
       });
       
     } else {
-      console.log('❌ Payment failed with ResultCode:', ResultCode);
+      console.log(' Payment failed with ResultCode:', ResultCode);
       console.log('  ResultDesc:', ResultDesc);
       
       await supabaseAdmin()

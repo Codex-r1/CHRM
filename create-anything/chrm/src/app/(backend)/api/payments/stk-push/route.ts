@@ -1,3 +1,4 @@
+// app/api/payments/stk-push/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { mpesaService } from '../../../lib/mpesa/service';
 import { supabaseAdmin } from '../../../lib/supabase/admin';
@@ -5,6 +6,8 @@ import { supabaseAdmin } from '../../../lib/supabase/admin';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('STK Push Request Body:', JSON.stringify(body, null, 2));
+    
     const {
       phoneNumber,
       amount,
@@ -14,6 +17,7 @@ export async function POST(request: NextRequest) {
       userName,
       metadata = {},
       payment_id,
+      registrationData, 
     } = body;
 
     // 1. Validate required input parameters
@@ -28,7 +32,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Format phone number to standard 254XXXXXXXXX format
+    // For registration, we MUST have registrationData
+    if (paymentType === 'registration' && !registrationData) {
+      console.error(' Registration payment requires registrationData');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Missing registration data',
+          message: 'Registration data is required for registration payments.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // 2. Format phone number
     const cleanPhone = phoneNumber.replace(/\s+/g, '');
     const formattedPhone = cleanPhone.startsWith('0')
       ? `254${cleanPhone.substring(1)}`
@@ -51,9 +68,7 @@ export async function POST(request: NextRequest) {
         accountReference = metadata.membership_number
           ? `RENEWAL-${metadata.membership_number}`
           : 'RENEWAL';
-        description = `Membership Renewal - ${
-          metadata.renewal_year || new Date().getFullYear()
-        }`;
+        description = `Membership Renewal - ${metadata.renewal_year || new Date().getFullYear()}`;
         break;
       case 'event':
         accountReference = `EVENT-${metadata.event_id || 'REG'}`;
@@ -70,97 +85,63 @@ export async function POST(request: NextRequest) {
 
     let paymentRecord: any = null;
 
-    // 4. Resolve or create database payment record
-    if (paymentType === 'registration' && payment_id) {
-      const { data: existingPayment, error: fetchError } = await supabaseAdmin()
-        .from('payments')
-        .select('*')
-        .eq('id', payment_id)
-        .single();
+    // 4. Create payment record with registration data in metadata
+    const metadataWithRegistration = {
+      ...metadata,
+      userEmail,
+      userName,
+      paymentType,
+    };
 
-      if (fetchError || !existingPayment) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Payment record not found',
-            message: 'Invalid payment ID provided.',
-          },
-          { status: 404 }
-        );
-      }
-
-      // Update phone and description on existing registration payment row
-      const updatedMetadata = {
-        ...(existingPayment.metadata || {}),
-        ...metadata,
-        userEmail,
-        userName,
-        paymentType,
+    // If registration, store the registration data
+    if (paymentType === 'registration' && registrationData) {
+      metadataWithRegistration.registration_data = {
+        email: registrationData.email?.toLowerCase().trim(),
+        full_name: registrationData.full_name,
+        phone: registrationData.phone,
+        password: registrationData.password,
+        graduation_year: registrationData.graduation_year,
+        course: registrationData.course,
+        country: registrationData.country,
       };
-
-      const { data: updatedPayment, error: updateError } = await supabaseAdmin()
-        .from('payments')
-        .update({
-          phone: formattedPhone,
-          account_reference: accountReference,
-          description: description,
-          metadata: updatedMetadata,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', payment_id)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('Error updating registration payment record:', updateError);
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Failed to update payment record',
-            message: updateError.message,
-          },
-          { status: 500 }
-        );
-      }
-
-      paymentRecord = updatedPayment;
-    } else {
-      const { data: newPayment, error: paymentError } = await supabaseAdmin()
-        .from('payments')
-        .insert({
-          user_id: userId || null,
-          amount: parseFloat(amount),
-          payment_type: paymentType,
-          phone: formattedPhone,
-          account_reference: accountReference,
-          description: description,
-          status: 'pending',
-          metadata: {
-            ...metadata,
-            userEmail,
-            userName,
-            paymentType,
-          },
-        })
-        .select()
-        .single();
-
-      if (paymentError) {
-        console.error('Error creating payment record:', paymentError);
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Failed to create payment record',
-            message: paymentError.message,
-          },
-          { status: 500 }
-        );
-      }
-
-      paymentRecord = newPayment;
+      console.log('Stored registration data in metadata:', {
+        email: registrationData.email,
+        full_name: registrationData.full_name,
+      });
     }
 
-    // 5. Trigger Safaricom Daraja STK Push Request
+    // Create payment record
+    const { data: newPayment, error: paymentError } = await supabaseAdmin()
+      .from('payments')
+      .insert({
+        user_id: userId || null,
+        amount: parseFloat(amount),
+        payment_type: paymentType,
+        phone: formattedPhone,
+        account_reference: accountReference,
+        description: description,
+        status: 'pending',
+        metadata: metadataWithRegistration,
+      })
+      .select()
+      .single();
+
+    if (paymentError) {
+      console.error('Error creating payment record:', paymentError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to create payment record',
+          message: paymentError.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    paymentRecord = newPayment;
+    console.log('Payment record created:', paymentRecord.id);
+
+    // 5. Trigger STK Push
     const stkResponse = await mpesaService.initiateSTKPush({
       phoneNumber: formattedPhone,
       amount: Math.round(parseFloat(amount)),
@@ -172,7 +153,7 @@ export async function POST(request: NextRequest) {
       throw new Error('M-PESA API failed to return a valid CheckoutRequestID');
     }
 
-    // 6. Update Payment Record with Checkout and Merchant Request IDs
+    // 6. Update payment with checkout request ID
     const { error: checkoutUpdateError } = await supabaseAdmin()
       .from('payments')
       .update({
@@ -183,51 +164,32 @@ export async function POST(request: NextRequest) {
       .eq('id', paymentRecord.id);
 
     if (checkoutUpdateError) {
-      console.error('Failed to save CheckoutRequestID to payment:', checkoutUpdateError);
-    }
-
-return NextResponse.json(
-  {
-    success: true,
-    message: 'STK Push initiated successfully',
-    CheckoutRequestID: stkResponse.CheckoutRequestID,
-    checkoutRequestID: stkResponse.CheckoutRequestID,
-    MerchantRequestID: stkResponse.MerchantRequestID,
-    merchantRequestID: stkResponse.MerchantRequestID,
-    CustomerMessage: stkResponse.CustomerMessage,
-    customerMessage: stkResponse.CustomerMessage,
-    paymentId: paymentRecord.id,
-    data: {
-      CheckoutRequestID: stkResponse.CheckoutRequestID,
-      checkoutRequestID: stkResponse.CheckoutRequestID,
-      MerchantRequestID: stkResponse.MerchantRequestID,
-      merchantRequestID: stkResponse.MerchantRequestID,
-      paymentId: paymentRecord.id,
-    },
-  },
-  { status: 200 }
-);
-  } catch (error: any) {
-    console.error('STK Push API Error:', error);
-
-    let errorMessage = 'Failed to initiate payment';
-    let customerMessage = 'Please try again later';
-
-    if (error.response?.data) {
-      errorMessage =
-        error.response.data.errorMessage ||
-        error.response.data.ResponseDescription ||
-        errorMessage;
-      customerMessage = error.response.data.CustomerMessage || customerMessage;
-    } else if (error.message) {
-      errorMessage = error.message;
+      console.error('Failed to save CheckoutRequestID:', checkoutUpdateError);
     }
 
     return NextResponse.json(
       {
+        success: true,
+        message: 'STK Push initiated successfully',
+        checkoutRequestID: stkResponse.CheckoutRequestID,
+        MerchantRequestID: stkResponse.MerchantRequestID,
+        paymentId: paymentRecord.id,
+        data: {
+          CheckoutRequestID: stkResponse.CheckoutRequestID,
+          checkoutRequestID: stkResponse.CheckoutRequestID,
+          MerchantRequestID: stkResponse.MerchantRequestID,
+          paymentId: paymentRecord.id,
+        },
+      },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error('STK Push Error:', error);
+    return NextResponse.json(
+      {
         success: false,
-        error: errorMessage,
-        message: customerMessage,
+        error: error.message || 'Failed to initiate payment',
+        message: 'Please try again later',
       },
       { status: 500 }
     );

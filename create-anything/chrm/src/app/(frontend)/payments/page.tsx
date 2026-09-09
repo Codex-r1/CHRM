@@ -779,174 +779,133 @@ export default function CombinedPaymentsPage() {
   };
 
   const handleRegistrationAndPayment = async (fee: number) => {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      // Check if user already exists
-      const checkResponse = await fetch(
-        `/api/users/check?email=${encodeURIComponent(formData.email)}`
+    // Check if user already exists
+    const checkResponse = await fetch(
+      `/api/users/check?email=${encodeURIComponent(formData.email)}`
+    );
+    const checkData = await checkResponse.json();
+
+    if (checkData.exists) {
+      showAlert('error', 'User Already Exists',
+        'This email is already registered. Please login instead.',
+        {
+          confirmText: 'Go to Login',
+          onConfirm: () => router.push('/login')
+        }
       );
-      const checkData = await checkResponse.json();
-
-      if (checkData.exists) {
-        showAlert('error', 'User Already Exists',
-          'This email is already registered. Please login instead.',
-          {
-            confirmText: 'Go to Login',
-            onConfirm: () => router.push('/login')
-          }
-        );
-        setLoading(false);
-        return;
-      }
-
-      const registrationData = {
-        email: formData.email,
-        full_name: formData.full_name,
-        phone: formData.phone || '',
-        graduation_year: formData.graduation_year,
-        course: formData.course,
-        country: formData.country,
-        password: formData.password,
-        registration_fee: fee,
-      };
-
-      const registrationResponse = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(registrationData)
-      });
-
-      const registrationResult = await registrationResponse.json();
-
-      if (!registrationResponse.ok) {
-        if (registrationResult.code === 'USER_EXISTS') {
-          showAlert('error', 'User Already Exists',
-            'This email is already registered. Please login instead.',
-            {
-              confirmText: 'Go to Login',
-              onConfirm: () => router.push('/login')
-            }
-          );
-          setLoading(false);
-          return;
-        }
-
-        if (registrationResult.code === 'PENDING_PAYMENT') {
-          showAlert('warning', 'Payment Pending',
-            'You have a pending payment. Please complete it to activate your account.',
-            {
-              confirmText: 'Continue Payment',
-              onConfirm: () => {
-                setPaymentId(registrationResult.payment_id);
-              }
-            }
-          );
-          setLoading(false);
-          return;
-        }
-
-        throw new Error(registrationResult.error || registrationResult.message || 'Registration failed');
-      }
-
-      const payment_id = registrationResult.payment_id;
-      await initiatePayment(fee, payment_id);
-
-    } catch (err) {
-      showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
       setLoading(false);
-      throw err;
+      return;
     }
-  };
+    await initiatePayment(fee, undefined);
+
+  } catch (err) {
+    showAlert('error', 'Registration Failed', err instanceof Error ? err.message : "Registration failed");
+    setLoading(false);
+    throw err;
+  }
+};
 
   // ─── Payment Initiation ───────────────────────────────────────────────────
   const initiatePayment = async (amount: number, payment_id?: string) => {
-    try {
-      setStkStatus('initiating');
+  try {
+    setStkStatus('initiating');
 
-      const paymentData: any = {
-        amount,
-        paymentType: 'registration',
-        userEmail: formData.email,
-        userName: formData.full_name,
-        paymentMethod,
-        metadata: {
-          graduation_year: formData.graduation_year,
-          course: formData.course,
-          country: formData.country,
-        },
-        payment_id,
+    // Build the payment data with registration data included
+    const paymentData: any = {
+      phoneNumber: formData.phone,
+      amount,
+      paymentType: 'registration',
+      userEmail: formData.email,
+      userName: formData.full_name,
+      paymentMethod,
+      metadata: {
+        graduation_year: formData.graduation_year,
+        course: formData.course,
+        country: formData.country,
+      },
+      payment_id,
+      // ✅ ADD THIS - Send registration data directly to STK push
+      registrationData: {
+        email: formData.email,
+        full_name: formData.full_name,
+        phone: formData.phone,
+        password: formData.password,
+        graduation_year: formData.graduation_year,
+        course: formData.course,
+        country: formData.country,
+      },
+    };
+
+    // Add payment method specific data
+    if (paymentMethod === 'mpesa') {
+      paymentData.phoneNumber = formData.phone;
+    } else if (paymentMethod === 'visa') {
+      paymentData.cardDetails = {
+        cardNumber: cardDetails.cardNumber.replace(/\s/g, ''),
+        expiryDate: cardDetails.expiryDate,
+        cvv: cardDetails.cvv,
+        cardholderName: cardDetails.cardholderName,
       };
-
-      // Add payment method specific data
-      if (paymentMethod === 'mpesa') {
-        paymentData.phoneNumber = formData.phone;
-      } else if (paymentMethod === 'visa') {
-        paymentData.cardDetails = {
-          cardNumber: cardDetails.cardNumber.replace(/\s/g, ''),
-          expiryDate: cardDetails.expiryDate,
-          cvv: cardDetails.cvv,
-          cardholderName: cardDetails.cardholderName,
-        };
-      }
-
-      const endpoint = paymentMethod === 'mpesa' 
-        ? '/api/payments/stk-push'
-        : '/api/payments/cards';
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(paymentData)
-      });
-
-      const data: PaymentResponse = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to initiate payment');
-
-      if (data.success) {
-        // Handle different payment methods
-        if (paymentMethod === 'mpesa' && data.checkoutRequestID) {
-          showAlert('success', 'Payment Request Sent',
-            'Please check your phone for the M-PESA prompt and enter your PIN to complete the payment.',
-            { autoClose: 5000 }
-          );
-          setCheckoutRequestID(data.checkoutRequestID);
-          setPaymentId(data.paymentId || '');
-          setStkStatus('pending');
-          setStep(2);
-          startPaymentPolling(data.checkoutRequestID);
-        } else if (paymentMethod === 'visa' || paymentMethod === 'paypal') {
-          // Redirect to payment gateway
-          if (data.redirect_url) {
-            showAlert('info', 'Redirecting to Payment Gateway',
-              'You will be redirected to complete your payment securely.',
-              { autoClose: 3000 }
-            );
-            setTimeout(() => {
-              window.location.href = data.redirect_url as string;
-            }, 2000);
-          } else {
-            // Handle card payment success
-            setPaymentId(data.paymentId || '');
-            setStkStatus('success');
-            showAlert('success', 'Payment Successful!',
-              'Your payment has been processed successfully. Redirecting to login...',
-              { autoClose: 3000 }
-            );
-            setTimeout(() => router.push('/login'), 3000);
-          }
-        }
-      } else {
-        throw new Error(data.message || 'Payment initiation failed');
-      }
-    } catch (err) {
-      setStkStatus('failed');
-      showAlert('error', 'Payment Failed', err instanceof Error ? err.message : 'Failed to initiate payment');
-      throw err;
-    } finally {
-      setLoading(false);
     }
-  };
+
+    const endpoint = paymentMethod === 'mpesa' 
+      ? '/api/payments/stk-push'
+      : '/api/payments/cards';
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(paymentData)
+    });
+
+    const data: PaymentResponse = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to initiate payment');
+
+    if (data.success) {
+      // Handle different payment methods
+      if (paymentMethod === 'mpesa' && data.checkoutRequestID) {
+        showAlert('success', 'Payment Request Sent',
+          'Please check your phone for the M-PESA prompt and enter your PIN to complete the payment.',
+          { autoClose: 5000 }
+        );
+        setCheckoutRequestID(data.checkoutRequestID);
+        setPaymentId(data.paymentId || '');
+        setStkStatus('pending');
+        setStep(2);
+        startPaymentPolling(data.checkoutRequestID);
+      } else if (paymentMethod === 'visa' || paymentMethod === 'paypal') {
+        if (data.redirect_url) {
+          showAlert('info', 'Redirecting to Payment Gateway',
+            'You will be redirected to complete your payment securely.',
+            { autoClose: 3000 }
+          );
+          setTimeout(() => {
+            window.location.href = data.redirect_url as string;
+          }, 2000);
+        } else {
+          setPaymentId(data.paymentId || '');
+          setStkStatus('success');
+          showAlert('success', 'Payment Successful!',
+            'Your payment has been processed successfully. Redirecting to login...',
+            { autoClose: 3000 }
+          );
+          setTimeout(() => router.push('/login'), 3000);
+        }
+      }
+    } else {
+      throw new Error(data.message || 'Payment initiation failed');
+    }
+  } catch (err) {
+    setStkStatus('failed');
+    showAlert('error', 'Payment Failed', err instanceof Error ? err.message : 'Failed to initiate payment');
+    throw err;
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ─── Polling ───────────────────────────────────────────────────────────────
   const startPaymentPolling = async (checkoutID: string) => {
