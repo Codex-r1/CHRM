@@ -7,6 +7,8 @@ import Footer from "../components/Footer";
 import {
   ShoppingCart,
   Minus,
+  CreditCard,
+  Lock,
   Plus,
   CheckCircle,
   Package,
@@ -17,7 +19,6 @@ import {
   AlertCircle,
   Copy,
   LogIn,
-  User,
   X,
   Smartphone,
   Loader2,
@@ -26,12 +27,7 @@ import {
   BadgeCheck,
   ChevronRight,
   Globe,
-  MapPin,
   Building2,
-  Mail,
-  Phone,
-  Clock,
-  CreditCard,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
@@ -104,6 +100,8 @@ type ShippingAddress = {
 
 type ShippingMethod = 'dhl_express' | 'dhl_economy' | 'standard' | 'pickup';
 
+type PaymentMethod = 'mpesa' | 'visa' | 'paypal';
+
 type CustomerInfo = {
   full_name: string;
   phone: string;
@@ -119,6 +117,51 @@ type AlertModalType = {
   message: string;
   confirmText?: string;
   onConfirm?: () => void;
+};
+
+// ─── Payment Method Types ──────────────────────────────────────────────────
+interface CardDetails {
+  cardNumber: string;
+  expiryDate: string;
+  cvv: string;
+  cardholderName: string;
+}
+
+// ─── Helper Functions ──────────────────────────────────────────────────────
+const detectCardType = (
+  number: string
+): "visa" | "mastercard" | "amex" | "discover" | "unknown" => {
+  const clean = number.replace(/\D/g, "");
+  if (/^4/.test(clean)) return "visa";
+  if (/^(5[1-5]|2[2-7])/.test(clean)) return "mastercard";
+  if (/^3[47]/.test(clean)) return "amex";
+  if (/^(6011|65|64[4-9])/.test(clean)) return "discover";
+  return "unknown";
+};
+
+const formatCardNumber = (value: string): string => {
+  const clean = value.replace(/\D/g, "");
+  const type = detectCardType(clean);
+
+  if (type === "amex") {
+    return clean
+      .slice(0, 15)
+      .replace(/(\d{4})(\d{0,6})(\d{0,5})/, (_, p1, p2, p3) =>
+        [p1, p2, p3].filter(Boolean).join(" ")
+      );
+  }
+  return clean
+    .slice(0, 16)
+    .replace(/(\d{4})/g, "$1 ")
+    .trim();
+};
+
+const formatExpiry = (value: string): string => {
+  const clean = value.replace(/\D/g, "").slice(0, 4);
+  if (clean.length >= 3) {
+    return `${clean.slice(0, 2)}/${clean.slice(2)}`;
+  }
+  return clean;
 };
 
 const shippingMethods: { id: ShippingMethod; label: string; price: number; time: string; description: string }[] = [
@@ -184,6 +227,363 @@ const benefits = [
   }
 ];
 
+// ─── PaymentMethodSelector Component ──────────────────────────────────────
+const PaymentMethodSelector = ({
+  paymentMethod,
+  setPaymentMethod,
+  cardDetails,
+  setCardDetails,
+  currentFee,
+  isProcessing,
+}: {
+  paymentMethod: PaymentMethod;
+  setPaymentMethod: (method: PaymentMethod) => void;
+  cardDetails: CardDetails;
+  setCardDetails: React.Dispatch<React.SetStateAction<CardDetails>>;
+  currentFee: number;
+  isProcessing: boolean;
+}) => {
+  const [hoveredMethod, setHoveredMethod] = useState<PaymentMethod | null>(null);
+  const cardType = detectCardType(cardDetails.cardNumber);
+
+  const paymentMethods = [
+    {
+      id: "mpesa" as PaymentMethod,
+      label: "M-PESA",
+      icon: "/m-pesa-logo_1.png",
+      isImage: true,
+      description: "Kenya",
+    },
+    {
+      id: "visa" as PaymentMethod,
+      label: "Visa / Mastercard",
+      icon: "/mastercard.png",
+      isImage: true,
+      description: "Global",
+    },
+    {
+      id: "paypal" as PaymentMethod,
+      label: "PayPal",
+      icon: "/paypal-3384015_1280.png",
+      isImage: true,
+      description: "Global",
+    },
+  ];
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatCardNumber(e.target.value);
+    setCardDetails((prev) => ({ ...prev, cardNumber: formatted }));
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatExpiry(e.target.value);
+    setCardDetails((prev) => ({ ...prev, expiryDate: formatted }));
+  };
+
+  const getCardLogo = () => {
+    switch (cardType) {
+      case "visa":
+        return (
+          <span className="text-xs font-bold text-[#1B3A6B] bg-[#1B3A6B]/10 px-2.5 py-1 rounded border border-[#1B3A6B]/20">
+            VISA
+          </span>
+        );
+      case "mastercard":
+        return (
+          <div className="flex items-center gap-1.5 bg-[#1B3A6B]/10 px-2.5 py-1 rounded border border-[#1B3A6B]/20">
+            <span className="text-xs font-bold text-[#1B3A6B]">Mastercard</span>
+            <div className="flex">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 opacity-90 -mr-1" />
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 opacity-90" />
+            </div>
+          </div>
+        );
+      case "amex":
+        return (
+          <span className="text-xs font-bold text-white bg-[#0075C2] px-2.5 py-1 rounded">
+            American Express
+          </span>
+        );
+      case "discover":
+        return (
+          <span className="text-xs font-bold text-white bg-[#FF6600] px-2.5 py-1 rounded">
+            Discover
+          </span>
+        );
+      default:
+        return (
+          <img
+            src="/mastercard.png"
+            alt="Card"
+            className="w-8 h-6 object-contain opacity-40"
+          />
+        );
+    }
+  };
+
+  // ─── Validate Card Details ──────────────────────────────────────────────
+  const validateCardDetails = () => {
+    if (!cardDetails.cardNumber || cardDetails.cardNumber.replace(/\s/g, '').length < 15) {
+      alert('Please enter a valid card number');
+      return false;
+    }
+    if (!cardDetails.expiryDate || cardDetails.expiryDate.length < 5) {
+      alert('Please enter a valid expiry date (MM/YY)');
+      return false;
+    }
+    if (!cardDetails.cvv || cardDetails.cvv.length < 3) {
+      alert('Please enter a valid CVV');
+      return false;
+    }
+    if (!cardDetails.cardholderName) {
+      alert('Please enter the cardholder name');
+      return false;
+    }
+    return true;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {paymentMethods.map((method) => {
+          const isSelected = paymentMethod === method.id;
+          const isHovered = hoveredMethod === method.id;
+
+          return (
+            <motion.button
+              key={method.id}
+              type="button"
+              onClick={() => setPaymentMethod(method.id)}
+              onMouseEnter={() => setHoveredMethod(method.id)}
+              onMouseLeave={() => setHoveredMethod(null)}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              className={`relative p-4 border-2 rounded-lg transition-all duration-300 text-center group cursor-pointer ${
+                isSelected
+                  ? "border-[#C9A84C] bg-[#C9A84C]/5 shadow-sm"
+                  : "border-[#1B3A6B]/10 hover:border-[#1B3A6B]/20 hover:bg-[#1B3A6B]/5"
+              }`}
+            >
+              {isSelected && (
+                <motion.div
+                  layoutId="payment-selection"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#C9A84C] rounded-full flex items-center justify-center"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <CheckCircle className="w-3 h-3 text-white" />
+                </motion.div>
+              )}
+
+            
+                 
+            
+            
+
+              <p className={`text-sm font-medium transition-colors duration-300 ${
+                isSelected ? "text-[#1B3A6B]" : "text-[#1B3A6B]/70 group-hover:text-[#1B3A6B]"
+              }`}>
+                {method.label}
+              </p>
+
+              {isSelected && (
+                <motion.div
+                  layoutId="payment-underline"
+                  className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#C9A84C] rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: 32 }}
+                  transition={{ duration: 0.3 }}
+                />
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Payment Method Forms */}
+      <AnimatePresence mode="wait">
+        {paymentMethod === "mpesa" && (
+          <motion.div
+            key="mpesa"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+            className="p-5 bg-[#1B3A6B]/5 rounded-lg border border-[#1B3A6B]/10"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-[#1B3A6B]/10 rounded-lg mt-0.5">
+                <img src="/m-pesa-logo_1.png" alt="M-PESA" className="w-10 h-8 object-contain" />
+              </div>
+              <div>
+                <p className="text-sm text-[#1B3A6B]">
+                  <span className="font-semibold">M-PESA Express:</span> You'll receive an automated prompt on your phone to complete payment.
+                </p>
+                <div className="flex flex-wrap items-center gap-4 mt-3">
+                  <span className="flex items-center gap-2 text-xs text-[#1B3A6B]/50">
+                    <CheckCircle size={12} /> No account needed
+                  </span>
+                  <span className="flex items-center gap-2 text-xs text-[#1B3A6B]/50">
+                    <Smartphone size={12} /> STK Push
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {paymentMethod === "visa" && (
+          <motion.div
+            key="visa"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+            className="p-5 bg-[#1B3A6B]/5 rounded-lg border border-[#1B3A6B]/10 space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider flex items-center gap-2">
+                <CreditCard size={18} className="text-[#C9A84C]" />
+                Card Details
+              </h4>
+              <div className="flex items-center gap-2">{getCardLogo()}</div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                Card Number <span className="text-[#C9A84C]">*</span>
+              </label>
+              <div className="relative">
+                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
+                <input
+                  type="text"
+                  required={paymentMethod === "visa"}
+                  maxLength={19}
+                  value={cardDetails.cardNumber}
+                  onChange={handleCardNumberChange}
+                  className="w-full pl-10 pr-20 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition font-mono bg-white"
+                  placeholder={cardType === "amex" ? "3782 822463 10005" : "4532 0123 4567 8910"}
+                  autoComplete="cc-number"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {cardType !== "unknown" && (
+                    <span className="text-[10px] font-bold text-[#1B3A6B] bg-[#1B3A6B]/10 px-1.5 py-0.5 rounded uppercase">
+                      {cardType}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                  Expiry Date <span className="text-[#C9A84C]">*</span>
+                </label>
+                <input
+                  type="text"
+                  required={paymentMethod === "visa"}
+                  maxLength={5}
+                  value={cardDetails.expiryDate}
+                  onChange={handleExpiryChange}
+                  className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition bg-white"
+                  placeholder="MM/YY"
+                  autoComplete="cc-exp"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                  CVV <span className="text-[#C9A84C]">*</span>
+                </label>
+                <input
+                  type="password"
+                  required={paymentMethod === "visa"}
+                  maxLength={cardType === "amex" ? 4 : 3}
+                  value={cardDetails.cvv}
+                  onChange={(e) =>
+                    setCardDetails((prev) => ({
+                      ...prev,
+                      cvv: e.target.value.replace(/\D/g, ""),
+                    }))
+                  }
+                  className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition font-mono bg-white"
+                  placeholder={cardType === "amex" ? "1234" : "123"}
+                  autoComplete="cc-csc"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#1B3A6B] mb-1.5">
+                Cardholder Name <span className="text-[#C9A84C]">*</span>
+              </label>
+              <input
+                type="text"
+                required={paymentMethod === "visa"}
+                value={cardDetails.cardholderName}
+                onChange={(e) =>
+                  setCardDetails((prev) => ({
+                    ...prev,
+                    cardholderName: e.target.value,
+                  }))
+                }
+                className="w-full px-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition bg-white"
+                placeholder="Name on card"
+                autoComplete="cc-name"
+              />
+            </div>
+
+            <div className="flex items-center gap-4 pt-2 text-xs text-[#1B3A6B]/40 border-t border-[#1B3A6B]/10">
+              <span className="flex items-center gap-1"><Lock size={12} /> 256-bit SSL encryption</span>
+              <span className="flex items-center gap-1"><Shield size={12} /> PCI compliant</span>
+              {cardType !== "unknown" && cardDetails.cardNumber.length > 2 && (
+                <span className="flex items-center gap-1 text-[#C9A84C]">
+                  <CheckCircle size={12} /> {cardType} detected
+                </span>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {paymentMethod === "paypal" && (
+          <motion.div
+            key="paypal"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+            className="p-5 bg-[#1B3A6B]/5 rounded-lg border border-[#1B3A6B]/10"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-2 bg-[#1B3A6B]/10 rounded-lg">
+                <img src="/paypal-3384015_1280.png" alt="PayPal" className="w-12 h-10 object-contain" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-[#1B3A6B]">
+                  <span className="font-semibold">PayPal Express:</span> You will be redirected to PayPal to complete your payment securely.
+                </p>
+                <div className="flex flex-wrap items-center gap-4 mt-3">
+                  <span className="flex items-center gap-2 text-xs text-[#1B3A6B]/50">
+                    <CheckCircle size={12} /> No PayPal account needed
+                  </span>
+                  <span className="flex items-center gap-2 text-xs text-[#1B3A6B]/50">
+                    <Lock size={12} /> Secure checkout
+                  </span>
+                  <span className="flex items-center gap-2 text-xs text-[#1B3A6B]/50">
+                    <Globe size={12} /> Available in 200+ countries
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ─── Main Component ─────────────────────────────────────────────────────────
 export default function MerchandisePage() {
   const { user, loading } = useAuth();
   
@@ -221,6 +621,15 @@ export default function MerchandisePage() {
     type: 'info',
     title: '',
     message: '',
+  });
+
+  // Payment Method State
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa');
+  const [cardDetails, setCardDetails] = useState<CardDetails>({
+    cardNumber: '',
+    expiryDate: '',
+    cvv: '',
+    cardholderName: '',
   });
 
   const router = useRouter();
@@ -449,6 +858,7 @@ export default function MerchandisePage() {
     setStep(2);
   };
 
+  // ─── Handle Payment with Multiple Methods ──────────────────────────────
   const handlePayment = async () => {
     // Validate customer info
     if (!customerInfo.full_name || !customerInfo.phone || !customerInfo.email) {
@@ -467,10 +877,31 @@ export default function MerchandisePage() {
       }
     }
 
-    if (!validatePhoneNumber(customerInfo.phone)) {
+    // Validate phone for M-PESA
+    if (paymentMethod === 'mpesa' && !validatePhoneNumber(customerInfo.phone)) {
       setErrors({ submit: 'Please enter a valid Kenyan phone number (e.g., 0712345678)' });
       showAlert('error', 'Invalid Phone', 'Please enter a valid Kenyan phone number.');
       return;
+    }
+
+    // Validate card details for Visa
+    if (paymentMethod === 'visa') {
+      if (!cardDetails.cardNumber || cardDetails.cardNumber.replace(/\s/g, '').length < 15) {
+        showAlert('error', 'Invalid Card', 'Please enter a valid card number.');
+        return;
+      }
+      if (!cardDetails.expiryDate || cardDetails.expiryDate.length < 5) {
+        showAlert('error', 'Invalid Expiry', 'Please enter a valid expiry date (MM/YY).');
+        return;
+      }
+      if (!cardDetails.cvv || cardDetails.cvv.length < 3) {
+        showAlert('error', 'Invalid CVV', 'Please enter a valid CVV.');
+        return;
+      }
+      if (!cardDetails.cardholderName) {
+        showAlert('error', 'Missing Name', 'Please enter the cardholder name.');
+        return;
+      }
     }
 
     if (!user) {
@@ -490,7 +921,7 @@ export default function MerchandisePage() {
       const total = calculateTotal();
       const shippingMethod = shippingMethods.find(m => m.id === customerInfo.shippingMethod);
 
-      // Create order with shipping details
+      // Create order
       const orderResponse = await fetch('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -513,7 +944,8 @@ export default function MerchandisePage() {
             carrier: customerInfo.shippingMethod.startsWith('dhl') ? 'DHL' : 'Standard',
             estimated_delivery: shippingMethod?.time || '3-7 business days',
           },
-          status: 'pending'
+          status: 'pending',
+          payment_method: paymentMethod,
         })
       });
 
@@ -523,33 +955,103 @@ export default function MerchandisePage() {
         throw new Error(orderData.error || 'Failed to create order');
       }
 
-      // Initiate payment
-      const paymentResponse = await fetch('/api/payments/stk-push', {
+      // ─── Route to specific payment endpoint ──────────────────────────────
+      let endpoint = '';
+      let payload = {};
+
+      switch (paymentMethod) {
+        case 'mpesa':
+          endpoint = '/api/payments/stk-push';
+          payload = {
+            phoneNumber: customerInfo.phone,
+            amount: total,
+            paymentType: 'merchandise',
+            userId: user.id,
+            userEmail: customerInfo.email,
+            userName: customerInfo.full_name,
+            description: `Merchandise Order - ${cart.length} items (${shippingMethod?.label})`,
+            metadata: {
+              order_id: orderData.order?.id,
+              items: cart,
+              subtotal: subtotal,
+              shipping_cost: shippingCost,
+              total: total,
+              customer_name: customerInfo.full_name,
+              customer_email: customerInfo.email,
+              customer_phone: customerInfo.phone,
+              shipping_method: customerInfo.shippingMethod,
+              shipping_address: customerInfo.shippingMethod === 'pickup' 
+                ? 'Pickup from office' 
+                : `${shipping.address_line1}, ${shipping.city}, ${shipping.country}`,
+            }
+          };
+          break;
+
+        case 'visa':
+          endpoint = '/api/payments/card';
+          payload = {
+            amount: total,
+            paymentType: 'merchandise',
+            userId: user.id,
+            userEmail: customerInfo.email,
+            userName: customerInfo.full_name,
+            cardDetails: {
+              cardNumber: cardDetails.cardNumber.replace(/\s/g, ''),
+              expiryDate: cardDetails.expiryDate,
+              cvv: cardDetails.cvv,
+              cardholderName: cardDetails.cardholderName,
+            },
+            metadata: {
+              order_id: orderData.order?.id,
+              items: cart,
+              subtotal: subtotal,
+              shipping_cost: shippingCost,
+              total: total,
+              customer_name: customerInfo.full_name,
+              customer_email: customerInfo.email,
+              customer_phone: customerInfo.phone,
+              shipping_method: customerInfo.shippingMethod,
+              shipping_address: customerInfo.shippingMethod === 'pickup' 
+                ? 'Pickup from office' 
+                : `${shipping.address_line1}, ${shipping.city}, ${shipping.country}`,
+            }
+          };
+          break;
+
+        case 'paypal':
+          endpoint = '/api/payments/paypal';
+          payload = {
+            amount: total,
+            paymentType: 'merchandise',
+            userId: user.id,
+            userEmail: customerInfo.email,
+            userName: customerInfo.full_name,
+            metadata: {
+              order_id: orderData.order?.id,
+              items: cart,
+              subtotal: subtotal,
+              shipping_cost: shippingCost,
+              total: total,
+              customer_name: customerInfo.full_name,
+              customer_email: customerInfo.email,
+              customer_phone: customerInfo.phone,
+              shipping_method: customerInfo.shippingMethod,
+              shipping_address: customerInfo.shippingMethod === 'pickup' 
+                ? 'Pickup from office' 
+                : `${shipping.address_line1}, ${shipping.city}, ${shipping.country}`,
+            }
+          };
+          break;
+
+        default:
+          throw new Error(`Unsupported payment method: ${paymentMethod}`);
+      }
+
+      // ─── Make the payment request ────────────────────────────────────────
+      const paymentResponse = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: customerInfo.phone,
-          amount: total,
-          paymentType: 'merchandise',
-          userId: user.id,
-          userEmail: customerInfo.email,
-          userName: customerInfo.full_name,
-          description: `Merchandise Order - ${cart.length} items (${shippingMethod?.label})`,
-          metadata: {
-            order_id: orderData.order?.id,
-            items: cart,
-            subtotal: subtotal,
-            shipping_cost: shippingCost,
-            total: total,
-            customer_name: customerInfo.full_name,
-            customer_email: customerInfo.email,
-            customer_phone: customerInfo.phone,
-            shipping_method: customerInfo.shippingMethod,
-            shipping_address: customerInfo.shippingMethod === 'pickup' 
-              ? 'Pickup from office' 
-              : `${shipping.address_line1}, ${shipping.city}, ${shipping.country}`,
-          }
-        })
+        body: JSON.stringify(payload)
       });
 
       const paymentData = await paymentResponse.json();
@@ -558,25 +1060,32 @@ export default function MerchandisePage() {
         throw new Error(paymentData.error || paymentData.message || 'Payment initiation failed');
       }
 
-      const checkoutId = 
-        paymentData.checkoutRequestID || 
-        paymentData.checkoutRequestId || 
-        paymentData.CheckoutRequestID || 
-        paymentData.data?.checkoutRequestID || 
-        paymentData.data?.CheckoutRequestID;
-
-      if (checkoutId) {
-        setCheckoutRequestId(checkoutId);
-        setStkStatus('waiting');
-        
-        showAlert('info', 'Check Your Phone', 
-          'Enter your M-PESA PIN to complete the payment.',
-          { confirmText: 'OK' }
-        );
-        
-        startPolling(checkoutId, orderData.order?.id);
-      } else {
-        throw new Error('No checkout request ID received');
+      // ─── Handle payment response based on method ────────────────────────
+      if (paymentMethod === 'mpesa') {
+        const checkoutId = paymentData.checkoutRequestID || paymentData.checkoutRequestId || paymentData.CheckoutRequestID;
+        if (checkoutId) {
+          setCheckoutRequestId(checkoutId);
+          setStkStatus('waiting');
+          showAlert('info', 'Check Your Phone', 'Enter your M-PESA PIN to complete the payment.', { confirmText: 'OK' });
+          startPolling(checkoutId, orderData.order?.id);
+        } else {
+          throw new Error('No checkout request ID received');
+        }
+      } else if (paymentMethod === 'visa' || paymentMethod === 'paypal') {
+        if (paymentData.redirect_url) {
+          showAlert('info', 'Redirecting to Payment Gateway', 'You will be redirected to complete your payment securely.', { confirmText:'OK' });
+          setTimeout(() => {
+            window.location.href = paymentData.redirect_url;
+          }, 2000);
+        } else if (paymentData.success) {
+          setStkStatus('success');
+          showAlert('success', 'Payment Successful!', 'Your payment has been processed successfully.', { confirmText: 'OK' });
+          setTimeout(() => {
+            setStep(4);
+          }, 2000);
+        } else {
+          throw new Error(paymentData.message || 'Payment failed');
+        }
       }
 
     } catch (error) {
@@ -763,65 +1272,65 @@ export default function MerchandisePage() {
     );
   };
 
-  // In merchandise page - updated ShippingMethodSelector
-const ShippingMethodSelector = () => (
-  <div className="space-y-3">
-    <h3 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
-      Shipping Method <span className="text-xs font-normal text-[#1B3A6B]/50 ml-2">(From Nakuru → Nairobi Hub → You)</span>
-    </h3>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {shippingMethods.map((method) => {
-        const isSelected = customerInfo.shippingMethod === method.id;
-        const isDHL = method.id.startsWith('dhl');
-        
-        return (
-          <button
-            key={method.id}
-            type="button"
-            onClick={() => setCustomerInfo(prev => ({ ...prev, shippingMethod: method.id }))}
-            className={`p-4 border-2 rounded-lg text-left transition-all ${
-              isSelected
-                ? 'border-[#C9A84C] bg-[#C9A84C]/5'
-                : 'border-[#1B3A6B]/10 hover:border-[#1B3A6B]/20'
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  {isDHL && (
-                    <span className="text-xs font-bold text-[#C9A84C] bg-[#C9A84C]/10 px-2 py-0.5 rounded">
-                      DHL
+  // ─── Shipping Method Selector ──────────────────────────────────────────
+  const ShippingMethodSelector = () => (
+    <div className="space-y-3">
+      <h3 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
+        Shipping Method <span className="text-xs font-normal text-[#1B3A6B]/50 ml-2">(From Nakuru → Nairobi Hub → You)</span>
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {shippingMethods.map((method) => {
+          const isSelected = customerInfo.shippingMethod === method.id;
+          const isDHL = method.id.startsWith('dhl');
+          
+          return (
+            <button
+              key={method.id}
+              type="button"
+              onClick={() => setCustomerInfo(prev => ({ ...prev, shippingMethod: method.id }))}
+              className={`p-4 border-2 rounded-lg text-left transition-all ${
+                isSelected
+                  ? 'border-[#C9A84C] bg-[#C9A84C]/5'
+                  : 'border-[#1B3A6B]/10 hover:border-[#1B3A6B]/20'
+              }`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    {isDHL && (
+                      <span className="text-xs font-bold text-[#C9A84C] bg-[#C9A84C]/10 px-2 py-0.5 rounded">
+                        DHL
+                      </span>
+                    )}
+                    <span className={`font-semibold text-sm ${isSelected ? 'text-[#1B3A6B]' : 'text-[#1B3A6B]/70'}`}>
+                      {method.label}
                     </span>
+                  </div>
+                  <p className="text-xs text-[#1B3A6B]/50 mt-1">{method.time}</p>
+                  <p className="text-xs text-[#1B3A6B]/40 mt-0.5">{method.description}</p>
+                  {isDHL && (
+                    <p className="text-[10px] text-[#1B3A6B]/30 mt-1 flex items-center gap-1">
+                      <Truck size={10} /> Nakuru → Nairobi Hub → Global
+                    </p>
                   )}
-                  <span className={`font-semibold text-sm ${isSelected ? 'text-[#1B3A6B]' : 'text-[#1B3A6B]/70'}`}>
-                    {method.label}
-                  </span>
                 </div>
-                <p className="text-xs text-[#1B3A6B]/50 mt-1">{method.time}</p>
-                <p className="text-xs text-[#1B3A6B]/40 mt-0.5">{method.description}</p>
-                {isDHL && (
-                  <p className="text-[10px] text-[#1B3A6B]/30 mt-1 flex items-center gap-1">
-                    <Truck size={10} /> Nakuru → Nairobi Hub → Global
+                <div className="text-right">
+                  <p className={`font-serif font-bold ${isSelected ? 'text-[#1B3A6B]' : 'text-[#1B3A6B]/50'}`}>
+                    {method.price === 0 ? 'FREE' : `KES ${method.price.toLocaleString()}`}
                   </p>
-                )}
+                  {isSelected && (
+                    <CheckCircle className="text-[#C9A84C] mt-1 ml-auto" size={14} />
+                  )}
+                </div>
               </div>
-              <div className="text-right">
-                <p className={`font-serif font-bold ${isSelected ? 'text-[#1B3A6B]' : 'text-[#1B3A6B]/50'}`}>
-                  {method.price === 0 ? 'FREE' : `KES ${method.price.toLocaleString()}`}
-                </p>
-                {isSelected && (
-                  <CheckCircle className="text-[#C9A84C] mt-1 ml-auto" size={14} />
-                )}
-              </div>
-            </div>
-          </button>
-        );
-      })}
+            </button>
+          );
+        })}
+      </div>
     </div>
-  </div>
-);
+  );
 
-  // Shipping Address Form
+  // ─── Shipping Address Form ──────────────────────────────────────────────
   const ShippingAddressForm = () => (
     <div className="space-y-4">
       <h3 className="text-sm font-serif font-bold text-[#1B3A6B] uppercase tracking-wider">
@@ -945,8 +1454,7 @@ const ShippingMethodSelector = () => (
     );
   }
 
-  // ─── CHECKOUT STEPS ─────────────────────────────────────────────────────────
-
+  // ─── STEP 2: Checkout ────────────────────────────────────────────────────
   if (step === 2) {
     const subtotal = calculateSubtotal();
     const shippingCost = getShippingCost();
@@ -1099,6 +1607,7 @@ const ShippingMethodSelector = () => (
     );
   }
 
+  // ─── STEP 3: Payment ──────────────────────────────────────────────────────
   if (step === 3) {
     const subtotal = calculateSubtotal();
     const shippingCost = getShippingCost();
@@ -1136,50 +1645,42 @@ const ShippingMethodSelector = () => (
               animate="visible"
               className="border border-[#1B3A6B]/10 rounded-lg p-6"
             >
-              <h2 className="text-xl font-serif font-bold text-[#1B3A6B] mb-6">M-PESA Payment</h2>
+              <h2 className="text-xl font-serif font-bold text-[#1B3A6B] mb-6">Payment Method</h2>
               
-              <div className="bg-[#1B3A6B]/5 rounded-lg p-4 mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[#1B3A6B]/60">Amount to Pay</span>
-                  <span className="text-2xl font-serif font-bold text-[#1B3A6B]">KES {total.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#1B3A6B]/60">Phone Number</span>
-                  <span className="font-medium text-[#1B3A6B]">{customerInfo.phone}</span>
-                </div>
-              </div>
+              <PaymentMethodSelector
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                cardDetails={cardDetails}
+                setCardDetails={setCardDetails}
+                currentFee={total}
+                isProcessing={isSubmitting || stkStatus === 'waiting'}
+              />
 
               {errors.submit && (
-                <div className="mb-4 p-3 bg-[#1B3A6B]/5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] text-sm">
+                <div className="mt-4 p-3 bg-[#1B3A6B]/5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] text-sm">
                   {errors.submit}
                 </div>
               )}
 
-              <div className="space-y-4">
-                <button
-                  onClick={handlePayment}
-                  disabled={isSubmitting}
-                  className="w-full px-6 py-4 bg-[#1B3A6B] text-white font-serif font-bold rounded-lg hover:bg-[#152e55] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="animate-spin" size={20} />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Smartphone size={20} />
-                      Pay with M-PESA
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => setStep(2)}
-                  className="w-full px-6 py-4 border border-[#1B3A6B]/20 text-[#1B3A6B] font-medium rounded-lg hover:bg-[#1B3A6B]/5 transition"
-                >
-                  Cancel
-                </button>
-              </div>
+              <button
+                onClick={handlePayment}
+                disabled={isSubmitting || stkStatus === 'waiting'}
+                className="w-full mt-4 px-6 py-4 bg-[#1B3A6B] text-white font-serif font-bold rounded-lg hover:bg-[#152e55] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting || stkStatus === 'waiting' ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    {paymentMethod === 'mpesa' && <Smartphone size={20} />}
+                    {paymentMethod === 'visa' && <CreditCard size={20} />}
+                    {paymentMethod === 'paypal' && <Wallet size={20} />}
+                    Pay KES {total.toLocaleString()} with {paymentMethod === 'mpesa' ? 'M-PESA' : paymentMethod === 'visa' ? 'Card' : 'PayPal'}
+                  </>
+                )}
+              </button>
             </motion.div>
 
             <motion.div
@@ -1232,6 +1733,7 @@ const ShippingMethodSelector = () => (
     );
   }
 
+  // ─── STEP 4: Success ──────────────────────────────────────────────────────
   if (step === 4) {
     const shippingMethod = shippingMethods.find(m => m.id === customerInfo.shippingMethod);
     
@@ -1250,7 +1752,7 @@ const ShippingMethodSelector = () => (
               <CheckCircle className="w-10 h-10 text-[#C9A84C]" />
             </div>
             <h1 className="text-3xl font-serif font-bold text-[#1B3A6B] mb-4">
-              Order Confirmed!
+              Order Confirmed! 🎉
             </h1>
             <p className="text-[#1B3A6B]/60 mb-6">
               Your merchandise order has been received and payment confirmed.
@@ -1306,8 +1808,7 @@ const ShippingMethodSelector = () => (
     );
   }
 
-  // ─── PRODUCTS VIEW ──────────────────────────────────────────────────────────
-
+  // ─── PRODUCTS VIEW (Step 1) ──────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-white">
       <AlertModalComponent />
@@ -1332,7 +1833,7 @@ const ShippingMethodSelector = () => (
             className="text-lg text-white/70 max-w-2xl mx-auto leading-relaxed"
           >
             Show your Turi pride with official alumni-branded merchandise. 
-            <span className="block text-sm mt-1 text-white/50">Global shipping </span>
+            <span className="block text-sm mt-1 text-white/50">Global shipping</span>
           </motion.p>
         </div>
       </section>
@@ -1449,55 +1950,57 @@ const ShippingMethodSelector = () => (
                   <p className="text-[#1B3A6B]/60 text-sm mb-4 line-clamp-2">
                     {product.description}
                   </p>
- {/* ─── LIVE INVENTORY DISPLAY ─── */}
-  {selection.color && selection.size && (() => {
-    const selectedVariant = product.variants.find(
-      v => v.id === selection.variant_id
-    );
-    if (!selectedVariant) return null;
-    
-    const stock = selectedVariant.stock_quantity;
-    const isLowStock = stock <= 5 && stock > 0;
-    const isOutOfStock = stock <= 0;
-    
-    return (
-      <div className="mb-4 pb-3 border-b border-[#1B3A6B]/10">
-        <div className="flex items-center gap-2">
-          {isOutOfStock ? (
-            <span className="text-xs font-semibold text-[#E53E3E] flex items-center gap-1.5">
-              <AlertCircle size={14} />
-              Out of Stock
-            </span>
-          ) : isLowStock ? (
-            <span className="text-xs font-semibold text-[#FF7A00] flex items-center gap-1.5">
-              <AlertCircle size={14} />
-              Only {stock} left in stock - Order soon!
-            </span>
-          ) : (
-            <span className="text-xs font-medium text-[#1B3A6B]/60 flex items-center gap-1.5">
-              <CheckCircle size={14} className="text-[#C9A84C]" />
-              {stock} in stock
-            </span>
-          )}
-          {/* Stock indicator bar */}
-          <div className="flex-1 h-1.5 bg-[#1B3A6B]/10 rounded-full overflow-hidden max-w-[80px]">
-            <div 
-              className={`h-full rounded-full transition-all duration-500 ${
-                isOutOfStock ? 'bg-[#E53E3E]' : 
-                isLowStock ? 'bg-[#FF7A00]' : 
-                'bg-[#C9A84C]'
-              }`}
-              style={{ 
-                width: isOutOfStock ? '0%' : 
-                       isLowStock ? `${(stock / 5) * 100}%` : 
-                       '100%' 
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  })()}
+
+                  {/* ─── LIVE INVENTORY DISPLAY ─── */}
+                  {selection.color && selection.size && (() => {
+                    const selectedVariant = product.variants.find(
+                      v => v.id === selection.variant_id
+                    );
+                    if (!selectedVariant) return null;
+                    
+                    const stock = selectedVariant.stock_quantity;
+                    const isLowStock = stock <= 5 && stock > 0;
+                    const isOutOfStock = stock <= 0;
+                    
+                    return (
+                      <div className="mb-4 pb-3 border-b border-[#1B3A6B]/10">
+                        <div className="flex items-center gap-2">
+                          {isOutOfStock ? (
+                            <span className="text-xs font-semibold text-[#E53E3E] flex items-center gap-1.5">
+                              <AlertCircle size={14} />
+                              Out of Stock
+                            </span>
+                          ) : isLowStock ? (
+                            <span className="text-xs font-semibold text-[#FF7A00] flex items-center gap-1.5">
+                              <AlertCircle size={14} />
+                              Only {stock} left in stock - Order soon!
+                            </span>
+                          ) : (
+                            <span className="text-xs font-medium text-[#1B3A6B]/60 flex items-center gap-1.5">
+                              <CheckCircle size={14} className="text-[#C9A84C]" />
+                              {stock} in stock
+                            </span>
+                          )}
+                          {/* Stock indicator bar */}
+                          <div className="flex-1 h-1.5 bg-[#1B3A6B]/10 rounded-full overflow-hidden max-w-[80px]">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                isOutOfStock ? 'bg-[#E53E3E]' : 
+                                isLowStock ? 'bg-[#FF7A00]' : 
+                                'bg-[#C9A84C]'
+                              }`}
+                              style={{ 
+                                width: isOutOfStock ? '0%' : 
+                                       isLowStock ? `${(stock / 5) * 100}%` : 
+                                       '100%' 
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="mb-4">
                     <p className="text-xs uppercase tracking-wider text-[#1B3A6B]/50 font-medium mb-2">
                       Color
@@ -1608,12 +2111,12 @@ const ShippingMethodSelector = () => (
                       KES {(item.price * item.quantity).toLocaleString()}
                     </p>
                     <button
-  onClick={() => removeFromCart(index)}
-  className="p-2 text-[#1B3A6B]/40 hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 rounded-lg transition"
-  aria-label="Remove item"
->
-  <TrashIcon size={16} />
-</button>
+                      onClick={() => removeFromCart(index)}
+                      className="p-2 text-[#1B3A6B]/40 hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 rounded-lg transition"
+                      aria-label="Remove item"
+                    >
+                      <TrashIcon size={16} />
+                    </button>
                   </div>
                 </div>
               ))}
