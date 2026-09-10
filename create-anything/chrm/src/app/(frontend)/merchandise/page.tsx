@@ -188,10 +188,10 @@ const shippingMethods: { id: ShippingMethod; label: string; price: number; time:
   },
   {
     id: 'pickup',
-    label: 'Pickup from Office',
+    label: 'Pickup from St.Andrews Turi',
     price: 0,
     time: 'Ready in 2-3 business days',
-    description: 'Collect from our Nairobi office'
+    description: 'Collect from School'
   },
 ];
 
@@ -934,7 +934,7 @@ export default function MerchandisePage() {
           customer_phone: customerInfo.phone,
           customer_email: customerInfo.email,
           shipping_address: customerInfo.shippingMethod === 'pickup' 
-            ? 'Pickup from office' 
+            ? 'Pickup from School' 
             : `${shipping.address_line1}, ${shipping.address_line2 || ''}, ${shipping.city}, ${shipping.state || ''}, ${shipping.country}, ${shipping.postal_code}`,
           shipping_method: customerInfo.shippingMethod,
           shipping_details: {
@@ -980,7 +980,7 @@ export default function MerchandisePage() {
               customer_phone: customerInfo.phone,
               shipping_method: customerInfo.shippingMethod,
               shipping_address: customerInfo.shippingMethod === 'pickup' 
-                ? 'Pickup from office' 
+                ? 'Pickup from school' 
                 : `${shipping.address_line1}, ${shipping.city}, ${shipping.country}`,
             }
           };
@@ -1011,7 +1011,7 @@ export default function MerchandisePage() {
               customer_phone: customerInfo.phone,
               shipping_method: customerInfo.shippingMethod,
               shipping_address: customerInfo.shippingMethod === 'pickup' 
-                ? 'Pickup from office' 
+                ? 'Pickup from school' 
                 : `${shipping.address_line1}, ${shipping.city}, ${shipping.country}`,
             }
           };
@@ -1036,7 +1036,7 @@ export default function MerchandisePage() {
               customer_phone: customerInfo.phone,
               shipping_method: customerInfo.shippingMethod,
               shipping_address: customerInfo.shippingMethod === 'pickup' 
-                ? 'Pickup from office' 
+                ? 'Pickup from school' 
                 : `${shipping.address_line1}, ${shipping.city}, ${shipping.country}`,
             }
           };
@@ -1340,7 +1340,7 @@ export default function MerchandisePage() {
         <div className="bg-[#C9A84C]/10 border border-[#C9A84C]/30 rounded-lg p-4">
           <p className="text-sm text-[#1B3A6B] flex items-center gap-2">
             <Building2 size={16} className="text-[#C9A84C]" />
-            Pickup from our Nairobi office. You'll receive confirmation when your order is ready.
+            Pickup from School. You'll receive confirmation when your order is ready.
           </p>
         </div>
       ) : (
@@ -1751,7 +1751,7 @@ export default function MerchandisePage() {
               <CheckCircle className="w-10 h-10 text-[#C9A84C]" />
             </div>
             <h1 className="text-3xl font-serif font-bold text-[#1B3A6B] mb-4">
-              Order Confirmed! 🎉
+              Order Confirmed!
             </h1>
             <p className="text-[#1B3A6B]/60 mb-6">
               Your merchandise order has been received and payment confirmed.
@@ -1778,7 +1778,7 @@ export default function MerchandisePage() {
                   </>
                 )}
                 {customerInfo.shippingMethod === 'pickup' && (
-                  <p className="text-[#C9A84C] font-medium">Pickup from Nairobi office</p>
+                  <p className="text-[#C9A84C] font-medium">Pickup from St.Andrew's Turi</p>
                 )}
               </div>
             </div>

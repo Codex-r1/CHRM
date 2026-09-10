@@ -56,32 +56,46 @@ export async function POST(request: NextRequest) {
       : cleanPhone;
 
     // 3. Generate account reference and transaction description
-    let accountReference = '';
-    let description = '';
+let accountReference = '';
+let description = '';
 
-    switch (paymentType) {
-      case 'registration':
-        accountReference = 'REGISTRATION';
-        description = `New Member Reg - ${userName || 'User'}`;
-        break;
-      case 'renewal':
-        accountReference = metadata.membership_number
-          ? `RENEWAL-${metadata.membership_number}`
-          : 'RENEWAL';
-        description = `Membership Renewal - ${metadata.renewal_year || new Date().getFullYear()}`;
-        break;
-      case 'event':
-        accountReference = `EVENT-${metadata.event_id || 'REG'}`;
-        description = `Event Reg - ${metadata.event_name || 'Event'}`;
-        break;
-      case 'merchandise':
-        accountReference = `MERCH-${Date.now()}`;
-        description = `Merchandise Purchase`;
-        break;
-      default:
-        accountReference = `PAYMENT-${Date.now()}`;
-        description = `${paymentType} payment`;
-    }
+switch (paymentType) {
+  case 'registration':
+    accountReference = 'REGISTRATION';
+    description = 'Member Reg';
+    break;
+
+  case 'renewal':
+    accountReference = metadata.membership_number
+      ? `REN-${metadata.membership_number}`.slice(0, 12)
+      : 'RENEWAL';
+    description = 'Mem Renewal';
+    break;
+
+  case 'event': {
+    // Handle both snake_case and camelCase event IDs
+    const rawEventId = metadata.event_id || metadata.eventId || 'REG';
+    
+    // Extract short ID if UUID is passed (e.g. "EVT-123e4567") to stay <= 12 chars
+    const shortId = String(rawEventId).replace(/-/g, '').slice(0, 8);
+    accountReference = `EVT-${shortId}`.slice(0, 12);
+    
+    // Ensure event_id is standardized inside metadata for the callback
+    metadata.event_id = rawEventId;
+    
+    description = 'Event Reg';
+    break;
+  }
+
+  case 'merchandise':
+    accountReference = `MERCH-${Date.now().toString().slice(-5)}`;
+    description = 'Merch Order';
+    break;
+
+  default:
+    accountReference = `PAY-${Date.now().toString().slice(-8)}`;
+    description = 'Payment';
+}
 
     let paymentRecord: any = null;
 

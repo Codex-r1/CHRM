@@ -929,7 +929,7 @@ export default function CombinedPaymentsPage() {
 
           showAlert(
             'success',
-            'Registration & Payment Complete! 🎉',
+            'Registration & Payment Complete!',
             'Your payment was confirmed. We have sent a confirmation link to your email address. Please open your inbox, click the confirmation link, and then log in to access your dashboard.',
             {
               confirmText: 'Go to Login',
