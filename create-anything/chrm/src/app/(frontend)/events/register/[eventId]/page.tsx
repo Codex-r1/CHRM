@@ -211,91 +211,87 @@ export default function EventRegistrationPage() {
     setAlertModal(prev => ({ ...prev, show: false }));
   };
 
-  // ─── PAYMENT HANDLER ──────────────────────────────────────────────────────
+ const handleSubmit = async (e: FormEvent) => {
+  e.preventDefault();
+  setError("");
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError("");
+  if (!event) {
+    setError("Event information is still loading. Please wait.");
+    return;
+  }
 
-    if (!event) {
-      setError("Event information is still loading. Please wait.");
-      return;
+  if (!formData.full_name || !formData.email || !formData.phone) {
+    showAlert('error', 'Missing Information', 'Please fill in all required fields');
+    return;
+  }
+
+  if (!validatePhoneNumber(formData.phone)) {
+    showAlert('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
+    return;
+  }
+
+  setStkStatus('initiating');
+
+  try {
+    const amount = event.price;
+    const userId = authUser?.id || null;
+    const userEmail = authUser?.email || formData.email;
+    const userName = authUser?.user_metadata?.full_name || formData.full_name;
+    const membershipNumber = authUser?.user_metadata?.membership_number || null;
+    const isMember = !!authUser;
+
+    const response = await fetch('/api/payments/stk-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        phoneNumber: formData.phone,
+        amount: amount,
+        paymentType: 'event',
+        userId: userId,
+        userEmail: userEmail,
+        userName: userName,
+        metadata: {
+          event_id: eventId,
+          event_name: event.name,
+          attendee_name: formData.full_name,
+          attendee_email: formData.email,
+          attendee_phone: formData.phone,
+          membership_number: membershipNumber,
+          is_member: isMember,
+          registration_type: isMember ? "member" : "guest"
+        }
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || data.error || 'Failed to initiate payment');
     }
 
-    try {
-      setStkStatus('initiating');
-      
-      if (!formData.full_name || !formData.email || !formData.phone) {
-        showAlert('error', 'Missing Information', 'Please fill in all required fields');
-        setStkStatus('idle');
-        return;
-      }
+    // Success path
+    const reqId = data.checkoutRequestId || data.checkoutRequestID || data.data?.checkoutRequestId;
+    const pId = data.paymentId || data.data?.paymentId || '';
 
-      if (!validatePhoneNumber(formData.phone)) {
-        showAlert('error', 'Invalid Phone Number', 'Please enter a valid Kenyan phone number (e.g., 0712345678)');
-        setStkStatus('idle');
-        return;
-      }
-
-      const amount = event.price;
-      const userId = authUser?.id || null;
-      const userEmail = authUser?.email || formData.email;
-      const userName = authUser?.user_metadata?.full_name || formData.full_name;
-      const membershipNumber = authUser?.user_metadata?.membership_number || null;
-      const isMember = !!authUser;
-      
-      // Initiate STK Push
-      const response = await fetch('/api/payments/stk-push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phoneNumber: formData.phone,
-          amount: amount,
-          paymentType: 'event',
-          userId: userId,
-          userEmail: userEmail,
-          userName: userName,
-          metadata: {
-            event_id: eventId,
-            event_name: event.name,
-            attendee_name: formData.full_name,
-            attendee_email: formData.email,
-            attendee_phone: formData.phone,
-            membership_number: membershipNumber,
-            is_member: isMember,
-            registration_type: isMember ? "member" : "guest"
-          }
-        })
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to initiate payment');
-      }
-
-      if (data.success && data.checkoutRequestId) {
-        setCheckoutRequestID(data.checkoutRequestId);
-        setPaymentId(data.paymentId || '');
-        setStkStatus('pending');
-        setStep(2);
-        
-        showAlert('info', 'Check Your Phone', 
-          'M-PESA prompt has been sent. Enter your PIN to complete payment.',
-          { confirmText: 'OK', autoClose: 3000 }
-        );
-        
-        startPaymentPolling(data.checkoutRequestId);
-      } else {
-        throw new Error(data.message || 'Payment initiation failed');
-      }
-
-    } catch (err: any) {
-      setStkStatus('failed');
-      setError(err.message || 'Failed to register for event');
-      showAlert('error', 'Payment Failed', err.message || 'Failed to register for event');
+    if (!reqId) {
+      throw new Error("No CheckoutRequestID returned from server");
     }
-  };
+
+    setCheckoutRequestID(reqId);
+    setPaymentId(pId);
+    setStkStatus('pending');
+    setStep(2); // Move to Step 2 (Check Your Phone)
+
+    // Start polling without popping an extra alert modal
+    startPaymentPolling(reqId);
+
+  } catch (err: any) {
+    console.error("STK Initiation Error:", err);
+    setStkStatus('failed');
+    setError(err.message || 'Failed to register for event');
+    showAlert('error', 'Payment Failed', err.message || 'Failed to register for event');
+  }
+};
 
 const startPaymentPolling = (checkoutID: string) => {
   let pollCount = 0;
