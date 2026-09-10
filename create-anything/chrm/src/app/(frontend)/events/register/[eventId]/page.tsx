@@ -297,120 +297,75 @@ export default function EventRegistrationPage() {
     }
   };
 
-  // ─── POLLING FUNCTION ────────────────────────────────────────────────────
+const startPaymentPolling = (checkoutID: string) => {
+  let pollCount = 0;
+  const maxPolls = 40;
 
-  const startPaymentPolling = (checkoutID: string) => {
-    let pollCount = 0;
-    const maxPolls = 40;
-    
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-    }
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    setPollingInterval(null);
+  }
 
-    const interval = setInterval(async () => {
-      pollCount++;
+  const interval = setInterval(async () => {
+    pollCount++;
 
-      try {
-        const response = await fetch(`/api/payments/${checkoutID}`);
-        
-        if (!response.ok) {
-          return;
-        }
-        
-        const data = await response.json();
-        
-        if (data.status === 'confirmed') {
-          clearInterval(interval);
-          setPollingInterval(null);
-          
-          try {
-            const isMember = !!authUser;
-            const membershipNumber = authUser?.user_metadata?.membership_number || null;
-            
-            const registrationResponse = await fetch('/api/events/register', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                user_id: authUser?.id || null,
-                event_id: eventId,
-                attendee_name: formData.full_name,
-                attendee_email: formData.email,
-                attendee_phone: formData.phone,
-                membership_number: membershipNumber,
-                is_member: isMember,
-                payment_id: paymentId
-              })
-            });
+    try {
+      const response = await fetch(`/api/payments/${checkoutID}`);
 
-            const registrationData = await registrationResponse.json();
+      if (!response.ok) return;
 
-            if (!registrationResponse.ok) {
-              showAlert('error', 'Registration Error', 
-                'Payment confirmed but registration failed. Please contact support.',
-                { confirmText: 'OK' }
-              );
-              return;
-            }
+      const data = await response.json();
 
-            setStkStatus('success');
-            
-            showAlert('success', 'Registration Confirmed!', 
-              `You're registered for ${event?.name}!`,
-              { 
-                confirmText: 'Continue',
-                onConfirm: () => setStep(3)
-              }
-            );
-            
-            setTimeout(() => {
-              closeAlert();
-              setStep(3);
-            }, 3000);
-            
-          } catch (regError) {
-            showAlert('error', 'Registration Error', 
-              'Payment confirmed but registration failed. Please contact support.',
-              { confirmText: 'OK' }
-            );
+      if (data.status === 'confirmed') {
+        clearInterval(interval);
+        setPollingInterval(null);
+        setStkStatus('success');
+
+        // Close any existing alerts and transition smoothly to Step 3 (Success Screen)
+        closeAlert();
+        setStep(3);
+
+      } else if (data.status === 'failed' || data.status === 'cancelled') {
+        clearInterval(interval);
+        setPollingInterval(null);
+        setStkStatus(data.status);
+        showAlert(
+          'error',
+          'Payment Failed',
+          data.status === 'cancelled'
+            ? 'Payment was cancelled.'
+            : 'Payment failed. Please try again.',
+          {
+            confirmText: 'Try Again',
+            onConfirm: () => setStep(1),
           }
-          
-        } else if (data.status === 'failed' || data.status === 'cancelled') {
-          clearInterval(interval);
-          setPollingInterval(null);
-          setStkStatus(data.status);
-          showAlert('error', 'Payment Failed', 
-            data.status === 'cancelled' ? 'Payment was cancelled.' : 'Payment failed. Please try again.',
-            { 
-              confirmText: 'Try Again',
-              onConfirm: () => setStep(1)
-            }
-          );
-        }
-        
-        if (pollCount >= maxPolls) {
-          clearInterval(interval);
-          setPollingInterval(null);
-          setStkStatus('failed');
-          showAlert('error', 'Payment Timeout', 
-            'Payment verification timed out. Please check your M-PESA messages.',
-            { 
-              confirmText: 'OK',
-              onConfirm: () => setStep(1)
-            }
-          );
-        }
-        
-      } catch (err) {
-        if (pollCount >= maxPolls) {
-          clearInterval(interval);
-          setPollingInterval(null);
-        }
+        );
       }
-    }, 3000);
 
-    setPollingInterval(interval);
-  };
+      if (pollCount >= maxPolls) {
+        clearInterval(interval);
+        setPollingInterval(null);
+        setStkStatus('failed');
+        showAlert(
+          'error',
+          'Payment Timeout',
+          'Payment verification timed out. Please check your M-PESA messages.',
+          {
+            confirmText: 'OK',
+            onConfirm: () => setStep(1),
+          }
+        );
+      }
+    } catch (err) {
+      if (pollCount >= maxPolls) {
+        clearInterval(interval);
+        setPollingInterval(null);
+      }
+    }
+  }, 3000);
+
+  setPollingInterval(interval);
+};
 
   // ─── RENDER FUNCTIONS ────────────────────────────────────────────────────
 
