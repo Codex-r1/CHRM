@@ -1,4 +1,3 @@
-// app/(backend)/lib/email/emailService.ts
 import { supabaseAdmin } from "../supabase/admin";
 
 export interface EmailData {
@@ -10,7 +9,6 @@ export interface EmailData {
 }
 
 export async function sendEmail(emailData: EmailData) {
-  // Replace with your email provider (SendGrid, Resend, etc.)
   try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -19,18 +17,21 @@ export async function sendEmail(emailData: EmailData) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Old Turians Society <onboarding@resend.dev>',
-        to: emailData.to,
+        from: 'Old Turians Society <onboarding@resend.dev>', // Keep onboarding@resend.dev until standrewsturi.com DNS is verified
+        to: [emailData.to], // Fixed: Used emailData.to instead of undefined recipientEmail
         subject: emailData.subject,
         html: emailData.html,
       }),
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
-      throw new Error('Failed to send email');
+      console.error('Resend API Error Response:', result);
+      throw new Error(result.message || 'Failed to send email');
     }
 
-    return await response.json();
+    return result;
   } catch (error) {
     console.error('Email sending failed:', error);
     throw error;
@@ -60,7 +61,7 @@ export function getRegistrationEmail(name: string, email: string) {
             border-radius: 6px; 
             font-weight: bold;
           }
-          .footer { border-top: 2px solid #1B3A6B/10; padding-top: 20px; font-size: 12px; color: #1B3A6B/60; }
+          .footer { border-top: 2px solid rgba(27, 58, 107, 0.1); padding-top: 20px; font-size: 12px; color: rgba(27, 58, 107, 0.6); }
         </style>
       </head>
       <body>
@@ -99,10 +100,10 @@ export function getRegistrationEmail(name: string, email: string) {
 
 // Merchandise Order Confirmation Email
 export function getMerchandiseEmail(name: string, email: string, order: any) {
-  const itemsHtml = order.items.map((item: any) => `
+  const itemsHtml = (order.items || []).map((item: any) => `
     <tr>
       <td>${item.name}</td>
-      <td>${item.color_name} / ${item.size}</td>
+      <td>${item.color_name || ''} / ${item.size || ''}</td>
       <td>${item.quantity}</td>
       <td>KES ${(item.price * item.quantity).toLocaleString()}</td>
     </tr>
@@ -122,7 +123,7 @@ export function getMerchandiseEmail(name: string, email: string, order: any) {
           .content { padding: 30px 0; }
           table { width: 100%; border-collapse: collapse; margin: 20px 0; }
           th { background: #1B3A6B; color: white; padding: 10px; text-align: left; }
-          td { padding: 10px; border-bottom: 1px solid #1B3A6B/10; }
+          td { padding: 10px; border-bottom: 1px solid rgba(27, 58, 107, 0.1); }
           .total { font-size: 18px; font-weight: bold; }
           .button { 
             display: inline-block; 
@@ -133,7 +134,7 @@ export function getMerchandiseEmail(name: string, email: string, order: any) {
             border-radius: 6px; 
             font-weight: bold;
           }
-          .footer { border-top: 2px solid #1B3A6B/10; padding-top: 20px; font-size: 12px; color: #1B3A6B/60; }
+          .footer { border-top: 2px solid rgba(27, 58, 107, 0.1); padding-top: 20px; font-size: 12px; color: rgba(27, 58, 107, 0.6); }
         </style>
       </head>
       <body>
@@ -146,7 +147,7 @@ export function getMerchandiseEmail(name: string, email: string, order: any) {
             <p>Thank you for your merchandise order! Your order has been confirmed and is being processed.</p>
             
             <p><strong>Order #:</strong> ${order.id}</p>
-            <p><strong>Shipping Method:</strong> ${order.shipping_method}</p>
+            <p><strong>Shipping Method:</strong> ${order.shipping_method || 'Standard'}</p>
             
             <table>
               <thead>
@@ -161,15 +162,15 @@ export function getMerchandiseEmail(name: string, email: string, order: any) {
                 ${itemsHtml}
                 <tr>
                   <td colspan="3" style="text-align: right;"><strong>Subtotal</strong></td>
-                  <td>KES ${order.subtotal.toLocaleString()}</td>
+                  <td>KES ${(order.subtotal || 0).toLocaleString()}</td>
                 </tr>
                 <tr>
                   <td colspan="3" style="text-align: right;"><strong>Shipping</strong></td>
-                  <td>KES ${order.shipping_cost.toLocaleString()}</td>
+                  <td>KES ${(order.shipping_cost || 0).toLocaleString()}</td>
                 </tr>
                 <tr class="total">
                   <td colspan="3" style="text-align: right;"><strong>Total</strong></td>
-                  <td>KES ${order.total.toLocaleString()}</td>
+                  <td>KES ${(order.total || 0).toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>
@@ -210,7 +211,7 @@ export function getEventRegistrationEmail(name: string, email: string, event: an
           .container { max-width: 600px; margin: 0 auto; padding: 40px; }
           .header { border-bottom: 4px solid #C9A84C; padding-bottom: 20px; }
           .content { padding: 30px 0; }
-          .event-details { background: #1B3A6B/5; padding: 20px; border-radius: 8px; margin: 20px 0; }
+          .event-details { background: rgba(27, 58, 107, 0.05); padding: 20px; border-radius: 8px; margin: 20px 0; }
           .button { 
             display: inline-block; 
             padding: 12px 30px; 
@@ -220,7 +221,7 @@ export function getEventRegistrationEmail(name: string, email: string, event: an
             border-radius: 6px; 
             font-weight: bold;
           }
-          .footer { border-top: 2px solid #1B3A6B/10; padding-top: 20px; font-size: 12px; color: #1B3A6B/60; }
+          .footer { border-top: 2px solid rgba(27, 58, 107, 0.1); padding-top: 20px; font-size: 12px; color: rgba(27, 58, 107, 0.6); }
         </style>
       </head>
       <body>
@@ -241,7 +242,7 @@ export function getEventRegistrationEmail(name: string, email: string, event: an
                 day: 'numeric'
               })}</p>
               <p><strong>Location:</strong> ${event.location}</p>
-              <p><strong>Price:</strong> KES ${event.price.toLocaleString()}</p>
+              <p><strong>Price:</strong> KES ${(event.price || 0).toLocaleString()}</p>
             </div>
             
             <p>We look forward to seeing you there!</p>
