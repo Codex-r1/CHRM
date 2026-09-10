@@ -741,16 +741,16 @@ async function handleRenewalPayment(payment: any) {
 // ─── EVENT HANDLER ──────────────────────────────────────────────────────
 async function handleEventPayment(payment: any) {
   try {
-    console.log('🎪 Processing event payment:', payment.id);
+    console.log(' Processing event payment:', payment.id);
     
     const metadata = payment.metadata || {};
-    const eventId = metadata.event_id;
+    const eventId = metadata.event_id || metadata.eventId;
     
     if (!eventId) {
-      throw new Error('No event_id in metadata');
+      throw new Error('No event_id found in payment metadata');
     }
 
-    // Get event details
+    // 1. Fetch event details
     const { data: event, error: eventError } = await supabaseAdmin()
       .from('events')
       .select('*')
@@ -758,10 +758,10 @@ async function handleEventPayment(payment: any) {
       .single();
 
     if (eventError || !event) {
-      throw new Error('Event not found: ' + eventError?.message);
+      throw new Error('Event not found: ' + (eventError?.message || 'Invalid ID'));
     }
 
-    // Check if already registered
+    // 2. Prevent duplicate registrations for the same payment
     const { data: existingReg } = await supabaseAdmin()
       .from('event_registrations')
       .select('id')
@@ -769,41 +769,53 @@ async function handleEventPayment(payment: any) {
       .maybeSingle();
 
     if (existingReg) {
-      console.log(' Registration already exists');
+      console.log('Registration already exists for this payment');
       return;
     }
 
-    // Create registration
+    // 3. Extract attendee details with safe fallbacks
+    const attendeeName = metadata.attendee_name || metadata.userName || 'Valued Member';
+    const attendeeEmail = metadata.attendee_email || metadata.userEmail || '';
+    const attendeePhone = metadata.attendee_phone || payment.phone || '';
+
+    // 4. Build registration payload satisfying NOT NULL constraints
+    const registrationPayload: any = {
+      event_id: eventId,
+      payment_id: payment.id,
+      attendee_name: attendeeName,
+      attendee_email: attendeeEmail,
+      attendee_phone: attendeePhone,
+    };
+
+    if (payment.user_id) {
+      registrationPayload.user_id = payment.user_id;
+    }
+
     const { error: regError } = await supabaseAdmin()
       .from('event_registrations')
-      .insert({
-        user_id: payment.user_id || null,
-        event_id: eventId,
-        payment_id: payment.id
-      });
+      .insert(registrationPayload);
 
     if (regError) {
       throw new Error('Registration creation failed: ' + regError.message);
     }
 
-    // Increment attendees count
+    // 5. Safely increment attendees count (handling null values)
+    const currentAttendees = typeof event.current_attendees === 'number' ? event.current_attendees : 0;
+
     await supabaseAdmin()
       .from('events')
       .update({ 
-        current_attendees: event.current_attendees + 1 
+        current_attendees: currentAttendees + 1 
       })
       .eq('id', eventId);
 
-    console.log(' Event registration created');
+    console.log(' Event registration recorded cleanly');
 
-    // Send confirmation email
-    const attendeeEmail = metadata.attendee_email || metadata.userEmail;
-    const attendeeName = metadata.attendee_name || metadata.userName;
-    
+    // 6. Send confirmation email via Resend
     if (attendeeEmail) {
       try {
         const emailData = getEventRegistrationEmail(
-          attendeeName || 'Attendee',
+          attendeeName,
           metadata.event_name || event.name,
           new Date(event.event_date).toLocaleDateString('en-US', {
             weekday: 'long',
@@ -815,14 +827,14 @@ async function handleEventPayment(payment: any) {
           attendeeEmail
         );
         await sendEmail(emailData);
-        console.log(' Event email sent');
+        console.log('Event email sent');
       } catch (emailError: any) {
-        console.error(' Event email failed:', emailError.message);
+        console.error(' Event email failed (non-critical):', emailError.message);
       }
     }
     
   } catch (error: any) {
-    console.error(' Event handler error:', error);
+    console.error(' Event handler error:', error.message);
     throw error;
   }
 }
