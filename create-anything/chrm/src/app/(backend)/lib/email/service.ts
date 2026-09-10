@@ -19,7 +19,7 @@ export async function sendEmail(emailData: EmailData) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Old Turians <noreply@turi.ac.ke>',
+        from: 'Old Turians Society <onboarding@resend.dev>',
         to: emailData.to,
         subject: emailData.subject,
         html: emailData.html,
