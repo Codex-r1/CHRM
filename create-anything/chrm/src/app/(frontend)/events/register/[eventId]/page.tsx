@@ -635,129 +635,140 @@ export default function EventRegistrationPage() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="block font-medium text-sm text-[#1B3A6B] mb-1.5">Full Name <span className="text-[#C9A84C]">*</span></label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
-                    <input
-                      type="text" required value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                      placeholder="John Doe"
-                    />
-                  </div>
-                </div>
+  <div>
+    <label className="block font-medium text-sm text-[#1B3A6B] mb-1.5">
+      Full Name <span className="text-[#C9A84C]">*</span>
+    </label>
+    <div className="relative">
+      <User className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
+      <input
+        type="text" required value={formData.full_name}
+        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+        className="w-full pl-10 pr-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
+        placeholder="John Doe"
+      />
+    </div>
+  </div>
 
-                <div>
-                  <label className="block font-medium text-sm text-[#1B3A6B] mb-1.5">Email Address <span className="text-[#C9A84C]">*</span></label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
-                    <input
-                      type="email" required value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                      placeholder="john.doe@example.com"
-                    />
-                  </div>
-                </div>
+  <div>
+    <label className="block font-medium text-sm text-[#1B3A6B] mb-1.5">
+      Email Address <span className="text-[#C9A84C]">*</span>
+    </label>
+    <div className="relative">
+      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
+      <input
+        type="email" required value={formData.email}
+        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+        className="w-full pl-10 pr-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
+        placeholder="john.doe@example.com"
+      />
+    </div>
+  </div>
 
-                <div>
-                  <label className="block font-medium text-sm text-[#1B3A6B] mb-1.5">
-                    Phone Number {paymentMethod === 'mpesa' && <span className="text-[#1B3A6B]/50">(M-PESA)</span>} <span className="text-[#C9A84C]">*</span>
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
-                    <input
-                      type="tel" required value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
-                      placeholder="0712345678"
-                    />
-                  </div>
-                  {paymentMethod === 'mpesa' ? (
-                    <p className="text-xs text-[#1B3A6B]/50 mt-1">You'll receive an M-PESA prompt on this number</p>
-                  ) : (
-                    <p className="text-xs text-[#1B3A6B]/50 mt-1">For registration confirmation and updates</p>
-                  )}
-                </div>
+  <div>
+    <label className="block font-medium text-sm text-[#1B3A6B] mb-1.5">
+      Phone Number {paymentMethod === 'mpesa' && <span className="text-[#1B3A6B]/50">(M-PESA)</span>} <span className="text-[#C9A84C]">*</span>
+    </label>
+    <div className="relative">
+      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/30" size={16} />
+      <input
+        type="tel" required value={formData.phone}
+        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+        className="w-full pl-10 pr-4 py-2.5 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition placeholder:text-[#1B3A6B]/30"
+        placeholder="0712345678"
+      />
+    </div>
+    {paymentMethod === 'mpesa' ? (
+      <p className="text-xs text-[#1B3A6B]/50 mt-1">You'll receive an M-PESA prompt on this number</p>
+    ) : (
+      <p className="text-xs text-[#1B3A6B]/50 mt-1">For registration confirmation and updates</p>
+    )}
+  </div>
 
-                {/* Payment Method / Stripe */}
-                <div className="pt-2">
-                  <label className="block font-medium text-sm text-[#1B3A6B] mb-3">Payment Method <span className="text-[#C9A84C]">*</span></label>
+  {/* Payment Method Selector — stays inside form; its buttons are type="button" */}
+  {!showStripeCheckout && (
+    <div className="pt-2">
+      <label className="block font-medium text-sm text-[#1B3A6B] mb-3">
+        Payment Method <span className="text-[#C9A84C]">*</span>
+      </label>
+      <PaymentMethodSelector
+        paymentMethod={paymentMethod}
+        setPaymentMethod={setPaymentMethod}
+        isProcessing={stkStatus === 'initiating' || stkStatus === 'pending'}
+      />
+    </div>
+  )}
 
-                  {showStripeCheckout && stripeClientSecret ? (
-                    <StripeCheckout
-                      clientSecret={stripeClientSecret}
-                      onSuccess={() => {
-                        setStripeClientSecret(null);
-                        setShowStripeCheckout(false);
-                        setStkStatus('success');
-                        setStep(3);
-                      }}
-                      onError={(msg) => {
-                        showAlert('error', 'Payment Failed', msg);
-                        setStripeClientSecret(null);
-                        setShowStripeCheckout(false);
-                        setStkStatus('failed');
-                      }}
-                    />
-                  ) : (
-                    <PaymentMethodSelector
-                      paymentMethod={paymentMethod}
-                      setPaymentMethod={setPaymentMethod}
-                      isProcessing={stkStatus === 'initiating' || stkStatus === 'pending'}
-                    />
-                  )}
-                </div>
+  {/* Payment Summary */}
+  <div className="bg-[#1B3A6B]/5 p-5 rounded-lg border border-[#1B3A6B]/10">
+    <h3 className="font-serif font-semibold text-[#1B3A6B] mb-3">Payment Summary</h3>
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="text-[#1B3A6B]/60">Registration Fee:</span>
+        <span className="font-medium text-[#1B3A6B]">KES {event.price.toLocaleString()}</span>
+      </div>
+      <div className="flex justify-between font-serif font-bold text-lg border-t border-[#1B3A6B]/10 pt-2">
+        <span className="text-[#1B3A6B]">Total:</span>
+        <span className="text-[#1B3A6B]">KES {event.price.toLocaleString()}</span>
+      </div>
+    </div>
+  </div>
 
-                <div className="bg-[#1B3A6B]/5 p-5 rounded-lg border border-[#1B3A6B]/10">
-                  <h3 className="font-serif font-semibold text-[#1B3A6B] mb-3">Payment Summary</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-[#1B3A6B]/60">Registration Fee:</span>
-                      <span className="font-medium text-[#1B3A6B]">KES {event.price.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between font-serif font-bold text-lg border-t border-[#1B3A6B]/10 pt-2">
-                      <span className="text-[#1B3A6B]">Total:</span>
-                      <span className="text-[#1B3A6B]">KES {event.price.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
+  {!showStripeCheckout && (
+    <button
+      type="submit"
+      disabled={stkStatus === 'initiating' || stkStatus === 'pending' || paymentMethod === 'paypal'}
+      className="w-full px-6 py-3.5 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition disabled:opacity-50 flex items-center justify-center gap-2"
+    >
+      {(stkStatus === 'initiating' || stkStatus === 'pending') ? (
+        <><Loader2 className="animate-spin" size={18} />Processing...</>
+      ) : (
+        <>
+          {paymentMethod === 'mpesa' && <Smartphone size={18} />}
+          {paymentMethod === 'visa' && <CreditCard size={18} />}
+          {paymentMethod === 'paypal' && <Globe size={18} />}
+          Pay KES {event.price.toLocaleString()}
+          {paymentMethod === 'mpesa' && ' via M-PESA'}
+          {paymentMethod === 'visa' && ' by Card'}
+          {paymentMethod === 'paypal' && ' with PayPal'}
+          <ArrowRight size={16} />
+        </>
+      )}
+    </button>
+  )}
 
-                {!showStripeCheckout && (
-                  <button
-                    type="submit"
-                    disabled={stkStatus === 'initiating' || stkStatus === 'pending' || paymentMethod === 'paypal'}
-                    className="w-full px-6 py-3.5 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {(stkStatus === 'initiating' || stkStatus === 'pending') ? (
-                      <><Loader2 className="animate-spin" size={18} />Processing...</>
-                    ) : (
-                      <>
-                        {paymentMethod === 'mpesa' && <Smartphone size={18} />}
-                        {paymentMethod === 'visa' && <CreditCard size={18} />}
-                        {paymentMethod === 'paypal' && <Globe size={18} />}
-                        Pay KES {event.price.toLocaleString()}
-                        {paymentMethod === 'mpesa' && ' via M-PESA'}
-                        {paymentMethod === 'visa' && ' by Card'}
-                        {paymentMethod === 'paypal' && ' with PayPal'}
-                        <ArrowRight size={16} />
-                      </>
-                    )}
-                  </button>
-                )}
+  <div className="flex items-center justify-center gap-2 text-xs text-[#1B3A6B]/40">
+    <Shield size={14} />
+    Secure payment via {paymentMethod === 'mpesa' ? 'M-PESA' : paymentMethod === 'visa' ? 'Card' : 'PayPal'}
+  </div>
 
-                <div className="flex items-center justify-center gap-2 text-xs text-[#1B3A6B]/40">
-                  <Shield size={14} />
-                  Secure payment via {paymentMethod === 'mpesa' ? 'M-PESA' : paymentMethod === 'visa' ? 'Card' : 'PayPal'}
-                </div>
+  {authUser && (
+    <p className="text-sm text-[#1B3A6B]/50 text-center">
+      Logged in as <span className="font-medium text-[#1B3A6B]">{authUser.email}</span>
+    </p>
+  )}
+</form>
 
-                {authUser && (
-                  <p className="text-sm text-[#1B3A6B]/50 text-center">
-                    Logged in as <span className="font-medium text-[#1B3A6B]">{authUser.email}</span>
-                  </p>
-                )}
-              </form>
+{/* Stripe PaymentElement OUTSIDE the form so its own submit button works */}
+{showStripeCheckout && stripeClientSecret && (
+  <div className="mt-5">
+    <StripeCheckout
+      clientSecret={stripeClientSecret}
+      onSuccess={() => {
+        setStripeClientSecret(null);
+        setShowStripeCheckout(false);
+        setStkStatus('success');
+        setStep(3);
+      }}
+      onError={(msg) => {
+        showAlert('error', 'Payment Failed', msg);
+        setStripeClientSecret(null);
+        setShowStripeCheckout(false);
+        setStkStatus('failed');
+      }}
+    />
+  </div>
+)}
             </motion.div>
           </div>
         </div>
