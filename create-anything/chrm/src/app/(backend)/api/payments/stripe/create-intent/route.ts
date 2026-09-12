@@ -20,8 +20,8 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const {
-      amount,                    // in smallest unit (cents)
-      currency = "KES",          // Stripe supports KES [citation:16]
+      amount,
+      currency = "KES",
       metadata = {},
       customerEmail,
     } = body;
@@ -30,7 +30,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
-    // Verify amount server-side for event payments
     const admin = supabaseAdmin();
     let verifiedAmount = amount;
 
@@ -54,9 +53,15 @@ export async function POST(request: Request) {
       automatic_payment_methods: { enabled: true },
       receipt_email: customerEmail || undefined,
       metadata: {
+        // Identity
+        user_id: metadata.user_id || "",
+        payment_type: metadata.payment_type || (metadata.event_id ? "event" : "merchandise"),
+        // Event
         event_id: metadata.event_id || "",
         event_name: metadata.event_name || "",
-        user_id: metadata.user_id || "",
+        // Order (merchandise)
+        order_id: metadata.order_id || "",
+        // Attendee
         attendee_name: metadata.attendee_name || "",
         attendee_email: metadata.attendee_email || "",
         attendee_phone: metadata.attendee_phone || "",

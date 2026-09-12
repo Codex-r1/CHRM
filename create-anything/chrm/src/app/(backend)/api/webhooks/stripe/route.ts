@@ -21,14 +21,15 @@ export async function POST(request: Request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!webhookSecret) {
+    console.error("Missing STRIPE_WEBHOOK_SECRET");
     return NextResponse.json({ error: "Missing webhook secret" }, { status: 500 });
   }
 
-  // Stripe requires the raw body for signature verification [citation:14]
   const body = await request.text();
   const signature = request.headers.get("stripe-signature");
 
   if (!signature) {
+    console.error("Missing stripe-signature header");
     return NextResponse.json({ error: "Missing signature" }, { status: 400 });
   }
 
@@ -40,6 +41,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  console.log("Webhook received:", event.type, event.id);
+
   const admin = supabaseAdmin();
 
   try {
@@ -49,39 +52,80 @@ export async function POST(request: Request) {
         const metadata = paymentIntent.metadata;
 
         console.log("Payment succeeded:", paymentIntent.id);
+        console.log("Metadata:", JSON.stringify(metadata));
 
-        // Insert payment record (ignore duplicates via account_reference)
-        await admin.from("payments").upsert(
-          {
-            user_id: metadata.user_id || null,
-            payment_type: metadata.event_id ? "event" : "merchandise",
-            amount: paymentIntent.amount / 100,
-            status: "confirmed",
-            description: metadata.event_name
-              ? `Card payment for ${metadata.event_name}`
+        const paymentType =
+          metadata.payment_type ||
+          (metadata.event_id ? "event" : "merchandise");
+
+        // ✅ Column names now match your actual schema:
+        //    phone (not phone_number)
+        //    + metadata jsonb column populated
+        const record = {
+          user_id: metadata.user_id || null,
+          payment_type: paymentType,
+          amount: paymentIntent.amount / 100,
+          status: "confirmed",
+          description: metadata.event_name
+            ? `Card payment for ${metadata.event_name}`
+            : paymentType === "merchandise"
+              ? "Card payment for merchandise order"
               : "Card payment",
-            account_reference: paymentIntent.id,
-            checkout_request_id: paymentIntent.id,
-            phone_number: metadata.attendee_phone || null,
-            confirmed_at: new Date().toISOString(),
-            paid_at: new Date().toISOString(),
+          account_reference: paymentIntent.id,
+          checkout_request_id: paymentIntent.id,
+          merchant_request_id: null,
+          receipt_number: paymentIntent.latest_charge as string | null,
+          phone: metadata.attendee_phone || null,       // ← was phone_number
+          paid_at: new Date().toISOString(),
+          confirmed_at: new Date().toISOString(),
+          metadata: {
+            // Preserve full Stripe metadata for audit trail
+            stripe_metadata: metadata,
+            order_id: metadata.order_id || null,
+            event_id: metadata.event_id || null,
           },
-          { onConflict: "account_reference" }
-        );
+        };
+
+        console.log("Inserting payment record:", JSON.stringify(record));
+
+        const { data: inserted, error: insertError } = await admin
+          .from("payments")
+          .insert(record)
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("Supabase insert FAILED:", JSON.stringify(insertError));
+          // Return 500 so Stripe retries and the error surfaces in the dashboard
+          return NextResponse.json(
+            { error: "DB insert failed", details: insertError.message, code: insertError.code },
+            { status: 500 }
+          );
+        }
+
+        console.log("Payment row inserted:", inserted.id);
 
         // Increment event attendance if applicable
         if (metadata.event_id) {
-          const { data: eventRow } = await admin
+          const { data: eventRow, error: fetchErr } = await admin
             .from("events")
             .select("current_attendees")
             .eq("id", metadata.event_id)
             .single();
 
-          if (eventRow) {
-            await admin
+          if (fetchErr) {
+            console.error("Failed to fetch event:", fetchErr.message);
+          } else if (eventRow) {
+            const { error: updateErr } = await admin
               .from("events")
               .update({ current_attendees: (eventRow.current_attendees || 0) + 1 })
               .eq("id", metadata.event_id);
+
+            if (updateErr) {
+              console.error("Failed to increment attendees:", updateErr.message);
+            } else {
+              console.log("Incremented attendees for event:", metadata.event_id);
+            }
           }
         }
         break;
@@ -89,8 +133,7 @@ export async function POST(request: Request) {
 
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        console.log("Payment failed:", paymentIntent.id);
-        // Optionally record the failure in DB
+        console.log("Payment failed:", paymentIntent.id, paymentIntent.last_payment_error?.message);
         break;
       }
 
