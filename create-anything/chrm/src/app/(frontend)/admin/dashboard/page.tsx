@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -6,10 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   Users, DollarSign, ShoppingBag, Calendar, CheckCircle, XCircle, Clock,
   Plus, Edit, Heart, Trash2, Eye, Download, Search, Activity,
-  UserPlus, Ticket, MapPin, Users as UsersIcon, Tag, Image as ImageIcon,
-  Shield, ChevronRight, LogOut, AlertCircle,
-  AlertTriangle, Info, X, Loader2, Upload, MessageSquare, Mail, Package,
-  BarChart3, TrendingUp, Filter, RefreshCw, ChevronDown, Grid, List
+  UserPlus, Ticket, MapPin, Tag, Image as ImageIcon,
+  LogOut, AlertCircle, AlertTriangle, Info, X, Loader2, Upload, MessageSquare, Mail, Package,
+  TrendingUp, RefreshCw, Grid, List, Menu, ChevronRight, ChevronLeft
 } from "lucide-react";
 import { useAuth } from "../../../(backend)/context/auth";
 import Footer from "@/app/(frontend)/components/Footer";
@@ -40,7 +38,7 @@ type Order = {
 
 type Event = {
   id: string; name: string; description: string; event_date?: string;
-  location?: string; price: number; member_discount: number;
+  location?: string; price: number; 
   max_attendees?: number; current_attendees: number; is_active: boolean;
   created_at: string; image_url?: string; status: string;
 };
@@ -83,11 +81,6 @@ type CSREventPhoto = {
   display_order: number; created_at: string;
 };
 
-type Official = {
-  id: string; name: string; position: string; image_url: string;
-  display_order: number; is_active: boolean; created_at: string;
-};
-
 type ContactMessage = {
   id: string; name: string; email: string; phone?: string;
   subject: string; message: string;
@@ -95,14 +88,12 @@ type ContactMessage = {
   user_id?: string; created_at: string; updated_at: string;
 };
 
-// ─── BLANK VARIANT TEMPLATE ───────────────────────────────────────────────────
 const BLANK_VARIANT = {
-  color_name: '', color_value: '', color_hex: '#2B4C73',
+  color_name: '', color_value: '', color_hex: '#1B3A6B',
   size: '', sku: '', price_adjustment: '0', stock_quantity: '0',
   is_available: true, image_url: ''
 };
 
-// ─── BLANK PRODUCT TEMPLATE ────────────────────────────────────────────────────
 const BLANK_PRODUCT = {
   name: '', description: '', base_price: '',
   category: 'tshirt' as Product['category'],
@@ -134,20 +125,20 @@ const Modal = ({
     confirm: <AlertCircle className="text-white" size={24} />
   };
   const typeColors = {
-    success: 'bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F]',
-    error: 'bg-gradient-to-r from-[#E53E3E] to-[#C53030]',
-    warning: 'bg-gradient-to-r from-[#FF7A00] to-[#FF9500]',
-    info: 'bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F]',
-    confirm: 'bg-gradient-to-r from-[#FF7A00] to-[#FF9500]'
+    success: 'bg-[#1B3A6B]',
+    error: 'bg-red-600',
+    warning: 'bg-[#C9A84C]',
+    info: 'bg-[#1B3A6B]',
+    confirm: 'bg-[#1B3A6B]'
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className={`bg-white rounded-xl w-full ${sizeClasses[size]} shadow-2xl`} onClick={e => e.stopPropagation()}>
-        <div className={`p-4 rounded-t-xl ${typeColors[type]} flex items-center justify-between`}>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className={`bg-white rounded-xl w-full ${sizeClasses[size]} shadow-2xl overflow-hidden`} onClick={e => e.stopPropagation()}>
+        <div className={`p-4 ${typeColors[type]} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-lg">{typeIcons[type]}</div>
-            <h3 className="text-lg font-bold text-white font-montserrat">{title}</h3>
+            <div className="p-1.5 bg-white/10 rounded-lg">{typeIcons[type]}</div>
+            <h3 className="text-lg font-serif font-bold text-white">{title}</h3>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-lg transition">
             <X className="text-white" size={20} />
@@ -174,14 +165,14 @@ const ConfirmationModal = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} type={type} size="sm">
       <div className="space-y-4">
-        <p className="text-[#6D7A8B]">{message}</p>
-        <div className="flex gap-3 justify-end pt-4">
+        <p className="text-[#1B3A6B]/70 text-sm leading-relaxed">{message}</p>
+        <div className="flex gap-3 justify-end pt-4 border-t border-[#1B3A6B]/10">
           <button onClick={onClose} disabled={loading}
-            className="px-4 py-2 bg-[#E7ECF3] text-[#6D7A8B] rounded-lg hover:bg-[#d4dae3] transition disabled:opacity-50">
+            className="px-4 py-2 bg-gray-100 text-[#1B3A6B] rounded-lg hover:bg-gray-200 transition text-sm font-medium disabled:opacity-50">
             {cancelText}
           </button>
           <button onClick={handleConfirm} disabled={loading}
-            className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#C53030] text-white rounded-lg hover:opacity-90 transition flex items-center gap-2 disabled:opacity-50">
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium flex items-center gap-2 disabled:opacity-50">
             {loading && <Loader2 className="animate-spin" size={16} />}
             {confirmText}
           </button>
@@ -200,17 +191,17 @@ const StatusModal = ({
   <Modal isOpen={isOpen} onClose={onClose} title={title} type={type} size="sm">
     <div className="space-y-4">
       <div className="flex items-center justify-center">
-        <div className={`p-4 rounded-full ${type === 'success' ? 'bg-[#E8F4FD]' : type === 'error' ? 'bg-[#FFF0F0]' : type === 'warning' ? 'bg-[#FFF4E6]' : 'bg-[#E8F4FD]'}`}>
-          {type === 'success' && <CheckCircle className="text-[#2B4C73]" size={48} />}
-          {type === 'error' && <XCircle className="text-[#E53E3E]" size={48} />}
-          {type === 'warning' && <AlertTriangle className="text-[#FF7A00]" size={48} />}
-          {type === 'info' && <Info className="text-[#2B4C73]" size={48} />}
+        <div className={`p-4 rounded-full ${type === 'success' ? 'bg-[#1B3A6B]/10' : type === 'error' ? 'bg-red-50' : type === 'warning' ? 'bg-[#C9A84C]/10' : 'bg-[#1B3A6B]/10'}`}>
+          {type === 'success' && <CheckCircle className="text-[#1B3A6B]" size={44} />}
+          {type === 'error' && <XCircle className="text-red-600" size={44} />}
+          {type === 'warning' && <AlertTriangle className="text-[#C9A84C]" size={44} />}
+          {type === 'info' && <Info className="text-[#1B3A6B]" size={44} />}
         </div>
       </div>
-      <p className="text-center text-[#6D7A8B]">{message}</p>
-      <div className="flex justify-center pt-4">
+      <p className="text-center text-[#1B3A6B]/70 text-sm">{message}</p>
+      <div className="flex justify-center pt-2">
         <button onClick={onClose}
-          className="px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 transition">
+          className="px-6 py-2 bg-[#1B3A6B] text-white rounded-lg hover:bg-[#152e55] transition text-sm font-medium">
           Continue
         </button>
       </div>
@@ -225,43 +216,64 @@ const ImageUploadField = ({
   onClear: () => void; accept?: string;
 }) => (
   <div>
-    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">{label}</label>
+    <label className="block text-sm font-medium text-[#1B3A6B] mb-1">{label}</label>
     {preview ? (
-      <div className="relative w-full h-40 rounded-lg overflow-hidden border border-[#E7ECF3] mb-2">
+      <div className="relative w-full h-40 rounded-lg overflow-hidden border border-[#1B3A6B]/20 mb-2">
         <img src={preview} alt="Preview" className="w-full h-full object-cover" />
         <button type="button" onClick={onClear}
-          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 shadow-md">
+          className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full hover:bg-red-700 shadow-md transition">
           <X size={14} />
         </button>
       </div>
     ) : (
-      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#E7ECF3] rounded-lg cursor-pointer hover:border-[#FF7A00] hover:bg-[#FFF4E6] transition mb-2">
-        <Upload className="text-[#6D7A8B] mb-2" size={24} />
-        <span className="text-sm text-[#6D7A8B]">Click to upload</span>
-        <span className="text-xs text-[#6D7A8B] mt-1">PNG, JPG, WEBP up to 10MB</span>
+      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#1B3A6B]/20 rounded-lg cursor-pointer hover:border-[#C9A84C] hover:bg-[#1B3A6B]/5 transition mb-2">
+        <Upload className="text-[#1B3A6B]/50 mb-2" size={24} />
+        <span className="text-sm text-[#1B3A6B]/70 font-medium">Click to upload image</span>
+        <span className="text-xs text-[#1B3A6B]/40 mt-1">PNG, JPG, WEBP up to 10MB</span>
         <input type="file" accept={accept} onChange={onFileChange} className="hidden" />
       </label>
     )}
   </div>
 );
 
-// ─── Category Badge ────────────────────────────────────────────────────────────
 const CategoryBadge = ({ cat }: { cat: string }) => {
   const map: Record<string, string> = {
-    tshirt: 'bg-blue-100 text-blue-700',
-    polo: 'bg-purple-100 text-purple-700',
-    hoodie: 'bg-orange-100 text-orange-700',
-    accessory: 'bg-green-100 text-green-700',
-    other: 'bg-gray-100 text-gray-600',
+    tshirt: 'bg-blue-50 text-blue-700 border-blue-200',
+    polo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    hoodie: 'bg-amber-50 text-amber-700 border-amber-200',
+    accessory: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    other: 'bg-gray-100 text-gray-700 border-gray-200',
   };
   return (
-    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${map[cat] || map.other}`}>
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize border ${map[cat] || map.other}`}>
       {cat}
     </span>
   );
 };
 
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
+const getSessionToken = async (): Promise<string | null> => {
+  if (typeof window === 'undefined') return null;
+
+  const stored = localStorage.getItem('access_token');
+  if (stored) return stored;
+
+  try {
+    const res = await fetch('/api/auth/session', { credentials: 'include' });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+        return data.access_token;
+      }
+    }
+  } catch (err) {
+    console.error('getSessionToken fallback failed:', err);
+  }
+
+  return null;
+};
+
+// ─── Main Dashboard Component ────────────────────────────────────────────────
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, loading: authLoading, logout } = useAuth();
@@ -273,6 +285,9 @@ export default function AdminDashboard() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productLoading, setProductLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   const [users, setUsers] = useState<User[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -313,7 +328,7 @@ export default function AdminDashboard() {
 
   const [newEvent, setNewEvent] = useState({
     name: '', description: '', event_date: '', location: '', price: '',
-    member_discount: '5', max_attendees: '', image_url: '', is_active: true, status: 'upcoming'
+     max_attendees: '', image_url: '', is_active: true, status: 'upcoming'
   });
   const [eventImageFile, setEventImageFile] = useState<File | null>(null);
   const [eventImagePreview, setEventImagePreview] = useState<string>('');
@@ -343,12 +358,6 @@ export default function AdminDashboard() {
   const [smsRecipientType, setSmsRecipientType] = useState<'all' | 'specific'>('all');
   const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
 
-  // ─── Helpers ───────────────────────────────────────────────────────────────
-  const getSessionToken = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.access_token || null;
-  };
-
   const showSuccessMessage = (title: string, message: string) => { setModalTitle(title); setModalMessage(message); setShowSuccessModal(true); };
   const showErrorMessage = (title: string, message: string) => { setModalTitle(title); setModalMessage(message); setShowErrorModal(true); };
   const showConfirmation = (title: string, message: string, action: () => Promise<void>) => {
@@ -367,7 +376,7 @@ export default function AdminDashboard() {
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
   });
-  const formatCurrency = (amount: number) => `Ksh ${amount.toLocaleString()}`;
+  const formatCurrency = (amount: number) => `KES ${amount.toLocaleString()}`;
   const getEventTypeLabel = (type: CSREvent['event_type']) => ({
     tree_planting: 'Tree Planting', community_service: 'Community Service',
     charity_drive: 'Charity Drive', educational: 'Educational',
@@ -408,16 +417,15 @@ export default function AdminDashboard() {
     reader.readAsDataURL(file);
   };
 
-  // Bulk SMS Handler
   const handleSendBulkSMS = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bulkSmsMessage.trim()) {
-      showErrorMessage("Validation", "Please enter a message");
+      showErrorMessage("Validation Error", "Please enter a message to send.");
       return;
     }
 
     if (smsRecipientType === 'specific' && selectedRecipients.length === 0) {
-      showErrorMessage("Validation", "Please select at least one recipient");
+      showErrorMessage("Validation Error", "Please select at least one recipient from the list.");
       return;
     }
 
@@ -427,7 +435,7 @@ export default function AdminDashboard() {
 
     try {
       const token = await getSessionToken();
-      if (!token) throw new Error('No session');
+      if (!token) throw new Error('Session authentication missing.');
 
       const response = await fetch('/api/admin/sms/bulk', {
         method: 'POST',
@@ -445,16 +453,16 @@ export default function AdminDashboard() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to send SMS');
+        throw new Error(data.error || 'Failed to send SMS blast');
       }
 
       setBulkSmsResult(data);
       setBulkSmsMessage("");
       setSelectedRecipients([]);
-      showSuccessMessage("SMS Sent", `Message sent to ${data.successful} recipients`);
+      showSuccessMessage("Bulk SMS sended", `Successfully delivered message to ${data.successful} alumni members.`);
     } catch (err: any) {
-      setBulkSmsError(err.message || 'Failed to send SMS');
-      showErrorMessage("Error", err.message || 'Failed to send SMS');
+      setBulkSmsError(err.message || 'Failed to send SMS batch.');
+      showErrorMessage("SMS send Failure", err.message || 'Failed to send SMS batch.');
     } finally {
       setBulkSmsSending(false);
     }
@@ -466,16 +474,8 @@ export default function AdminDashboard() {
       const token = await getSessionToken(); if (!token) return;
       const res = await fetch('/api/admin/contact-messages', { headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) { const data = await res.json(); setContactMessages(data.messages || []); }
-    } catch (err) { console.error('Error fetching contact messages:', err); }
+    } catch (err) { console.error('Error fetching messages:', err); }
     finally { setMessagesLoading(false); }
-  }, []);
-
-  const fetchCSREvents = useCallback(async () => {
-    try {
-      const token = await getSessionToken(); if (!token) return;
-      const res = await fetch('/api/admin/csr-events', { headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) { const data = await res.json(); setCSREvents(data.events || []); }
-    } catch (err) { console.error('CSR fetch error:', err); }
   }, []);
 
   const fetchProducts = useCallback(async () => {
@@ -489,74 +489,74 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchData = useCallback(async () => {
-  try {
-    setDataLoading(true);
-    const token = await getSessionToken();
-    if (!token) return;
-    
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-    
-    // Fetch all data with proper error handling
-    const [usersRes, paymentsRes, ordersRes, eventsRes] = await Promise.all([
-      fetch('/api/admin/users', { headers }),
-      fetch('/api/admin/payments', { headers }),
-      fetch('/api/admin/orders', { headers }),
-      fetch('/api/admin/events', { headers })
-    ]);
+    try {
+      setDataLoading(true);
+      const token = await getSessionToken();
+      if (!token) {
+        console.warn('No session token available');
+        return;
+      }
 
-    let fetchedUsers: User[] = [], fetchedPayments: Payment[] = [], fetchedOrders: Order[] = [], fetchedEvents: Event[] = [];
-    
-    if (usersRes.ok) { 
-      const d = await usersRes.json(); 
-      fetchedUsers = d.users || []; 
-      setUsers(fetchedUsers); 
-    }
-    
-    if (paymentsRes.ok) { 
-      const d = await paymentsRes.json(); 
-      fetchedPayments = d.payments || []; 
-      setPayments(fetchedPayments); 
-    }
-    
-    if (ordersRes.ok) { 
-      const d = await ordersRes.json(); 
-      fetchedOrders = d.orders || []; 
-      setOrders(fetchedOrders); 
-    }
-    
-    if (eventsRes.ok) { 
-      const d = await eventsRes.json(); 
-      fetchedEvents = d.events || []; 
-      setEvents(fetchedEvents); 
-    }
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
 
-    // Fetch optional data
-    await Promise.all([fetchProducts(), fetchCSREvents(), fetchContactMessages()]);
+      const dashboardRes = await fetch('/api/admin/dashboard', { headers });
 
-    setStats({
-      totalMembers: fetchedUsers.length,
-      activeMembers: fetchedUsers.filter(u => u.status === 'active').length,
-      pendingPayments: fetchedPayments.filter(p => p.status === 'pending').length,
-      totalRevenue: fetchedPayments.filter(p => p.status === 'confirmed').reduce((a, p) => a + p.amount, 0),
-      pendingOrders: fetchedOrders.filter(o => o.status === 'pending').length,
-      totalEvents: fetchedEvents.length,
-      upcomingEvents: fetchedEvents.filter(e => e.status === 'upcoming' && e.is_active).length,
-      monthlyRevenue: fetchedPayments
-        .filter(p => p.status === 'confirmed' && new Date(p.created_at).getMonth() === new Date().getMonth())
-        .reduce((a, p) => a + p.amount, 0),
-    });
-  } catch (err) {
-    console.error("Failed to fetch data:", err);
-    showErrorMessage("Data Fetch Error", "Failed to load dashboard data.");
-  } finally { 
-    setDataLoading(false); 
-  }
-}, [fetchProducts, fetchCSREvents, fetchContactMessages]);
+      if (!dashboardRes.ok) {
+        const errBody = await dashboardRes.json().catch(() => ({}));
+        console.error('Dashboard API failed:', dashboardRes.status, errBody);
+        throw new Error(errBody.error || `Dashboard fetch failed (${dashboardRes.status})`);
+      }
 
-  // ─── Event handlers ────────────────────────────────────────────────────────
+      const data = await dashboardRes.json();
+
+      setUsers(data.recentMembers || []);
+      setPayments(data.payments || []);
+      setOrders(data.orders || []);
+      setEvents(data.events || []);
+      setStats({
+        totalMembers: data.stats?.totalMembers ?? 0,
+        activeMembers: data.stats?.activeMembers ?? 0,
+        pendingPayments: data.stats?.pendingPayments ?? 0,
+        totalRevenue: data.stats?.totalRevenue ?? 0,
+        pendingOrders: data.stats?.pendingOrders ?? 0,
+        totalEvents: data.stats?.totalEvents ?? 0,
+        upcomingEvents: data.stats?.upcomingEvents ?? 0,
+        monthlyRevenue: data.stats?.monthlyRevenue ?? 0,
+      });
+
+      await Promise.all([fetchProducts(), fetchContactMessages()]);
+    } catch (err: any) {
+      console.error('Dashboard Sync Error:', err);
+      showErrorMessage('Data Sync Failed', err.message || 'Unable to load administrative data.');
+    } finally {
+      setDataLoading(false);
+    }
+  }, [fetchProducts, fetchContactMessages]);
+
   const resetEventForm = () => {
-    setNewEvent({ name: '', description: '', event_date: '', location: '', price: '', member_discount: '5', max_attendees: '', image_url: '', is_active: true, status: 'upcoming' });
+    setNewEvent({ name: '', description: '', event_date: '', location: '', price: '', max_attendees: '', image_url: '', is_active: true, status: 'upcoming' });
     setEventImageFile(null); setEventImagePreview(''); setEditingEvent(null); setShowEventForm(false);
+  };
+
+  // ✅ NEW: Safe event edit opener (fixes null .toString() crash)
+  const openEventEdit = (event: Event) => {
+    setEditingEvent(event);
+    setNewEvent({
+      name: event.name || '',
+      description: event.description || '',
+      event_date: event.event_date || '',
+      location: event.location || '',
+      price: event.price != null ? String(event.price) : '',
+      max_attendees: event.max_attendees != null ? String(event.max_attendees) : '',
+      image_url: event.image_url || '',
+      is_active: event.is_active ?? true,
+      status: event.status || 'upcoming',
+    });
+    setEventImagePreview(event.image_url || '');
+    setShowEventForm(true);
   };
 
   const handleCreateEvent = async (e: React.FormEvent) => {
@@ -567,13 +567,11 @@ export default function AdminDashboard() {
       if (eventImageFile) { setUploadingFiles(true); imageUrl = await uploadFile(eventImageFile, 'events', `events/${Date.now()}`); setUploadingFiles(false); }
       const res = await fetch('/api/admin/events', {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newEvent, image_url: imageUrl, price: parseFloat(newEvent.price), member_discount: parseInt(newEvent.member_discount), max_attendees: newEvent.max_attendees ? parseInt(newEvent.max_attendees) : null })
+        body: JSON.stringify({ ...newEvent, image_url: imageUrl, price: parseFloat(newEvent.price), max_attendees: newEvent.max_attendees ? parseInt(newEvent.max_attendees) : null })
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Failed to create event'); }
-      resetEventForm(); showSuccessMessage("Success", "Event created!");
-      const t2 = await getSessionToken();
-      const evRes = await fetch('/api/admin/events', { headers: { 'Authorization': `Bearer ${t2}` } });
-      if (evRes.ok) { const d = await evRes.json(); setEvents(d.events || []); }
+      resetEventForm(); showSuccessMessage("Success", "Event published successfully!");
+      await fetchData();
     } catch (err: any) { showErrorMessage("Error", err.message); }
     finally { setCreatingEvent(false); setUploadingFiles(false); }
   };
@@ -586,19 +584,17 @@ export default function AdminDashboard() {
       if (eventImageFile) { setUploadingFiles(true); imageUrl = await uploadFile(eventImageFile, 'events', `events/${Date.now()}`); setUploadingFiles(false); }
       const res = await fetch(`/api/admin/events/${editingEvent.id}`, {
         method: 'PATCH', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...newEvent, image_url: imageUrl, price: parseFloat(newEvent.price), member_discount: parseInt(newEvent.member_discount), max_attendees: newEvent.max_attendees ? parseInt(newEvent.max_attendees) : null })
+        body: JSON.stringify({ ...newEvent, image_url: imageUrl, price: parseFloat(newEvent.price), max_attendees: newEvent.max_attendees ? parseInt(newEvent.max_attendees) : null })
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error || 'Failed to update event'); }
       resetEventForm(); showSuccessMessage("Success", "Event updated!");
-      const t2 = await getSessionToken();
-      const evRes = await fetch('/api/admin/events', { headers: { 'Authorization': `Bearer ${t2}` } });
-      if (evRes.ok) { const d = await evRes.json(); setEvents(d.events || []); }
+      await fetchData();
     } catch (err: any) { showErrorMessage("Error", err.message); }
     finally { setCreatingEvent(false); setUploadingFiles(false); }
   };
 
   const handleDeleteEvent = (eventId: string) => {
-    showConfirmation("Delete Event", "Deactivate this event?", async () => {
+    showConfirmation("Deactivate Event", "Are you sure you want to deactivate this event?", async () => {
       const token = await getSessionToken(); if (!token) return;
       const res = await fetch(`/api/admin/events/${eventId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) { setEvents(prev => prev.filter(e => e.id !== eventId)); showSuccessMessage("Success", "Event deactivated!"); }
@@ -606,214 +602,28 @@ export default function AdminDashboard() {
     });
   };
 
-  // ─── CSR handlers ──────────────────────────────────────────────────────────
-  const resetCsrForm = () => {
-    setNewCSREvent({ event_type: 'tree_planting', title: '', description: '', event_date: '', location: '', main_image_url: '', is_published: true });
-    setCsrMainImage(null); setCsrMainImagePreview(''); setCsrPhotoFiles([]); setCsrPhotoPreviews([]);
-    setShowCSREventForm(false); setEditingCSREvent(null);
-  };
-
-  const handleCreateCSREvent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (csrSubmittingRef.current) {
-      console.log('Already submitting, ignoring duplicate call');
-      return;
-    }
-    
-    csrSubmittingRef.current = true;
-    setCsrLoading(true);
-    
-    try {
-      const token = await getSessionToken();
-      if (!token) throw new Error('No session');
-      
-      let mainImageUrl = newCSREvent.main_image_url;
-      if (csrMainImage) {
-        mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `main/${Date.now()}`);
-      }
-      
-      const res = await fetch('/api/admin/csr-events', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ...newCSREvent,
-          main_image_url: mainImageUrl
-        })
-      });
-      
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to create CSR event');
-      }
-      
-      const data = await res.json();
-      console.log('CSR event created:', data.event.id);
-      
-      if (csrPhotoFiles.length > 0) {
-        console.log(`Uploading ${csrPhotoFiles.length} photos...`);
-        
-        const photoUrls = await Promise.all(
-          csrPhotoFiles.map(async (file, index) => {
-            const url = await uploadFile(file, 'csr-events', `photos/${data.event.id}`);
-            return {
-              image_url: url,
-              caption: `Photo ${index + 1}`,
-              display_order: index
-            };
-          })
-        );
-        
-        console.log('Photo URLs ready:', photoUrls);
-        
-        const photosRes = await fetch(`/api/admin/csr-events/${data.event.id}/photos`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ photos: photoUrls })
-        });
-        
-        if (!photosRes.ok) {
-          console.error('Failed to save photos to database');
-        } else {
-          const photosData = await photosRes.json();
-          console.log('Photos saved:', photosData.photos?.length);
-        }
-      }
-      
-      resetCsrForm();
-      showSuccessMessage("Success", "CSR Event created successfully!");
-      await fetchCSREvents();
-      
-    } catch (err: any) {
-      console.error('Error creating CSR event:', err);
-      showErrorMessage("Error", err.message || 'Failed to create CSR event');
-    } finally {
-      setCsrLoading(false);
-      csrSubmittingRef.current = false;
-    }
-  };
-
-  const handleUpdateCSREvent = async (e: React.FormEvent) => {
-    e.preventDefault(); if (!editingCSREvent) return; setCsrLoading(true);
-    try {
-      const token = await getSessionToken(); if (!token) throw new Error('No session');
-      let mainImageUrl = newCSREvent.main_image_url;
-      if (csrMainImage) mainImageUrl = await uploadFile(csrMainImage, 'csr-events', `main/${Date.now()}`);
-      const res = await fetch(`/api/admin/csr-events/${editingCSREvent.id}`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ...newCSREvent, main_image_url: mainImageUrl }) });
-      if (!res.ok) throw new Error('Failed to update CSR event');
-      resetCsrForm(); showSuccessMessage("Success", "CSR Event updated!"); await fetchCSREvents();
-    } catch (err: any) { showErrorMessage("Error", err.message); }
-    finally { setCsrLoading(false); }
-  };
-
-  const handleDeleteCSREvent = (eventId: string) => {
-    showConfirmation("Delete CSR Event", "Delete this event and all its photos?", async () => {
-      const token = await getSessionToken(); if (!token) return;
-      const res = await fetch(`/api/admin/csr-events/${eventId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) { setCSREvents(prev => prev.filter(e => e.id !== eventId)); showSuccessMessage("Success", "CSR Event deleted!"); }
-      else { showErrorMessage("Error", "Failed to delete CSR event"); }
-    });
-  };
-
-  const openCSREventEdit = (event: CSREvent) => {
-    setEditingCSREvent(event);
-    setNewCSREvent({ event_type: event.event_type, title: event.title, description: event.description, event_date: event.event_date, location: event.location, main_image_url: event.main_image_url || '', is_published: event.is_published });
-    setCsrMainImagePreview(event.main_image_url || ''); setShowCSREventForm(true);
-  };
-
-  const handleUploadPhotos = async () => {
-    if (!selectedCSREventId || csrPhotoFiles.length === 0) {
-      showErrorMessage("Validation", "Add at least one photo");
-      return;
-    }
-    
-    if (csrLoading) {
-      console.log('Already uploading, ignoring duplicate call');
-      return;
-    }
-    
-    setCsrLoading(true);
-    
-    try {
-      const token = await getSessionToken();
-      if (!token) throw new Error('No session');
-      
-      console.log(`Uploading ${csrPhotoFiles.length} photos to event ${selectedCSREventId}...`);
-      
-      const photoUrls = await Promise.all(
-        csrPhotoFiles.map(async (file, index) => {
-          const url = await uploadFile(file, 'csr-events', `photos/${selectedCSREventId}`);
-          return {
-            image_url: url,
-            caption: `Photo ${index + 1}`,
-            display_order: index
-          };
-        })
-      );
-      
-      console.log('Photo URLs ready, saving to database:', photoUrls);
-      
-      const res = await fetch(`/api/admin/csr-events/${selectedCSREventId}/photos`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ photos: photoUrls })
-      });
-      
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to upload photos');
-      }
-      
-      const data = await res.json();
-      console.log('Photos saved successfully:', data.photos?.length);
-      
-      showSuccessMessage("Success", `${data.photos?.length || 0} photos uploaded!`);
-      
-      setCsrPhotoFiles([]);
-      setCsrPhotoPreviews([]);
-      setShowPhotoUploadModal(false);
-      setSelectedCSREventId(null);
-      await fetchCSREvents();
-      
-    } catch (err: any) {
-      console.error('Error uploading photos:', err);
-      showErrorMessage("Error", err.message || 'Failed to upload photos');
-    } finally {
-      setCsrLoading(false);
-    }
-  };
-
   const updatePaymentStatus = (paymentId: string, status: 'confirmed' | 'failed') => {
-    showConfirmation(`Mark as ${status}`, `Mark this payment as ${status}?`, async () => {
+    showConfirmation(`Mark Payment ${status}`, `Mark this payment record as ${status}?`, async () => {
       const token = await getSessionToken(); if (!token) return;
       const res = await fetch(`/api/admin/payments/${paymentId}`, { method: "PATCH", headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
-      if (res.ok) { setPayments(prev => prev.map(p => p.id === paymentId ? { ...p, status } : p)); showSuccessMessage("Success", `Payment marked as ${status}!`); }
-      else { showErrorMessage("Error", "Failed to update"); }
+      if (res.ok) { setPayments(prev => prev.map(p => p.id === paymentId ? { ...p, status } : p)); showSuccessMessage("Success", `Payment record marked as ${status}!`); }
+      else { showErrorMessage("Error", "Failed to update payment status"); }
     });
   };
 
   const updateOrderStatus = async (orderId: string, status: Order['status']) => {
     const token = await getSessionToken(); if (!token) return;
     const res = await fetch(`/api/admin/orders/${orderId}`, { method: "PATCH", headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
-    if (res.ok) { setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o)); showSuccessMessage("Success", `Order updated!`); }
-    else { showErrorMessage("Error", "Failed to update order"); }
+    if (res.ok) { setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o)); showSuccessMessage("Success", `Order status updated to ${status}`); }
+    else { showErrorMessage("Error", "Failed to update order status"); }
   };
 
   const updateUserStatus = (userId: string, status: string) => {
-    showConfirmation(`Mark User as ${status}`, `${status === 'active' ? 'Activate' : 'Deactivate'} this user?`, async () => {
+    showConfirmation(`${status === 'active' ? 'Activate' : 'Deactivate'} User`, `Are you sure you want to ${status === 'active' ? 'activate' : 'deactivate'} this member?`, async () => {
       const token = await getSessionToken(); if (!token) return;
       const res = await fetch(`/api/admin/users/${userId}`, { method: "PATCH", headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
-      if (res.ok) { setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u)); showSuccessMessage("Success", `User ${status}!`); }
-      else { showErrorMessage("Error", "Failed to update"); }
+      if (res.ok) { setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u)); showSuccessMessage("Success", `Member set to ${status}!`); }
+      else { showErrorMessage("Error", "Failed to update user status"); }
     });
   };
 
@@ -858,7 +668,7 @@ export default function AdminDashboard() {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...newProduct, base_price: parseFloat(newProduct.base_price), featured_image_url: mainImageUrl, variants })
       });
-      if (res.ok) { resetProductForm(); showSuccessMessage("Success", "Product created!"); await fetchProducts(); }
+      if (res.ok) { resetProductForm(); showSuccessMessage("Success", "Product added!"); await fetchProducts(); }
       else { const err = await res.json(); throw new Error(err.error || 'Failed'); }
     } catch (err: any) { showErrorMessage("Error", err.message); }
     finally { setProductLoading(false); }
@@ -868,21 +678,21 @@ export default function AdminDashboard() {
     const token = await getSessionToken(); if (!token) return;
     const res = await fetch(`/api/admin/merchandise/${productId}`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(updates) });
     if (res.ok) { showSuccessMessage("Success", "Product updated!"); fetchProducts(); }
-    else { showErrorMessage("Error", "Failed to update"); }
+    else { showErrorMessage("Error", "Failed to update product"); }
   };
 
   const handleDeleteProduct = (productId: string) => {
-    showConfirmation("Delete Product", "Deactivate this product?", async () => {
+    showConfirmation("Deactivate Product", "Are you sure you want to deactivate this item?", async () => {
       const token = await getSessionToken(); if (!token) return;
       const res = await fetch(`/api/admin/merchandise/${productId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) { showSuccessMessage("Success", "Product deactivated!"); fetchProducts(); }
-      else { showErrorMessage("Error", "Failed"); }
+      else { showErrorMessage("Error", "Failed to deactivate item"); }
     });
   };
 
   const handleAddVariant = () => {
     if (!newVariant.color_name || !newVariant.color_value || !newVariant.size || !newVariant.sku) {
-      showErrorMessage("Validation", "Fill in color name, color value, size, and SKU");
+      showErrorMessage("Validation Error", "Please provide Color Name, Key, Size, and SKU.");
       return;
     }
     const id = Date.now().toString();
@@ -900,7 +710,6 @@ export default function AdminDashboard() {
     setNewVariant({ ...BLANK_VARIANT });
   };
 
-  // ─── Merch filter ──────────────────────────────────────────────────────────
   const filteredProducts = products.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(merchSearch.toLowerCase()) || p.description?.toLowerCase().includes(merchSearch.toLowerCase());
     const matchCat = merchCategoryFilter === 'all' || p.category === merchCategoryFilter;
@@ -918,7 +727,7 @@ export default function AdminDashboard() {
   });
 
   const exportToCSV = (data: any[], filename: string) => {
-    if (!data.length) { showErrorMessage("Export Error", "No data to export"); return; }
+    if (!data.length) { showErrorMessage("Export Error", "No records found to export."); return; }
     const headers = Object.keys(data[0]);
     const csv = [headers.join(','), ...data.map(row => headers.map(h => { const v = row[h]; if (!v) return ''; const s = String(v); return (s.includes(',') || s.includes('"')) ? `"${s.replace(/"/g, '""')}"` : s; }).join(','))].join('\n');
     const a = document.createElement('a');
@@ -931,18 +740,11 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (authLoading || fetchedRef.current) return;
-    if (!user) { 
-      router.push("/login"); 
-      return; 
-    }
+    if (!user) { router.push("/login"); return; }
 
     const checkAndLoad = async () => {
       fetchedRef.current = true;
-      
-      if (user.role === 'admin') { 
-        await fetchData(); 
-        return; 
-      }
+      if (user.role === 'admin') { await fetchData(); return; }
 
       try {
         const { data: profile, error } = await supabase
@@ -951,33 +753,25 @@ export default function AdminDashboard() {
           .eq("id", user.id)
           .single();
 
-        if (error || !profile) {
-          console.error("Profile fetch error:", error);
-          router.push("/login");
-          return;
-        }
-
-        if (profile.role !== 'admin') {
+        if (error || !profile || profile.role !== 'admin') {
           router.push("/member/dashboard");
           return;
         }
-
         await fetchData();
       } catch (err) {
-        console.error("Error checking admin role:", err);
         router.push("/login");
       }
     };
 
     checkAndLoad();
-  }, [user, authLoading]); // eslint-disable-line
+  }, [user, authLoading]);
 
   if (authLoading) {
     return (
       <div className="min-h-screen bg-[#F7F9FC] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#2B4C73] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <div className="text-[#2B4C73] text-xl font-montserrat">Loading Admin Dashboard...</div>
+          <div className="w-12 h-12 border-4 border-[#1B3A6B] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-[#1B3A6B] text-base font-serif font-semibold">Loading Portal Admin...</div>
         </div>
       </div>
     );
@@ -986,814 +780,738 @@ export default function AdminDashboard() {
 
   const tabs = [
     { id: "overview", label: "Overview", icon: Activity },
-    { id: "members", label: "Members", icon: Users },
-    { id: "payments", label: "Payments", icon: DollarSign },
-    { id: "orders", label: "Orders", icon: ShoppingBag },
-    { id: "events", label: "Events", icon: Calendar },
-    { id: "merchandise", label: "Merchandise", icon: Tag },
-    { id: "gallery", label: "Gallery", icon: Heart },
-    { id: "messages", label: "Messages", icon: MessageSquare },
-    { id: "bulk-sms", label: "Bulk SMS", icon: MessageSquare },
+    { id: "members", label: "Members", icon: Users, badge: null },
+    { id: "payments", label: "Payments", icon: DollarSign, badge: stats.pendingPayments },
+    { id: "orders", label: "Orders", icon: ShoppingBag, badge: stats.pendingOrders },
+    { id: "events", label: "Events", icon: Calendar, badge: null },
+    { id: "merchandise", label: "Merchandise", icon: Tag, badge: null },
+    { id: "gallery", label: "Gallery", icon: Heart, badge: null },
+    { id: "messages", label: "Messages", icon: MessageSquare, badge: contactMessages.filter(m => m.status === 'unread').length },
+    { id: "bulk-sms", label: "Bulk SMS", icon: Mail, badge: null },
   ];
 
   return (
-    <div className="min-h-screen bg-[#F7F9FC] font-montserrat flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-[#E7ECF3] sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <div className="min-h-screen bg-[#F7F9FC] flex flex-col font-sans">
+
+      {/* Top Header */}
+      <header className="bg-[#1B3A6B] text-white sticky top-0 z-40 shadow-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#2B4C73] to-[#FF7A00] rounded-xl flex items-center justify-center shadow-md">
-              
-            </div>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="lg:hidden p-2 rounded-lg bg-white/10 text-white hover:bg-white/20 transition"
+            >
+              <Menu size={20} />
+            </button>
             <div>
-              <h1 className="text-lg font-bold text-[#0B0F1A] leading-tight">Admin Dashboard</h1>
-              <p className="text-[#6D7A8B] text-xs">{user.email}</p>
+              <h1 className="text-base sm:text-lg font-serif font-bold text-white leading-tight">Admin</h1>
+              <p className="text-white/60 text-xs hidden sm:block">{user.email}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={fetchData} disabled={dataLoading}
-              className="p-2 text-[#6D7A8B] hover:text-[#2B4C73] hover:bg-[#E8F4FD] rounded-lg transition">
+            <button
+              onClick={fetchData}
+              disabled={dataLoading}
+              className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+              title="Refresh Data"
+            >
               <RefreshCw size={18} className={dataLoading ? 'animate-spin' : ''} />
             </button>
-            <button onClick={handleLogout}
-              className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg hover:opacity-90 flex items-center gap-2 font-medium text-sm">
-              <LogOut size={15} /> Logout
+            <button
+              onClick={handleLogout}
+              className="px-3 py-1.5 bg-[#C9A84C] hover:bg-[#b8973b] text-[#1B3A6B] font-semibold rounded-lg transition flex items-center gap-2 text-xs sm:text-sm"
+            >
+              <LogOut size={14} />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full">
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {[
-            { label: 'Total Members', value: stats.totalMembers, sub: `${stats.activeMembers} active`, icon: Users, bg: 'bg-[#E8F4FD]', color: 'text-[#2B4C73]', accent: 'text-[#2B4C73]' },
-            { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), sub: `${formatCurrency(stats.monthlyRevenue)} this month`, icon: TrendingUp, bg: 'bg-[#FFF0F0]', color: 'text-[#E53E3E]', accent: 'text-[#E53E3E]' },
-            { label: 'Events', value: stats.totalEvents, sub: `${stats.upcomingEvents} upcoming`, icon: Calendar, bg: 'bg-[#FFF4E6]', color: 'text-[#FF7A00]', accent: 'text-[#FF7A00]' },
-            { label: 'Pending Items', value: stats.pendingPayments + stats.pendingOrders, sub: `${stats.pendingPayments} payments · ${stats.pendingOrders} orders`, icon: Clock, bg: 'bg-[#E8F4FD]', color: 'text-[#2B4C73]', accent: 'text-[#2B4C73]' },
-          ].map((s, i) => (
-            <div key={i} className="bg-white p-5 rounded-xl border border-[#E7ECF3] shadow-sm hover:shadow-md transition-shadow">
-              <div className={`w-10 h-10 ${s.bg} rounded-lg flex items-center justify-center mb-3`}>
-                <s.icon size={20} className={s.color} />
-              </div>
-              <p className="text-[#6D7A8B] text-xs font-medium mb-0.5">{s.label}</p>
-              <p className="text-xl font-bold text-[#0B0F1A]">{s.value}</p>
-              {s.sub && <p className={`text-xs mt-0.5 ${s.accent} opacity-80`}>{s.sub}</p>}
-            </div>
-          ))}
-        </div>
+      {/* Main Workspace with Sidebar */}
+      <div className="flex-1 flex max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 gap-6">
 
-        {/* Tab bar */}
-        <div className="bg-white rounded-xl border border-[#E7ECF3] shadow-sm mb-6 overflow-x-auto">
-          <div className="flex gap-1 p-2 min-w-max">
-            {tabs.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 font-medium rounded-lg transition-all flex items-center gap-2 text-sm whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white shadow-md'
-                    : 'text-[#6D7A8B] hover:bg-[#F7F9FC] hover:text-[#0B0F1A]'
-                }`}>
-                <tab.icon size={16} />{tab.label}
-                {tab.id === 'messages' && contactMessages.filter(m => m.status === 'unread').length > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 bg-[#FF7A00] text-white text-xs rounded-full font-bold leading-none">
-                    {contactMessages.filter(m => m.status === 'unread').length}
-                  </span>
-                )}
-                {tab.id === 'payments' && stats.pendingPayments > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 bg-[#E53E3E] text-white text-xs rounded-full font-bold leading-none">
-                    {stats.pendingPayments}
-                  </span>
-                )}
-              </button>
+        {/* Mobile Sidebar Overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar Navigation */}
+        <aside
+          className={`
+            fixed lg:sticky lg:top-24 inset-y-0 left-0 z-50
+            bg-white border border-[#1B3A6B]/10 rounded-xl shadow-sm
+            transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
+            transition-all duration-200 ease-in-out
+            flex flex-col p-3
+            h-[calc(100vh-2rem)] lg:h-[calc(100vh-8rem)] lg:max-h-[calc(100vh-8rem)]
+            ${sidebarCollapsed ? 'w-20 lg:w-20' : 'w-64'}
+          `}
+        >
+          {/* Collapse toggle (desktop only) */}
+          <button
+            onClick={() => setSidebarCollapsed((v) => !v)}
+            className="hidden lg:flex items-center justify-center w-full mb-2 p-2 text-[#1B3A6B]/60 hover:bg-[#1B3A6B]/5 rounded-lg transition"
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
+
+          <div className="space-y-1 flex-1 overflow-y-auto">
+            {!sidebarCollapsed && (
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-[#1B3A6B]/50 mb-2">
+                Management
+              </p>
+            )}
+
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const hasBadge = tab.badge != null && tab.badge > 0;
+
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setSidebarOpen(false);
+                  }}
+                  title={sidebarCollapsed ? tab.label : undefined}
+                  className={`
+                    w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'}
+                    px-3 py-2.5 rounded-lg text-sm font-medium transition relative
+                    ${isActive
+                      ? 'bg-[#1B3A6B] text-white shadow-sm'
+                      : 'text-[#1B3A6B]/70 hover:bg-[#1B3A6B]/5 hover:text-[#1B3A6B]'}
+                  `}
+                >
+                  <div className={`flex items-center ${sidebarCollapsed ? '' : 'gap-3'}`}>
+                    <tab.icon
+                      size={18}
+                      className={isActive ? 'text-[#C9A84C]' : 'text-[#1B3A6B]/60'}
+                    />
+                    {!sidebarCollapsed && <span>{tab.label}</span>}
+                  </div>
+
+                  {!sidebarCollapsed && hasBadge && (
+                    <span
+                      className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+                        isActive ? 'bg-[#C9A84C] text-[#1B3A6B]' : 'bg-red-500 text-white'
+                      }`}
+                    >
+                      {tab.badge}
+                    </span>
+                  )}
+
+                  {sidebarCollapsed && hasBadge && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        {/* Dynamic Content Panel */}
+        <main className="flex-1 min-w-0">
+
+          {/* Top Metrics Row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {[
+              { label: 'Total Members', value: stats.totalMembers, sub: `${stats.activeMembers} active`, icon: Users, color: 'text-[#1B3A6B]', bg: 'bg-[#1B3A6B]/10' },
+              { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), sub: `${formatCurrency(stats.monthlyRevenue)} this month`, icon: TrendingUp, color: 'text-[#C9A84C]', bg: 'bg-[#C9A84C]/10' },
+              { label: 'Events', value: stats.totalEvents, sub: `${stats.upcomingEvents} upcoming`, icon: Calendar, color: 'text-[#1B3A6B]', bg: 'bg-[#1B3A6B]/10' },
+              { label: 'Pending Queue', value: stats.pendingPayments + stats.pendingOrders, sub: `${stats.pendingPayments} payments · ${stats.pendingOrders} orders`, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+            ].map((s, i) => (
+              <div key={i} className="bg-white p-4 rounded-xl border border-[#1B3A6B]/10 shadow-sm">
+                <div className={`w-9 h-9 ${s.bg} rounded-lg flex items-center justify-center mb-2`}>
+                  <s.icon size={18} className={s.color} />
+                </div>
+                <p className="text-[#1B3A6B]/60 text-xs font-medium">{s.label}</p>
+                <p className="text-lg font-serif font-bold text-[#1B3A6B]">{s.value}</p>
+                {s.sub && <p className="text-xs text-[#1B3A6B]/50 mt-0.5 truncate">{s.sub}</p>}
+              </div>
             ))}
           </div>
-        </div>
 
-        {/* Content panels */}
-        <div className="bg-white rounded-xl border border-[#E7ECF3] shadow-sm p-6">
+          {/* Tab Views */}
+          <div className="bg-white rounded-xl border border-[#1B3A6B]/10 shadow-sm p-6">
 
-          {/* OVERVIEW */}
-          {activeTab === "overview" && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-bold text-[#0B0F1A]">Recent Activity</h2>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-[#F7F9FC] rounded-xl p-5 border border-[#E7ECF3]">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-semibold text-[#0B0F1A] flex items-center gap-2"><DollarSign size={18} className="text-[#FF7A00]" />Recent Payments</h3>
-                    <button onClick={() => setActiveTab("payments")} className="text-sm text-[#2B4C73] flex items-center gap-1 hover:underline">View all<ChevronRight size={14} /></button>
-                  </div>
-                  <div className="space-y-2">
-                    {payments.slice(0, 5).map(p => (
-                      <div key={p.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-[#E7ECF3]">
-                        <div><p className="text-[#0B0F1A] font-medium text-sm">{p.description || "Payment"}</p><p className="text-xs text-[#6D7A8B]">{p.profiles?.full_name}</p></div>
-                        <div className="text-right">
-                          <p className="font-bold text-sm">Ksh {p.amount.toLocaleString()}</p>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${p.status === "confirmed" ? "bg-[#E8F4FD] text-[#2B4C73]" : p.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" : "bg-[#FFF0F0] text-[#E53E3E]"}`}>{p.status}</span>
-                        </div>
-                      </div>
-                    ))}
-                    {payments.length === 0 && <p className="text-sm text-[#6D7A8B] text-center py-4">No payments yet</p>}
-                  </div>
-                </div>
-                <div className="bg-[#F7F9FC] rounded-xl p-5 border border-[#E7ECF3]">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-semibold text-[#0B0F1A] flex items-center gap-2"><UserPlus size={18} className="text-[#2B4C73]" />Recent Members</h3>
-                    <button onClick={() => setActiveTab("members")} className="text-sm text-[#2B4C73] flex items-center gap-1 hover:underline">View all<ChevronRight size={14} /></button>
-                  </div>
-                  <div className="space-y-2">
-                    {users.slice(0, 5).map(u => (
-                      <div key={u.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-[#E7ECF3]">
-                        <div><p className="text-[#0B0F1A] font-medium text-sm">{u.full_name}</p><p className="text-xs text-[#6D7A8B]">{u.email}</p></div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${u.status === "active" ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#FFF4E6] text-[#FF7A00]"}`}>{u.status}</span>
-                      </div>
-                    ))}
-                    {users.length === 0 && <p className="text-sm text-[#6D7A8B] text-center py-4">No members yet</p>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+            {/* OVERVIEW */}
+            {activeTab === "overview" && (
+              <div className="space-y-6">
+                <h2 className="text-lg font-serif font-bold text-[#1B3A6B]">Recent Activity</h2>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          {/* MEMBERS */}
-          {activeTab === "members" && (
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-[#0B0F1A]">Members</h2>
-                  <p className="text-sm text-[#6D7A8B]">{users.length} total · {users.filter(u => u.status === 'active').length} active</p>
-                </div>
-                <button onClick={() => exportToCSV(users.map(u => ({ Name: u.full_name, Email: u.email, Phone: u.phone_number || '', 'Membership #': u.membership_number || '', Status: u.status })), 'members')}
-                  className="px-4 py-2 bg-[#E8F4FD] text-[#2B4C73] rounded-lg flex items-center gap-2 border border-[#2B4C73]/20 text-sm hover:bg-[#d4e9fa] transition">
-                  <Download size={15} /> Export CSV
-                </button>
-              </div>
-              <div className="overflow-x-auto rounded-xl border border-[#E7ECF3]">
-                <table className="w-full">
-                  <thead><tr className="text-left text-[#6D7A8B] border-b border-[#E7ECF3] bg-[#F7F9FC] text-sm">
-                    {['Member', 'Contact', 'Membership', 'Status', 'Actions'].map(h => <th key={h} className="py-3 px-4 font-semibold">{h}</th>)}
-                  </tr></thead>
-                  <tbody className="divide-y divide-[#F7F9FC]">
-                    {users.map(m => (
-                      <tr key={m.id} className="hover:bg-[#F7F9FC] transition-colors">
-                        <td className="py-4 px-4"><p className="font-medium text-sm text-[#0B0F1A]">{m.full_name}</p><p className="text-xs text-[#6D7A8B]">{m.email}</p></td>
-                        <td className="py-4 px-4"><p className="text-sm">{m.phone_number || "—"}</p><p className="text-xs text-[#6D7A8B]">{m.county || "—"}</p></td>
-                        <td className="py-4 px-4"><p className="text-sm font-mono font-medium">{m.membership_number || "None"}</p><p className="text-xs text-[#6D7A8B]">{m.course || "—"}</p></td>
-                        <td className="py-4 px-4">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${m.status === "active" ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#FFF0F0] text-[#E53E3E]"}`}>{m.status}</span>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex gap-2">
-                            <button onClick={() => updateUserStatus(m.id, "active")} disabled={m.status === "active"}
-                              className="px-3 py-1.5 bg-[#2B4C73] text-white rounded-lg text-xs font-medium hover:bg-[#1E3A5F] disabled:opacity-40 transition">Activate</button>
-                            <button onClick={() => updateUserStatus(m.id, "inactive")} disabled={m.status === "inactive"}
-                              className="px-3 py-1.5 bg-[#E53E3E] text-white rounded-lg text-xs font-medium hover:bg-[#C53030] disabled:opacity-40 transition">Deactivate</button>
+                  {/* Recent Payments */}
+                  <div className="bg-[#1B3A6B]/5 rounded-xl p-5 border border-[#1B3A6B]/10">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-serif font-bold text-[#1B3A6B] text-sm flex items-center gap-2">
+                        <DollarSign size={16} className="text-[#C9A84C]" />
+                        Recent Payments
+                      </h3>
+                      <button onClick={() => setActiveTab("payments")} className="text-xs text-[#1B3A6B] hover:underline font-medium flex items-center gap-1">
+                        View all <ChevronRight size={12} />
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {payments.slice(0, 5).map(p => (
+                        <div key={p.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-[#1B3A6B]/10">
+                          <div>
+                            <p className="text-[#1B3A6B] font-medium text-sm">{p.description || "Payment"}</p>
+                            <p className="text-xs text-[#1B3A6B]/60">{p.profiles?.full_name}</p>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {users.length === 0 && <div className="text-center py-12 text-[#6D7A8B]">No members found</div>}
-              </div>
-            </div>
-          )}
-
-          {/* PAYMENTS */}
-          {activeTab === "payments" && (
-            <div>
-              <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-[#0B0F1A]">Payments</h2>
-                  <p className="text-sm text-[#6D7A8B]">{payments.length} total · {stats.pendingPayments} pending</p>
-                </div>
-                <div className="flex gap-3">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={16} />
-                    <input type="text" placeholder="Search payments..." value={paymentSearch} onChange={e => setPaymentSearch(e.target.value)}
-                      className="pl-9 pr-4 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2B4C73]/30" />
-                  </div>
-                  <button onClick={() => exportToCSV(filteredPayments.map(p => ({ User: p.profiles?.full_name, Amount: p.amount, Status: p.status, Type: p.payment_type, Date: p.created_at })), 'payments')}
-                    className="px-4 py-2 bg-[#E8F4FD] text-[#2B4C73] rounded-lg flex items-center gap-2 border border-[#2B4C73]/20 text-sm hover:bg-[#d4e9fa] transition">
-                    <Download size={15} /> Export
-                  </button>
-                </div>
-              </div>
-              <div className="overflow-x-auto rounded-xl border border-[#E7ECF3]">
-                <table className="w-full">
-                  <thead><tr className="text-left text-[#6D7A8B] bg-[#F7F9FC] border-b border-[#E7ECF3] text-sm">
-                    {['Transaction', 'User', 'Amount', 'Date', 'Status', 'Actions'].map(h => <th key={h} className="py-3 px-4 font-semibold">{h}</th>)}
-                  </tr></thead>
-                  <tbody className="divide-y divide-[#F7F9FC]">
-                    {filteredPayments.map(p => (
-                      <tr key={p.id} className="hover:bg-[#F7F9FC] transition-colors">
-                        <td className="py-4 px-4"><p className="font-medium text-sm text-[#0B0F1A]">{p.description || "Payment"}</p><p className="text-xs text-[#6D7A8B]">{p.payment_type}</p></td>
-                        <td className="py-4 px-4"><p className="font-medium text-sm">{p.profiles?.full_name || "N/A"}</p><p className="text-xs text-[#6D7A8B]">{p.phone_number}</p></td>
-                        <td className="py-4 px-4"><p className="font-bold text-sm">{formatCurrency(p.amount)}</p></td>
-                        <td className="py-4 px-4"><p className="text-xs text-[#6D7A8B]">{formatDate(p.created_at)}</p></td>
-                        <td className="py-4 px-4">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${p.status === "confirmed" ? "bg-[#E8F4FD] text-[#2B4C73]" : p.status === "pending" ? "bg-[#FFF4E6] text-[#FF7A00]" : "bg-[#FFF0F0] text-[#E53E3E]"}`}>{p.status}</span>
-                        </td>
-                        <td className="py-4 px-4">
-                          {p.status === "pending" && (
-                            <div className="flex gap-2">
-                              <button onClick={() => updatePaymentStatus(p.id, "confirmed")} className="px-3 py-1.5 bg-[#2B4C73] text-white rounded-lg text-xs font-medium hover:bg-[#1E3A5F] transition">Confirm</button>
-                              <button onClick={() => updatePaymentStatus(p.id, "failed")} className="px-3 py-1.5 bg-[#E53E3E] text-white rounded-lg text-xs font-medium hover:bg-[#C53030] transition">Reject</button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {filteredPayments.length === 0 && <div className="text-center py-12 text-[#6D7A8B]">No payments found</div>}
-              </div>
-            </div>
-          )}
-
-          {/* ORDERS */}
-          {activeTab === "orders" && (
-            <div>
-              <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-[#0B0F1A]">Orders</h2>
-                  <p className="text-sm text-[#6D7A8B]">{orders.length} total · {stats.pendingOrders} pending</p>
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={16} />
-                  <input type="text" placeholder="Search orders..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)}
-                    className="pl-9 pr-4 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2B4C73]/30" />
-                </div>
-              </div>
-              <div className="overflow-x-auto rounded-xl border border-[#E7ECF3]">
-                <table className="w-full">
-                  <thead><tr className="text-left text-[#6D7A8B] bg-[#F7F9FC] border-b border-[#E7ECF3] text-sm">
-                    {['Customer', 'Items', 'Total', 'Date', 'Status', 'Update'].map(h => <th key={h} className="py-3 px-4 font-semibold">{h}</th>)}
-                  </tr></thead>
-                  <tbody className="divide-y divide-[#F7F9FC]">
-                    {filteredOrders.map(o => (
-                      <tr key={o.id} className="hover:bg-[#F7F9FC] transition-colors">
-                        <td className="py-4 px-4"><p className="font-medium text-sm text-[#0B0F1A]">{o.customer_name || o.profiles?.full_name}</p><p className="text-xs text-[#6D7A8B]">{o.customer_email || o.profiles?.email}</p></td>
-                        <td className="py-4 px-4 text-sm">{o.items?.length || 0} items</td>
-                        <td className="py-4 px-4 font-bold text-sm">{formatCurrency(o.total)}</td>
-                        <td className="py-4 px-4 text-xs text-[#6D7A8B]">{formatDate(o.created_at)}</td>
-                        <td className="py-4 px-4">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${o.status === "delivered" ? "bg-[#E8F4FD] text-[#2B4C73]" : o.status === "shipped" ? "bg-[#FFF4E6] text-[#FF7A00]" : "bg-[#FFF0F0] text-[#E53E3E]"}`}>{o.status}</span>
-                        </td>
-                        <td className="py-4 px-4">
-                          <select value={o.status} onChange={e => updateOrderStatus(o.id, e.target.value as Order['status'])}
-                            className="px-2 py-1.5 border border-[#E7ECF3] rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#2B4C73]/30">
-                            {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {filteredOrders.length === 0 && <div className="text-center py-12 text-[#6D7A8B]">No orders found</div>}
-              </div>
-            </div>
-          )}
-
-          {/* EVENTS */}
-          {activeTab === "events" && (
-            <div>
-              <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-[#0B0F1A]">Events</h2>
-                  <p className="text-sm text-[#6D7A8B]">{events.length} total · {stats.upcomingEvents} upcoming</p>
-                </div>
-                <div className="flex gap-3">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={16} />
-                    <input type="text" placeholder="Search events..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                      className="pl-9 pr-4 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2B4C73]/30" />
-                  </div>
-                  <button onClick={() => { resetEventForm(); setShowEventForm(true); }}
-                    className="px-4 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm hover:opacity-90 transition">
-                    <Plus size={16} /> New Event
-                  </button>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {filteredEvents.map(event => (
-                  <div key={event.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                    {event.image_url ? (
-                      <div className="h-40 overflow-hidden"><img src={event.image_url} alt={event.name} className="w-full h-full object-cover" /></div>
-                    ) : (
-                      <div className="h-40 bg-gradient-to-br from-[#E8F4FD] to-[#d4e9fa] flex items-center justify-center">
-                        <Calendar className="text-[#2B4C73] opacity-30" size={48} />
-                      </div>
-                    )}
-                    <div className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h3 className="text-base font-bold text-[#0B0F1A] leading-tight">{event.name}</h3>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ml-2 shrink-0 ${event.status === "upcoming" ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#F7F9FC] text-[#6D7A8B]"}`}>{event.status}</span>
-                      </div>
-                      <p className="text-xs text-[#6D7A8B] mb-3 line-clamp-2">{event.description}</p>
-                      <div className="space-y-1 mb-4 text-xs text-[#6D7A8B]">
-                        <div className="flex items-center gap-2"><Calendar size={12} />{event.event_date ? new Date(event.event_date).toLocaleDateString() : "TBD"}</div>
-                        <div className="flex items-center gap-2"><MapPin size={12} />{event.location || "TBD"}</div>
-                        <div className="flex items-center gap-2"><Ticket size={12} />Ksh {event.price} · {event.current_attendees}/{event.max_attendees || '∞'} attendees</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => { setEditingEvent(event); setNewEvent({ name: event.name, description: event.description, event_date: event.event_date || '', location: event.location || '', price: event.price.toString(), member_discount: event.member_discount.toString(), max_attendees: event.max_attendees?.toString() || '', image_url: event.image_url || '', is_active: event.is_active, status: event.status }); setEventImagePreview(event.image_url || ''); setShowEventForm(true); }}
-                          className="flex-1 px-3 py-2 bg-[#2B4C73] text-white rounded-lg text-xs font-medium hover:bg-[#1E3A5F] transition flex items-center justify-center gap-1">
-                          <Edit size={13} /> Edit
-                        </button>
-                        <button onClick={() => handleDeleteEvent(event.id)}
-                          className="px-3 py-2 bg-[#FFF0F0] text-[#E53E3E] border border-[#E53E3E]/20 rounded-lg text-xs font-medium hover:bg-[#E53E3E] hover:text-white transition">
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
+                          <div className="text-right">
+                            <p className="font-serif font-bold text-sm text-[#1B3A6B]">{formatCurrency(p.amount)}</p>
+                            <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
+                              p.status === "confirmed" ? "bg-emerald-100 text-emerald-800" : p.status === "pending" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"
+                            }`}>{p.status}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {payments.length === 0 && <p className="text-xs text-[#1B3A6B]/50 text-center py-4">No payment activity recorded.</p>}
                     </div>
                   </div>
-                ))}
-              </div>
-              {filteredEvents.length === 0 && (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 bg-[#F7F9FC] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Calendar className="text-[#E7ECF3]" size={32} />
-                  </div>
-                  <p className="text-[#6D7A8B] mb-4">No events found</p>
-                  <button onClick={() => { resetEventForm(); setShowEventForm(true); }}
-                    className="px-5 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg text-sm font-medium">Create First Event</button>
-                </div>
-              )}
-            </div>
-          )}
 
-          {activeTab === "merchandise" && (
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-[#0B0F1A]">Merchandise</h2>
-                  <p className="text-sm text-[#6D7A8B]">{products.length} products · {products.filter(p => p.is_active).length} active</p>
-                </div>
-                <button onClick={() => { resetProductForm(); setShowProductForm(true); }}
-                  className="px-5 py-2.5 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-xl flex items-center gap-2 text-sm font-semibold shadow-sm hover:opacity-90 transition">
-                  <Plus size={16} /> Add Product
-                </button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3 mb-6 items-stretch sm:items-center">
-                <div className="relative flex-1 max-w-sm">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={16} />
-                  <input type="text" placeholder="Search products..." value={merchSearch} onChange={e => setMerchSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 border border-[#E7ECF3] rounded-xl bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF7A00]/30" />
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {['all', 'tshirt', 'polo', 'hoodie', 'accessory', 'other'].map(cat => (
-                    <button key={cat} onClick={() => setMerchCategoryFilter(cat)}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold capitalize transition ${
-                        merchCategoryFilter === cat
-                          ? 'bg-[#FF7A00] text-white shadow-sm'
-                          : 'bg-[#F7F9FC] text-[#6D7A8B] border border-[#E7ECF3] hover:border-[#FF7A00]/40'
-                      }`}>
-                      {cat === 'all' ? 'All' : cat}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex border border-[#E7ECF3] rounded-xl overflow-hidden">
-                  <button onClick={() => setMerchView('grid')} className={`p-2 ${merchView === 'grid' ? 'bg-[#FF7A00] text-white' : 'bg-white text-[#6D7A8B] hover:bg-[#F7F9FC]'}`}><Grid size={16} /></button>
-                  <button onClick={() => setMerchView('list')} className={`p-2 ${merchView === 'list' ? 'bg-[#FF7A00] text-white' : 'bg-white text-[#6D7A8B] hover:bg-[#F7F9FC]'}`}><List size={16} /></button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                {[
-                  { label: 'Total Products', value: products.length, color: 'text-[#2B4C73]', bg: 'bg-[#E8F4FD]' },
-                  { label: 'Active', value: products.filter(p => p.is_active).length, color: 'text-green-700', bg: 'bg-green-50' },
-                  { label: 'Out of Stock', value: products.filter(p => p.is_out_of_stock).length, color: 'text-[#E53E3E]', bg: 'bg-[#FFF0F0]' },
-                  { label: 'Total Variants', value: products.reduce((sum, p) => sum + (p.product_variants?.length || 0), 0), color: 'text-[#FF7A00]', bg: 'bg-[#FFF4E6]' },
-                ].map(s => (
-                  <div key={s.label} className={`${s.bg} rounded-xl p-3 text-center`}>
-                    <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-                    <p className="text-xs text-[#6D7A8B] mt-0.5">{s.label}</p>
-                  </div>
-                ))}
-              </div>
-
-              {productLoading ? (
-                <div className="flex items-center justify-center py-16">
-                  <Loader2 className="animate-spin text-[#FF7A00]" size={32} />
-                </div>
-              ) : filteredProducts.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 bg-[#FFF4E6] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Package className="text-[#FF7A00]" size={28} />
-                  </div>
-                  <p className="text-[#6D7A8B] mb-2 font-medium">No products found</p>
-                  <p className="text-xs text-[#6D7A8B] mb-4">Try adjusting your filters or add a new product</p>
-                  <button onClick={() => { resetProductForm(); setShowProductForm(true); }}
-                    className="px-5 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-xl text-sm font-semibold">Add First Product</button>
-                </div>
-              ) : merchView === 'grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {filteredProducts.map(p => (
-                    <div key={p.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition-shadow group">
-                      <div className="relative h-44 bg-[#F7F9FC] overflow-hidden">
-                        {p.featured_image_url ? (
-                          <img src={p.featured_image_url} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="text-[#E7ECF3]" size={40} />
-                          </div>
-                        )}
-                        <div className="absolute top-2 left-2 flex gap-1.5">
-                          <CategoryBadge cat={p.category} />
-                          {!p.is_active && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-800 text-white">Inactive</span>}
-                          {p.is_out_of_stock && <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-[#E53E3E] text-white">OOS</span>}
-                        </div>
-                      </div>
-
-                      <div className="p-4">
-                        <h3 className="font-bold text-[#0B0F1A] mb-0.5 truncate">{p.name}</h3>
-                        <p className="text-xs text-[#6D7A8B] mb-3 line-clamp-2">{p.description}</p>
-
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-lg font-bold text-[#FF7A00]">{formatCurrency(p.base_price)}</span>
-                          <span className="text-xs text-[#6D7A8B] bg-[#F7F9FC] px-2 py-1 rounded-lg border border-[#E7ECF3]">
-                            {p.product_variants?.length || 0} variant{(p.product_variants?.length || 0) !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-
-                        {p.product_variants && p.product_variants.length > 0 && (
-                          <div className="flex gap-1 mb-3 flex-wrap">
-                            {[...new Map(p.product_variants.map(v => [v.color_value, v])).values()].slice(0, 6).map(v => (
-                              <div key={v.color_value} title={v.color_name}
-                                className="w-5 h-5 rounded-full border-2 border-white shadow-sm ring-1 ring-[#E7ECF3]"
-                                style={{ background: v.color_hex }} />
-                            ))}
-                            {[...new Set(p.product_variants.map(v => v.color_value))].length > 6 && (
-                              <span className="text-xs text-[#6D7A8B] self-center">+{[...new Set(p.product_variants.map(v => v.color_value))].length - 6}</span>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="flex gap-2">
-                          <button onClick={() => openProductEdit(p)}
-                            className="flex-1 px-3 py-2 bg-[#2B4C73] text-white rounded-lg text-xs font-semibold hover:bg-[#1E3A5F] transition flex items-center justify-center gap-1">
-                            <Edit size={13} /> Edit
-                          </button>
-                          <button onClick={() => handleUpdateProduct(p.id, { is_active: !p.is_active })}
-                            className={`px-3 py-2 rounded-lg text-xs font-semibold transition border ${p.is_active ? 'bg-[#FFF4E6] text-[#FF7A00] border-[#FF7A00]/20 hover:bg-[#FF7A00] hover:text-white' : 'bg-[#E8F4FD] text-[#2B4C73] border-[#2B4C73]/20 hover:bg-[#2B4C73] hover:text-white'}`}>
-                            {p.is_active ? 'Disable' : 'Enable'}
-                          </button>
-                          <button onClick={() => handleDeleteProduct(p.id)}
-                            className="px-3 py-2 bg-[#FFF0F0] text-[#E53E3E] border border-[#E53E3E]/20 rounded-lg text-xs hover:bg-[#E53E3E] hover:text-white transition">
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </div>
+                  {/* Recent Members */}
+                  <div className="bg-[#1B3A6B]/5 rounded-xl p-5 border border-[#1B3A6B]/10">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-serif font-bold text-[#1B3A6B] text-sm flex items-center gap-2">
+                        <UserPlus size={16} className="text-[#1B3A6B]" />
+                        New Registrations
+                      </h3>
+                      <button onClick={() => setActiveTab("members")} className="text-xs text-[#1B3A6B] hover:underline font-medium flex items-center gap-1">
+                        View all <ChevronRight size={12} />
+                      </button>
                     </div>
-                  ))}
+                    <div className="space-y-2">
+                      {users.slice(0, 5).map(u => (
+                        <div key={u.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-[#1B3A6B]/10">
+                          <div>
+                            <p className="text-[#1B3A6B] font-medium text-sm">{u.full_name}</p>
+                            <p className="text-xs text-[#1B3A6B]/60">{u.email}</p>
+                          </div>
+                          <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
+                            u.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-700"
+                          }`}>{u.status}</span>
+                        </div>
+                      ))}
+                      {users.length === 0 && <p className="text-xs text-[#1B3A6B]/50 text-center py-4">No member profiles found.</p>}
+                    </div>
+                  </div>
+
                 </div>
-              ) : (
-                <div className="rounded-xl border border-[#E7ECF3] overflow-hidden">
-                  <table className="w-full">
+              </div>
+            )}
+
+            {/* MEMBERS */}
+            {activeTab === "members" && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-lg font-serif font-bold text-[#1B3A6B]">Alumni Directory</h2>
+                    <p className="text-xs text-[#1B3A6B]/60">{users.length} registered · {users.filter(u => u.status === 'active').length} active</p>
+                  </div>
+                  <button onClick={() => exportToCSV(users.map(u => ({ Name: u.full_name, Email: u.email, Phone: u.phone_number || '', 'Membership #': u.membership_number || '', Status: u.status })), 'members')}
+                    className="px-3.5 py-2 bg-[#1B3A6B]/10 text-[#1B3A6B] rounded-lg flex items-center gap-2 text-xs font-semibold hover:bg-[#1B3A6B]/20 transition">
+                    <Download size={14} /> Export CSV
+                  </button>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-[#1B3A6B]/10">
+                  <table className="w-full text-left border-collapse">
                     <thead>
-                      <tr className="text-left text-xs text-[#6D7A8B] bg-[#F7F9FC] border-b border-[#E7ECF3]">
-                        <th className="py-3 px-4 font-semibold">Product</th>
-                        <th className="py-3 px-4 font-semibold">Category</th>
-                        <th className="py-3 px-4 font-semibold">Price</th>
-                        <th className="py-3 px-4 font-semibold">Variants</th>
-                        <th className="py-3 px-4 font-semibold">Status</th>
-                        <th className="py-3 px-4 font-semibold">Actions</th>
+                      <tr className="border-b border-[#1B3A6B]/10 bg-[#1B3A6B]/5 text-[#1B3A6B] text-xs uppercase font-semibold">
+                        {['Member', 'Contact', 'Membership', 'Status', 'Actions'].map(h => <th key={h} className="py-3 px-4">{h}</th>)}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#F7F9FC]">
-                      {filteredProducts.map(p => (
-                        <tr key={p.id} className="hover:bg-[#F7F9FC] transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg overflow-hidden bg-[#F7F9FC] border border-[#E7ECF3] shrink-0">
-                                {p.featured_image_url ? <img src={p.featured_image_url} className="w-full h-full object-cover" /> : <Package className="text-[#E7ECF3] m-auto mt-2" size={16} />}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-sm text-[#0B0F1A]">{p.name}</p>
-                                <p className="text-xs text-[#6D7A8B] truncate max-w-[180px]">{p.description}</p>
-                              </div>
-                            </div>
+                    <tbody className="divide-y divide-[#1B3A6B]/10 text-xs text-[#1B3A6B]">
+                      {users.map(m => (
+                        <tr key={m.id} className="hover:bg-[#1B3A6B]/5 transition-colors">
+                          <td className="py-3.5 px-4"><p className="font-semibold text-sm">{m.full_name}</p><p className="text-[#1B3A6B]/60">{m.email}</p></td>
+                          <td className="py-3.5 px-4"><p>{m.phone_number || "—"}</p><p className="text-[#1B3A6B]/60">{m.county || "—"}</p></td>
+                          <td className="py-3.5 px-4"><p className="font-mono font-bold text-[#C9A84C]">{m.membership_number || "None"}</p><p className="text-[#1B3A6B]/60">{m.course || "—"}</p></td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${m.status === "active" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>{m.status}</span>
                           </td>
-                          <td className="py-3 px-4"><CategoryBadge cat={p.category} /></td>
-                          <td className="py-3 px-4 font-bold text-sm text-[#FF7A00]">{formatCurrency(p.base_price)}</td>
-                          <td className="py-3 px-4 text-sm text-[#6D7A8B]">{p.product_variants?.length || 0}</td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${p.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                              {p.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3.5 px-4">
                             <div className="flex gap-2">
-                              <button onClick={() => openProductEdit(p)} className="px-3 py-1.5 bg-[#2B4C73] text-white rounded-lg text-xs font-medium hover:bg-[#1E3A5F] transition">Edit</button>
-                              <button onClick={() => handleDeleteProduct(p.id)} className="px-3 py-1.5 bg-[#FFF0F0] text-[#E53E3E] border border-[#E53E3E]/20 rounded-lg text-xs hover:bg-[#E53E3E] hover:text-white transition">Delete</button>
+                              <button onClick={() => updateUserStatus(m.id, "active")} disabled={m.status === "active"}
+                                className="px-2.5 py-1 bg-[#1B3A6B] text-white rounded text-[11px] font-medium hover:bg-[#152e55] disabled:opacity-40 transition">Activate</button>
+                              <button onClick={() => updateUserStatus(m.id, "inactive")} disabled={m.status === "inactive"}
+                                className="px-2.5 py-1 bg-red-600 text-white rounded text-[11px] font-medium hover:bg-red-700 disabled:opacity-40 transition">Deactivate</button>
                             </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  {users.length === 0 && <div className="text-center py-8 text-xs text-[#1B3A6B]/50">No members registered.</div>}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* CSR */}
-          {activeTab === "gallery" && (
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-[#0B0F1A]">Gallery</h2>
-                  <p className="text-sm text-[#6D7A8B]">{csrEvents.length} total</p>
-                </div>
-                <button onClick={() => { resetCsrForm(); setShowCSREventForm(true); }}
-                  className="px-4 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg flex items-center gap-2 text-sm font-medium shadow-sm hover:opacity-90 transition">
-                  <Plus size={16} /> Add Event Photos
-                </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {csrEvents.map(event => (
-                  <div key={event.id} className="bg-white border border-[#E7ECF3] rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                    {event.main_image_url ? (
-                      <div className="h-44 overflow-hidden"><img src={event.main_image_url} alt={event.title} className="w-full h-full object-cover" /></div>
-                    ) : (
-                      <div className="h-44 bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center"><Heart className="text-green-200" size={40} /></div>
-                    )}
-                    <div className="p-4">
-                      <div className="flex gap-2 mb-2">
-                        <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700 font-semibold">{getEventTypeLabel(event.event_type)}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${event.is_published ? "bg-[#E8F4FD] text-[#2B4C73]" : "bg-[#FFF0F0] text-[#E53E3E]"}`}>{event.is_published ? "Published" : "Draft"}</span>
-                      </div>
-                      <h3 className="font-bold text-[#0B0F1A] mb-1">{event.title}</h3>
-                      <p className="text-xs text-[#6D7A8B] mb-3 line-clamp-2">{event.description}</p>
-                      <div className="text-xs text-[#6D7A8B] space-y-1 mb-4">
-                        <div className="flex items-center gap-2"><Calendar size={12} />{new Date(event.event_date).toLocaleDateString()}</div>
-                        <div className="flex items-center gap-2"><MapPin size={12} />{event.location}</div>
-                        <div className="flex items-center gap-2"><ImageIcon size={12} />{event.photos?.length || 0} photos</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => openCSREventEdit(event)} className="flex-1 px-3 py-2 bg-[#2B4C73] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1 hover:bg-[#1E3A5F] transition"><Edit size={13} /> Edit</button>
-                        <button onClick={() => { setSelectedCSREventId(event.id); setCsrPhotoFiles([]); setCsrPhotoPreviews([]); setShowPhotoUploadModal(true); }}
-                          className="flex-1 px-3 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1 hover:opacity-90 transition"><ImageIcon size={13} /> Photos</button>
-                        <button onClick={() => handleDeleteCSREvent(event.id)} className="px-3 py-2 bg-[#FFF0F0] text-[#E53E3E] border border-[#E53E3E]/20 rounded-lg text-xs hover:bg-[#E53E3E] hover:text-white transition"><Trash2 size={13} /></button>
-                      </div>
-                    </div>
+            )}
+
+            {/* PAYMENTS */}
+            {activeTab === "payments" && (
+              <div>
+                <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                  <div>
+                    <h2 className="text-lg font-serif font-bold text-[#1B3A6B]">Transactions</h2>
+                    <p className="text-xs text-[#1B3A6B]/60">{payments.length} total · {stats.pendingPayments} pending</p>
                   </div>
-                ))}
-              </div>
-              {csrEvents.length === 0 && (
-                <div className="text-center py-16">
-                  <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4"><Heart className="text-green-300" size={28} /></div>
-                  <p className="text-[#6D7A8B] mb-4">No photos added yet</p>
-                  <button onClick={() => { resetCsrForm(); setShowCSREventForm(true); }} className="px-5 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg text-sm font-medium">Add Event Photos</button>
+                  <div className="flex gap-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/40" size={14} />
+                      <input type="text" placeholder="Search reference..." value={paymentSearch} onChange={e => setPaymentSearch(e.target.value)}
+                        className="pl-8 pr-3 py-1.5 border border-[#1B3A6B]/20 rounded-lg text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                    </div>
+                    <button onClick={() => exportToCSV(filteredPayments.map(p => ({ User: p.profiles?.full_name, Amount: p.amount, Status: p.status, Type: p.payment_type, Date: p.created_at })), 'payments')}
+                      className="px-3 py-1.5 bg-[#1B3A6B]/10 text-[#1B3A6B] rounded-lg flex items-center gap-2 text-xs font-semibold hover:bg-[#1B3A6B]/20 transition">
+                      <Download size={14} /> Export
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* MESSAGES */}
-          {activeTab === "messages" && (
-            <div>
-              <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
-                <div>
-                  <h2 className="text-xl font-bold text-[#0B0F1A]">Contact Messages</h2>
-                  <p className="text-sm text-[#6D7A8B]">{contactMessages.length} total · {contactMessages.filter(m => m.status === 'unread').length} unread</p>
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6D7A8B]" size={16} />
-                  <input type="text" placeholder="Search messages..." value={messageSearch} onChange={e => setMessageSearch(e.target.value)}
-                    className="pl-9 pr-4 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2B4C73]/30" />
-                </div>
-              </div>
-              <div className="overflow-x-auto rounded-xl border border-[#E7ECF3]">
-                <table className="w-full">
-                  <thead><tr className="text-left text-xs text-[#6D7A8B] bg-[#F7F9FC] border-b border-[#E7ECF3]">
-                    {['Name', 'Subject', 'Email', 'Date', 'Status', 'Actions'].map(h => <th key={h} className="py-3 px-4 font-semibold">{h}</th>)}
-                  </tr></thead>
-                  <tbody className="divide-y divide-[#F7F9FC]">
-                    {contactMessages.filter(m => m.name.toLowerCase().includes(messageSearch.toLowerCase()) || m.email.toLowerCase().includes(messageSearch.toLowerCase()) || m.subject.toLowerCase().includes(messageSearch.toLowerCase()))
-                      .map(message => (
-                        <tr key={message.id} className={`hover:bg-[#F7F9FC] transition-colors ${message.status === 'unread' ? 'bg-[#FFFDF8]' : ''}`}>
-                          <td className="py-3 px-4"><p className="font-semibold text-sm text-[#0B0F1A]">{message.name}</p>{message.phone && <p className="text-xs text-[#6D7A8B]">{message.phone}</p>}</td>
-                          <td className="py-3 px-4"><p className="font-medium text-sm">{message.subject}</p><p className="text-xs text-[#6D7A8B] truncate max-w-[180px]">{message.message}</p></td>
-                          <td className="py-3 px-4 text-sm">{message.email}</td>
-                          <td className="py-3 px-4 text-xs text-[#6D7A8B]">{formatDate(message.created_at)}</td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${message.status === 'unread' ? 'bg-[#FFF4E6] text-[#FF7A00]' : message.status === 'read' ? 'bg-[#E8F4FD] text-[#2B4C73]' : message.status === 'replied' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{message.status}</span>
+                <div className="overflow-x-auto rounded-xl border border-[#1B3A6B]/10">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#1B3A6B]/10 bg-[#1B3A6B]/5 text-[#1B3A6B] text-xs uppercase font-semibold">
+                        {['Transaction', 'User', 'Amount', 'Date', 'Status', 'Actions'].map(h => <th key={h} className="py-3 px-4">{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1B3A6B]/10 text-xs text-[#1B3A6B]">
+                      {filteredPayments.map(p => (
+                        <tr key={p.id} className="hover:bg-[#1B3A6B]/5 transition-colors">
+                          <td className="py-3.5 px-4"><p className="font-semibold text-sm">{p.description || "Payment"}</p><p className="text-[#1B3A6B]/60 uppercase">{p.payment_type}</p></td>
+                          <td className="py-3.5 px-4"><p className="font-medium">{p.profiles?.full_name || "Guest"}</p><p className="text-[#1B3A6B]/60">{p.phone_number}</p></td>
+                          <td className="py-3.5 px-4 font-serif font-bold text-sm text-[#1B3A6B]">{formatCurrency(p.amount)}</td>
+                          <td className="py-3.5 px-4 text-[#1B3A6B]/60">{formatDate(p.created_at)}</td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${p.status === "confirmed" ? "bg-emerald-100 text-emerald-800" : p.status === "pending" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>{p.status}</span>
                           </td>
-                          <td className="py-3 px-4">
-                            <button onClick={() => { setSelectedMessage(message); setShowMessageModal(true); }}
-                              className="px-3 py-1.5 bg-[#2B4C73] text-white rounded-lg text-xs font-medium hover:bg-[#1E3A5F] transition flex items-center gap-1">
-                              <Eye size={12} /> View
-                            </button>
+                          <td className="py-3.5 px-4">
+                            {p.status === "pending" && (
+                              <div className="flex gap-2">
+                                <button onClick={() => updatePaymentStatus(p.id, "confirmed")} className="px-2.5 py-1 bg-[#1B3A6B] text-white rounded text-[11px] font-medium hover:bg-[#152e55]">Confirm</button>
+                                <button onClick={() => updatePaymentStatus(p.id, "failed")} className="px-2.5 py-1 bg-red-600 text-white rounded text-[11px] font-medium hover:bg-red-700">Reject</button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}
-                  </tbody>
-                </table>
-                {contactMessages.length === 0 && (
-                  <div className="text-center py-12">
-                    <MessageSquare className="mx-auto text-[#E7ECF3] mb-4" size={40} />
-                    <p className="text-[#6D7A8B]">No messages yet</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* BULK SMS */}
-          {activeTab === "bulk-sms" && (
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-[#0B0F1A]">Bulk SMS</h2>
-                  <p className="text-sm text-[#6D7A8B]">Send messages to all alumni members</p>
-                </div>
-                <div className="text-sm text-[#6D7A8B]">
-                  <span className="font-medium">{users.filter(u => u.phone_number).length}</span> members with phone numbers
+                    </tbody>
+                  </table>
+                  {filteredPayments.length === 0 && <div className="text-center py-8 text-xs text-[#1B3A6B]/50">No payments match your search.</div>}
                 </div>
               </div>
+            )}
 
-              <div className="bg-[#F7F9FC] rounded-xl border border-[#E7ECF3] p-6">
-                <form onSubmit={handleSendBulkSMS} className="space-y-5">
-                  {/* Recipient Type */}
+            {/* ORDERS */}
+            {activeTab === "orders" && (
+              <div>
+                <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[#1B3A6B] mb-2">
-                      Send to <span className="text-[#C9A84C]">*</span>
-                    </label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="all"
-                          checked={smsRecipientType === 'all'}
-                          onChange={() => setSmsRecipientType('all')}
-                          className="accent-[#1B3A6B]"
-                        />
-                        <span className="text-sm text-[#1B3A6B]">All Alumni Members</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="specific"
-                          checked={smsRecipientType === 'specific'}
-                          onChange={() => setSmsRecipientType('specific')}
-                          className="accent-[#1B3A6B]"
-                        />
-                        <span className="text-sm text-[#1B3A6B]">Specific Members</span>
-                      </label>
-                    </div>
+                    <h2 className="text-lg font-serif font-bold text-[#1B3A6B]">Merchandise Orders</h2>
+                    <p className="text-xs text-[#1B3A6B]/60">{orders.length} total · {stats.pendingOrders} pending fulfillment</p>
                   </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/40" size={14} />
+                    <input type="text" placeholder="Search orders..." value={orderSearch} onChange={e => setOrderSearch(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 border border-[#1B3A6B]/20 rounded-lg text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                  </div>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-[#1B3A6B]/10">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#1B3A6B]/10 bg-[#1B3A6B]/5 text-[#1B3A6B] text-xs uppercase font-semibold">
+                        {['Customer', 'Items', 'Total', 'Date', 'Status', 'Update'].map(h => <th key={h} className="py-3 px-4">{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1B3A6B]/10 text-xs text-[#1B3A6B]">
+                      {filteredOrders.map(o => (
+                        <tr key={o.id} className="hover:bg-[#1B3A6B]/5 transition-colors">
+                          <td className="py-3.5 px-4"><p className="font-semibold text-sm">{o.customer_name || o.profiles?.full_name}</p><p className="text-[#1B3A6B]/60">{o.customer_email || o.profiles?.email}</p></td>
+                          <td className="py-3.5 px-4 font-medium">{o.items?.length || 0} items</td>
+                          <td className="py-3.5 px-4 font-serif font-bold text-sm text-[#1B3A6B]">{formatCurrency(o.total)}</td>
+                          <td className="py-3.5 px-4 text-[#1B3A6B]/60">{formatDate(o.created_at)}</td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${o.status === "delivered" ? "bg-emerald-100 text-emerald-800" : o.status === "shipped" ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"}`}>{o.status}</span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <select value={o.status} onChange={e => updateOrderStatus(o.id, e.target.value as Order['status'])}
+                              className="px-2 py-1 border border-[#1B3A6B]/20 rounded text-xs bg-white focus:outline-none">
+                              {['pending', 'processing', 'shipped', 'delivered', 'cancelled'].map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredOrders.length === 0 && <div className="text-center py-8 text-xs text-[#1B3A6B]/50">No orders found.</div>}
+                </div>
+              </div>
+            )}
 
-                  {/* Specific Members Selection */}
-                  {smsRecipientType === 'specific' && (
-                    <div>
-                      <label className="block text-sm font-medium text-[#1B3A6B] mb-2">
-                        Select Members <span className="text-[#C9A84C]">*</span>
-                      </label>
-                      <div className="bg-white border border-[#1B3A6B]/20 rounded-lg p-4 max-h-48 overflow-y-auto">
-                        {users.filter(u => u.phone_number).map(user => (
-                          <label key={user.id} className="flex items-center gap-2 py-1.5 cursor-pointer hover:bg-[#1B3A6B]/5 rounded px-2">
-                            <input
-                              type="checkbox"
-                              checked={selectedRecipients.includes(user.id)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedRecipients(prev => [...prev, user.id]);
-                                } else {
-                                  setSelectedRecipients(prev => prev.filter(id => id !== user.id));
-                                }
-                              }}
-                              className="accent-[#1B3A6B]"
-                            />
-                            <span className="text-sm text-[#1B3A6B]">{user.full_name}</span>
-                            <span className="text-xs text-[#1B3A6B]/50 ml-auto">{user.phone_number}</span>
-                          </label>
-                        ))}
-                        {users.filter(u => u.phone_number).length === 0 && (
-                          <p className="text-sm text-[#1B3A6B]/50 text-center py-4">No members with phone numbers</p>
-                        )}
-                      </div>
-                      <p className="text-xs text-[#1B3A6B]/50 mt-1">
-                        {selectedRecipients.length} member(s) selected
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Message */}
+            {/* EVENTS */}
+            {activeTab === "events" && (
+              <div>
+                <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-[#1B3A6B] mb-2">
-                      Message <span className="text-[#C9A84C]">*</span>
-                    </label>
-                    <textarea
-                      value={bulkSmsMessage}
-                      onChange={(e) => setBulkSmsMessage(e.target.value)}
-                      rows={5}
-                      className="w-full px-4 py-3 border border-[#1B3A6B]/20 rounded-lg text-[#1B3A6B] focus:outline-none focus:border-[#C9A84C] transition resize-none bg-white"
-                      placeholder="Type your message to all alumni members..."
-                      required
-                    />
-                    <div className="flex justify-between mt-1">
-                      <p className="text-xs text-[#1B3A6B]/50">
-                        {bulkSmsMessage.length} characters
-                      </p>
-                      <p className="text-xs text-[#1B3A6B]/50">
-                        {bulkSmsMessage.length > 160 ? `${Math.ceil(bulkSmsMessage.length / 160)} SMS parts` : '1 SMS'}
-                      </p>
-                    </div>
+                    <h2 className="text-lg font-serif font-bold text-[#1B3A6B]">Events</h2>
+                    <p className="text-xs text-[#1B3A6B]/60">{events.length} listed · {stats.upcomingEvents} upcoming</p>
                   </div>
-
-                  {/* Error */}
-                  {bulkSmsError && (
-                    <div className="bg-[#1B3A6B]/5 border border-[#1B3A6B]/20 rounded-lg p-3 flex items-center gap-2">
-                      <AlertCircle className="text-[#1B3A6B]" size={16} />
-                      <p className="text-sm text-[#1B3A6B]">{bulkSmsError}</p>
+                  <div className="flex gap-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/40" size={14} />
+                      <input type="text" placeholder="Search events..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                        className="pl-8 pr-3 py-1.5 border border-[#1B3A6B]/20 rounded-lg text-xs focus:outline-none focus:border-[#1B3A6B]" />
                     </div>
-                  )}
-
-                  {/* Result */}
-                  {bulkSmsResult && (
-                    <div className="bg-[#C9A84C]/5 border border-[#C9A84C]/30 rounded-lg p-4">
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <p className="text-sm text-[#1B3A6B]/60">Total</p>
-                          <p className="text-2xl font-serif font-bold text-[#1B3A6B]">{bulkSmsResult.total}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-[#1B3A6B]/60">Successful</p>
-                          <p className="text-2xl font-serif font-bold text-[#C9A84C]">{bulkSmsResult.successful}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-[#1B3A6B]/60">Failed</p>
-                          <p className="text-2xl font-serif font-bold text-[#1B3A6B]">{bulkSmsResult.failed}</p>
-                        </div>
-                      </div>
-                      {bulkSmsResult.failedNumbers.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-[#1B3A6B]/10">
-                          <p className="text-xs text-[#1B3A6B]/50">Failed numbers: {bulkSmsResult.failedNumbers.join(', ')}</p>
+                    <button onClick={() => { resetEventForm(); setShowEventForm(true); }}
+                      className="px-3.5 py-1.5 bg-[#1B3A6B] text-white rounded-lg flex items-center gap-1.5 text-xs font-semibold hover:bg-[#152e55] transition shadow-sm">
+                      <Plus size={14} /> New Event
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {filteredEvents.map(event => (
+                    <div key={event.id} className="bg-white border border-[#1B3A6B]/10 rounded-xl overflow-hidden hover:shadow-md transition">
+                      {event.image_url ? (
+                        <div className="h-36 overflow-hidden"><img src={event.image_url} alt={event.name} className="w-full h-full object-cover" /></div>
+                      ) : (
+                        <div className="h-36 bg-[#1B3A6B]/5 flex items-center justify-center">
+                          <Calendar className="text-[#1B3A6B]/20" size={40} />
                         </div>
                       )}
+                      <div className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-serif font-bold text-[#1B3A6B] text-sm leading-snug">{event.name}</h3>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${event.status === "upcoming" ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-700"}`}>{event.status}</span>
+                        </div>
+                        <p className="text-xs text-[#1B3A6B]/60 mb-3 line-clamp-2">{event.description}</p>
+                        <div className="space-y-1 mb-4 text-xs text-[#1B3A6B]/70">
+                          <div className="flex items-center gap-1.5"><Calendar size={12} className="text-[#C9A84C]" />{event.event_date ? new Date(event.event_date).toLocaleDateString() : "TBD"}</div>
+                          <div className="flex items-center gap-1.5"><MapPin size={12} className="text-[#C9A84C]" />{event.location || "TBD"}</div>
+                          <div className="flex items-center gap-1.5"><Ticket size={12} className="text-[#C9A84C]" />KES {event.price} · {event.current_attendees}/{event.max_attendees || '∞'} booked</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => openEventEdit(event)}
+                            className="flex-1 px-3 py-1.5 bg-[#1B3A6B] text-white rounded text-xs font-medium hover:bg-[#152e55] transition flex items-center justify-center gap-1">
+                            <Edit size={12} /> Edit
+                          </button>
+                          <button onClick={() => handleDeleteEvent(event.id)}
+                            className="px-2.5 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-medium hover:bg-red-600 hover:text-white transition">
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  )}
-
-                  {/* Submit */}
-                  <button
-                    type="submit"
-                    disabled={bulkSmsSending || !bulkSmsMessage.trim() || (smsRecipientType === 'specific' && selectedRecipients.length === 0)}
-                    className="w-full py-3 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {bulkSmsSending ? (
-                      <>
-                        <Loader2 className="animate-spin" size={18} />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <MessageSquare size={18} />
-                        Send SMS to {smsRecipientType === 'all' ? 'All Alumni' : `${selectedRecipients.length} Members`}
-                      </>
-                    )}
-                  </button>
-
-                  <p className="text-xs text-[#1B3A6B]/40 text-center">
-                    SMS credits will be deducted from your account. Standard SMS rates apply.
-                  </p>
-                </form>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+
+            {/* MERCHANDISE */}
+            {activeTab === "merchandise" && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <div>
+                    <h2 className="text-lg font-serif font-bold text-[#1B3A6B]">Merchandise Store</h2>
+                    <p className="text-xs text-[#1B3A6B]/60">{products.length} products · {products.filter(p => p.is_active).length} active</p>
+                  </div>
+                  <button onClick={() => { resetProductForm(); setShowProductForm(true); }}
+                    className="px-3.5 py-2 bg-[#1B3A6B] text-white rounded-lg flex items-center gap-1.5 text-xs font-semibold hover:bg-[#152e55] transition shadow-sm">
+                    <Plus size={14} /> Add Product
+                  </button>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 mb-6 items-stretch sm:items-center">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/40" size={14} />
+                    <input type="text" placeholder="Search catalog..." value={merchSearch} onChange={e => setMerchSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 border border-[#1B3A6B]/20 rounded-lg text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {['all', 'tshirt', 'polo', 'hoodie', 'accessory', 'other'].map(cat => (
+                      <button key={cat} onClick={() => setMerchCategoryFilter(cat)}
+                        className={`px-2.5 py-1 rounded text-xs font-medium capitalize transition ${
+                          merchCategoryFilter === cat
+                            ? 'bg-[#1B3A6B] text-white'
+                            : 'bg-[#1B3A6B]/5 text-[#1B3A6B] hover:bg-[#1B3A6B]/10'
+                        }`}>
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {filteredProducts.map(p => (
+                    <div key={p.id} className="bg-white border border-[#1B3A6B]/10 rounded-xl overflow-hidden hover:shadow-md transition">
+                      <div className="relative h-40 bg-[#1B3A6B]/5 overflow-hidden">
+                        {p.featured_image_url ? (
+                          <img src={p.featured_image_url} alt={p.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="text-[#1B3A6B]/20" size={36} />
+                          </div>
+                        )}
+                        <div className="absolute top-2 left-2 flex gap-1">
+                          <CategoryBadge cat={p.category} />
+                          {!p.is_active && <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-white">Inactive</span>}
+                        </div>
+                      </div>
+
+                      <div className="p-4">
+                        <h3 className="font-serif font-bold text-[#1B3A6B] text-sm truncate">{p.name}</h3>
+                        <p className="text-xs text-[#1B3A6B]/60 mb-3 line-clamp-2">{p.description}</p>
+
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-base font-serif font-bold text-[#1B3A6B]">{formatCurrency(p.base_price)}</span>
+                          <span className="text-xs text-[#1B3A6B]/60 bg-[#1B3A6B]/5 px-2 py-0.5 rounded">
+                            {p.product_variants?.length || 0} variant(s)
+                          </span>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button onClick={() => openProductEdit(p)}
+                            className="flex-1 px-3 py-1.5 bg-[#1B3A6B] text-white rounded text-xs font-semibold hover:bg-[#152e55] transition flex items-center justify-center gap-1">
+                            <Edit size={12} /> Edit
+                          </button>
+                          <button onClick={() => handleDeleteProduct(p.id)}
+                            className="px-2.5 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded text-xs font-semibold hover:bg-red-600 hover:text-white transition">
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* GALLERY */}
+            {activeTab === "gallery" && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-lg font-serif font-bold text-[#1B3A6B]">CSR & Event Gallery</h2>
+                    <p className="text-xs text-[#1B3A6B]/60">{csrEvents.length} events published</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {csrEvents.map(event => (
+                    <div key={event.id} className="bg-white border border-[#1B3A6B]/10 rounded-xl overflow-hidden hover:shadow-md transition">
+                      {event.main_image_url ? (
+                        <div className="h-40 overflow-hidden"><img src={event.main_image_url} alt={event.title} className="w-full h-full object-cover" /></div>
+                      ) : (
+                        <div className="h-40 bg-[#1B3A6B]/5 flex items-center justify-center"><Heart className="text-[#1B3A6B]/20" size={36} /></div>
+                      )}
+                      <div className="p-4">
+                        <div className="flex gap-2 mb-2">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#1B3A6B]/10 text-[#1B3A6B]">{getEventTypeLabel(event.event_type)}</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${event.is_published ? "bg-emerald-100 text-emerald-800" : "bg-gray-100 text-gray-700"}`}>{event.is_published ? "Published" : "Draft"}</span>
+                        </div>
+                        <h3 className="font-serif font-bold text-[#1B3A6B] text-sm mb-1">{event.title}</h3>
+                        <p className="text-xs text-[#1B3A6B]/60 mb-3 line-clamp-2">{event.description}</p>
+
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* MESSAGES */}
+            {activeTab === "messages" && (
+              <div>
+                <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
+                  <div>
+                    <h2 className="text-lg font-serif font-bold text-[#1B3A6B]">Inquiries & Feedback</h2>
+                    <p className="text-xs text-[#1B3A6B]/60">{contactMessages.length} total · {contactMessages.filter(m => m.status === 'unread').length} unread</p>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#1B3A6B]/40" size={14} />
+                    <input type="text" placeholder="Search messages..." value={messageSearch} onChange={e => setMessageSearch(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 border border-[#1B3A6B]/20 rounded-lg text-xs focus:outline-none focus:border-[#1B3A6B]" />
+                  </div>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-[#1B3A6B]/10">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#1B3A6B]/10 bg-[#1B3A6B]/5 text-[#1B3A6B] text-xs uppercase font-semibold">
+                        {['Sender', 'Subject', 'Email', 'Date', 'Status', 'Actions'].map(h => <th key={h} className="py-3 px-4">{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1B3A6B]/10 text-xs text-[#1B3A6B]">
+                      {contactMessages.filter(m => m.name.toLowerCase().includes(messageSearch.toLowerCase()) || m.email.toLowerCase().includes(messageSearch.toLowerCase()) || m.subject.toLowerCase().includes(messageSearch.toLowerCase()))
+                        .map(message => (
+                          <tr key={message.id} className={`hover:bg-[#1B3A6B]/5 transition-colors ${message.status === 'unread' ? 'bg-[#C9A84C]/5 font-semibold' : ''}`}>
+                            <td className="py-3.5 px-4"><p className="text-sm">{message.name}</p>{message.phone && <p className="text-[11px] text-[#1B3A6B]/60">{message.phone}</p>}</td>
+                            <td className="py-3.5 px-4"><p className="text-sm">{message.subject}</p><p className="text-[11px] text-[#1B3A6B]/60 truncate max-w-[180px]">{message.message}</p></td>
+                            <td className="py-3.5 px-4">{message.email}</td>
+                            <td className="py-3.5 px-4 text-[#1B3A6B]/60">{formatDate(message.created_at)}</td>
+                            <td className="py-3.5 px-4">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${message.status === 'unread' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>{message.status}</span>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <button onClick={() => { setSelectedMessage(message); setShowMessageModal(true); }}
+                                className="px-2.5 py-1 bg-[#1B3A6B] text-white rounded text-[11px] font-medium hover:bg-[#152e55] transition flex items-center gap-1">
+                                <Eye size={12} /> View
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* BULK SMS */}
+            {activeTab === "bulk-sms" && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-lg font-serif font-bold text-[#1B3A6B]">Bulk SMS Center</h2>
+                    <p className="text-xs text-[#1B3A6B]/60">Send notifications directly to members' Mobile Phones</p>
+                  </div>
+                  <div className="text-xs text-[#1B3A6B]/70 bg-[#1B3A6B]/5 px-3 py-1.5 rounded-lg border border-[#1B3A6B]/10">
+                    <span className="font-bold text-[#1B3A6B]">{users.filter(u => u.phone_number).length}</span> members reachable via SMS
+                  </div>
+                </div>
+
+                <div className="bg-[#1B3A6B]/5 rounded-xl border border-[#1B3A6B]/10 p-6">
+                  <form onSubmit={handleSendBulkSMS} className="space-y-5">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1B3A6B] uppercase tracking-wider mb-2">
+                        Recipient Scope <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[#1B3A6B]">
+                          <input
+                            type="radio"
+                            value="all"
+                            checked={smsRecipientType === 'all'}
+                            onChange={() => setSmsRecipientType('all')}
+                            className="accent-[#1B3A6B]"
+                          />
+                          All Active Members
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-[#1B3A6B]">
+                          <input
+                            type="radio"
+                            value="specific"
+                            checked={smsRecipientType === 'specific'}
+                            onChange={() => setSmsRecipientType('specific')}
+                            className="accent-[#1B3A6B]"
+                          />
+                          Select Specific Members
+                        </label>
+                      </div>
+                    </div>
+
+                    {smsRecipientType === 'specific' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1B3A6B] uppercase tracking-wider mb-2">
+                          Select Recipients
+                        </label>
+                        <div className="bg-white border border-[#1B3A6B]/20 rounded-lg p-3 max-h-48 overflow-y-auto space-y-1">
+                          {users.filter(u => u.phone_number).map(user => (
+                            <label key={user.id} className="flex items-center gap-2 py-1 cursor-pointer hover:bg-[#1B3A6B]/5 rounded px-2 text-xs">
+                              <input
+                                type="checkbox"
+                                checked={selectedRecipients.includes(user.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedRecipients(prev => [...prev, user.id]);
+                                  else setSelectedRecipients(prev => prev.filter(id => id !== user.id));
+                                }}
+                                className="accent-[#1B3A6B]"
+                              />
+                              <span className="font-medium text-[#1B3A6B]">{user.full_name}</span>
+                              <span className="text-[#1B3A6B]/50 ml-auto font-mono">{user.phone_number}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#1B3A6B] uppercase tracking-wider mb-2">
+                        Message Content <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        value={bulkSmsMessage}
+                        onChange={(e) => setBulkSmsMessage(e.target.value)}
+                        rows={4}
+                        className="w-full px-3 py-2 border border-[#1B3A6B]/20 rounded-lg text-sm focus:outline-none focus:border-[#1B3A6B] bg-white resize-none"
+                        placeholder="Type broadcast message..."
+                        required
+                      />
+                      <div className="flex justify-between mt-1 text-[11px] text-[#1B3A6B]/50">
+                        <span>{bulkSmsMessage.length} Characters</span>
+                        <span>{bulkSmsMessage.length > 160 ? `${Math.ceil(bulkSmsMessage.length / 160)} SMS Parts` : '1 SMS Part'}</span>
+                      </div>
+                    </div>
+
+                    {bulkSmsError && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700 flex items-center gap-2">
+                        <AlertCircle size={14} /> {bulkSmsError}
+                      </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={bulkSmsSending || !bulkSmsMessage.trim() || (smsRecipientType === 'specific' && selectedRecipients.length === 0)}
+                      className="w-full py-2.5 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition flex items-center justify-center gap-2 text-xs uppercase tracking-wider disabled:opacity-50"
+                    >
+                      {bulkSmsSending ? (
+                        <>
+                          <Loader2 className="animate-spin" size={16} />
+                          sending...
+                        </>
+                      ) : (
+                        <>
+                          <Mail size={16} />
+                          Send
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </main>
       </div>
 
-      {/* ════ MODALS ════ */}
+      {/* ════ MODALS STACK ════ */}
 
-      {/* Event Form */}
+      {/* Event Form Modal */}
       {showEventForm && (
-        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) resetEventForm(); }}>
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-[#0B0F1A]">{editingEvent ? "Edit Event" : "Create Event"}</h3>
-                <button onClick={resetEventForm} className="p-2 text-[#6D7A8B] hover:text-[#0B0F1A] hover:bg-[#F7F9FC] rounded-lg"><X size={20} /></button>
+              <div className="flex justify-between items-center mb-6 border-b border-[#1B3A6B]/10 pb-4">
+                <h3 className="text-lg font-serif font-bold text-[#1B3A6B]">{editingEvent ? "Edit Event" : "Publish Event"}</h3>
+                <button onClick={resetEventForm} className="p-1.5 text-[#1B3A6B]/50 hover:bg-[#1B3A6B]/5 rounded-lg"><X size={18} /></button>
               </div>
-              <form onSubmit={editingEvent ? handleEditEvent : handleCreateEvent} className="space-y-4">
+              <form onSubmit={editingEvent ? handleEditEvent : handleCreateEvent} className="space-y-4 text-xs">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Name *</label><input type="text" required value={newEvent.name} onChange={e => setNewEvent({...newEvent, name: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Status</label><select value={newEvent.status} onChange={e => setNewEvent({...newEvent, status: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none"><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option></select></div>
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Date</label><input type="datetime-local" value={newEvent.event_date} onChange={e => setNewEvent({...newEvent, event_date: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Location</label><input type="text" value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Price (Ksh) *</label><input type="number" required value={newEvent.price} onChange={e => setNewEvent({...newEvent, price: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Member Discount (Ksh)</label><input type="number" value={newEvent.member_discount} onChange={e => setNewEvent({...newEvent, member_discount: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Max Attendees</label><input type="number" value={newEvent.max_attendees} onChange={e => setNewEvent({...newEvent, max_attendees: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                  <div><ImageUploadField label="Event Image" preview={eventImagePreview} onFileChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f, setEventImageFile, setEventImagePreview); }} onClear={() => { setEventImageFile(null); setEventImagePreview(''); setNewEvent({...newEvent, image_url: ''}); }} /></div>
+                  <div><label className="block font-medium text-[#1B3A6B] mb-1">Event Name *</label><input type="text" required value={newEvent.name} onChange={e => setNewEvent({...newEvent, name: e.target.value})} className="w-full px-3 py-2 border border-[#1B3A6B]/20 rounded-lg" /></div>
+                  <div><label className="block font-medium text-[#1B3A6B] mb-1">Status</label><select value={newEvent.status} onChange={e => setNewEvent({...newEvent, status: e.target.value})} className="w-full px-3 py-2 border border-[#1B3A6B]/20 rounded-lg"><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option></select></div>
+                  <div><label className="block font-medium text-[#1B3A6B] mb-1">Event Date</label><input type="datetime-local" value={newEvent.event_date} onChange={e => setNewEvent({...newEvent, event_date: e.target.value})} className="w-full px-3 py-2 border border-[#1B3A6B]/20 rounded-lg" /></div>
+                  <div><label className="block font-medium text-[#1B3A6B] mb-1">Location</label><input type="text" value={newEvent.location} onChange={e => setNewEvent({...newEvent, location: e.target.value})} className="w-full px-3 py-2 border border-[#1B3A6B]/20 rounded-lg" /></div>
+                  <div><label className="block font-medium text-[#1B3A6B] mb-1">Price (KES) *</label><input type="number" required value={newEvent.price} onChange={e => setNewEvent({...newEvent, price: e.target.value})} className="w-full px-3 py-2 border border-[#1B3A6B]/20 rounded-lg" /></div>
+                  <div><label className="block font-medium text-[#1B3A6B] mb-1">Max Capacity</label><input type="number" value={newEvent.max_attendees} onChange={e => setNewEvent({...newEvent, max_attendees: e.target.value})} className="w-full px-3 py-2 border border-[#1B3A6B]/20 rounded-lg" /></div>
                 </div>
-                <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Description *</label><textarea required rows={3} value={newEvent.description} onChange={e => setNewEvent({...newEvent, description: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none resize-none" /></div>
+                <div><label className="block font-medium text-[#1B3A6B] mb-1">Description *</label><textarea required rows={3} value={newEvent.description} onChange={e => setNewEvent({...newEvent, description: e.target.value})} className="w-full px-3 py-2 border border-[#1B3A6B]/20 rounded-lg resize-none" /></div>
                 <div className="flex gap-3 pt-2">
-                  <button type="submit" disabled={creatingEvent || uploadingFiles} className="px-6 py-2 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 flex items-center gap-2 font-medium disabled:opacity-50">
-                    {(creatingEvent || uploadingFiles) && <Loader2 className="animate-spin" size={16} />}
-                    {creatingEvent || uploadingFiles ? "Saving..." : editingEvent ? "Update Event" : "Create Event"}
+                  <button type="submit" disabled={creatingEvent || uploadingFiles} className="px-5 py-2 bg-[#1B3A6B] text-white rounded-lg hover:bg-[#152e55] font-medium flex items-center gap-2">
+                    {(creatingEvent || uploadingFiles) && <Loader2 className="animate-spin" size={14} />}
+                    {editingEvent ? "Update Event" : "Publish Event"}
                   </button>
-                  <button type="button" onClick={resetEventForm} className="px-6 py-2 bg-[#F7F9FC] text-[#6D7A8B] rounded-lg hover:bg-[#E7ECF3] border border-[#E7ECF3]">Cancel</button>
+                  <button type="button" onClick={resetEventForm} className="px-5 py-2 bg-gray-100 text-[#1B3A6B] rounded-lg border border-[#1B3A6B]/10 font-medium">Cancel</button>
                 </div>
               </form>
             </div>
@@ -1801,188 +1519,23 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Product Form Modal */}
-      {showProductForm && (
-        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) resetProductForm(); }}>
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b border-[#E7ECF3] px-6 py-4 flex justify-between items-center z-10 rounded-t-xl">
-              <div>
-                <h3 className="text-xl font-bold text-[#0B0F1A]">{editingProduct ? `Edit: ${editingProduct.name}` : "New Product"}</h3>
-                <p className="text-xs text-[#6D7A8B]">{editingProduct ? "Update product details and variants" : "Fill in the details to create a new product"}</p>
-              </div>
-              <button onClick={resetProductForm} className="p-2 text-[#6D7A8B] hover:text-[#0B0F1A] hover:bg-[#F7F9FC] rounded-lg"><X size={20} /></button>
-            </div>
-
-            <div className="p-6">
-              <form onSubmit={editingProduct ? (e) => { e.preventDefault(); handleUpdateProduct(editingProduct.id, { ...newProduct, base_price: parseFloat(newProduct.base_price) }); } : handleCreateProduct} className="space-y-8">
-
-                {/* Section 1: Basic Info */}
-                <div>
-                  <h4 className="text-sm font-bold text-[#0B0F1A] uppercase tracking-wide mb-4 flex items-center gap-2">
-                    <span className="w-6 h-6 bg-[#2B4C73] text-white rounded-full text-xs flex items-center justify-center font-bold">1</span>
-                    Basic Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Product Name *</label><input type="text" required value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                    <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Category *</label><select required value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value as any})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none">{['tshirt','polo','hoodie','accessory','other'].map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                    <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Base Price (Ksh) *</label><input type="number" required value={newProduct.base_price} onChange={e => setNewProduct({...newProduct, base_price: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                    <div className="flex items-center gap-6 pt-6">
-                      <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newProduct.is_active} onChange={e => setNewProduct({...newProduct, is_active: e.target.checked})} className="rounded accent-[#2B4C73]" /><span className="text-sm text-[#6D7A8B]">Active</span></label>
-                      <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newProduct.is_out_of_stock} onChange={e => setNewProduct({...newProduct, is_out_of_stock: e.target.checked})} className="rounded accent-[#E53E3E]" /><span className="text-sm text-[#6D7A8B]">Out of Stock</span></label>
-                    </div>
-                    <div className="md:col-span-2"><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Description *</label><textarea required rows={3} value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none resize-none" /></div>
-                    <div className="md:col-span-2"><ImageUploadField label="Featured Image" preview={productMainImagePreview} onFileChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f, setProductMainImage, setProductMainImagePreview); }} onClear={() => { setProductMainImage(null); setProductMainImagePreview(''); setNewProduct({...newProduct, featured_image_url: ''}); }} /></div>
-                  </div>
-                </div>
-
-                {/* Section 2: Variants */}
-                <div className="border-t border-[#E7ECF3] pt-6">
-                  <h4 className="text-sm font-bold text-[#0B0F1A] uppercase tracking-wide mb-1 flex items-center gap-2">
-                    <span className="w-6 h-6 bg-[#FF7A00] text-white rounded-full text-xs flex items-center justify-center font-bold">2</span>
-                    Variants
-                    <span className="px-2 py-0.5 bg-[#FFF4E6] text-[#FF7A00] rounded-full text-xs font-semibold">{newProduct.variants.length} added</span>
-                  </h4>
-                  <p className="text-xs text-[#6D7A8B] mb-4 ml-8">Each variant is a unique combination of color + size. Add them one at a time.</p>
-
-                  {/* Add variant form */}
-                  <div className="bg-[#F7F9FC] rounded-xl border border-[#E7ECF3] p-4 mb-4">
-                    <p className="text-xs font-semibold text-[#0B0F1A] mb-3 uppercase tracking-wide">Add New Variant</p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      <div><label className="block text-xs font-medium text-[#6D7A8B] mb-1">Color Name *</label><input value={newVariant.color_name} onChange={e => setNewVariant({...newVariant, color_name: e.target.value})} placeholder="e.g. Coral Pink" className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF7A00]/30" /></div>
-                      <div><label className="block text-xs font-medium text-[#6D7A8B] mb-1">Color Key *</label><input value={newVariant.color_value} onChange={e => setNewVariant({...newVariant, color_value: e.target.value.toLowerCase().replace(/\s+/g,'')})} placeholder="e.g. coral-pink" className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF7A00]/30" /></div>
-                      <div><label className="block text-xs font-medium text-[#6D7A8B] mb-1">Color (pick)</label><input type="color" value={newVariant.color_hex} onChange={e => setNewVariant({...newVariant, color_hex: e.target.value})} className="w-full h-[38px] border border-[#E7ECF3] rounded-lg bg-white cursor-pointer" /></div>
-                      <div><label className="block text-xs font-medium text-[#6D7A8B] mb-1">Size *</label><select value={newVariant.size} onChange={e => setNewVariant({...newVariant, size: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF7A00]/30"><option value="">Select size</option>{['S','M','L','XL','XXL','ONE'].map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                      <div><label className="block text-xs font-medium text-[#6D7A8B] mb-1">SKU *</label><input value={newVariant.sku} onChange={e => setNewVariant({...newVariant, sku: e.target.value})} placeholder="e.g. HOODIE-PINK-M" className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF7A00]/30" /></div>
-                      <div><label className="block text-xs font-medium text-[#6D7A8B] mb-1">Stock Qty</label><input type="number" value={newVariant.stock_quantity} onChange={e => setNewVariant({...newVariant, stock_quantity: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF7A00]/30" /></div>
-                      <div><label className="block text-xs font-medium text-[#6D7A8B] mb-1">Price Adj (Ksh)</label><input type="number" value={newVariant.price_adjustment} onChange={e => setNewVariant({...newVariant, price_adjustment: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#FF7A00]/30" /></div>
-                      <div className="flex items-center gap-2 mt-4"><input type="checkbox" id="va_avail" checked={newVariant.is_available} onChange={e => setNewVariant({...newVariant, is_available: e.target.checked})} className="rounded accent-[#2B4C73]" /><label htmlFor="va_avail" className="text-xs text-[#6D7A8B]">Available</label></div>
-                    </div>
-                    <div className="flex justify-end mt-3">
-                      <button type="button" onClick={handleAddVariant}
-                        className="px-5 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-lg text-sm font-semibold flex items-center gap-2 hover:opacity-90 transition">
-                        <Plus size={16} /> Add Variant
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Variant list */}
-                  {newProduct.variants.length > 0 ? (
-                    <div className="space-y-2">
-                      {newProduct.variants.map((v, idx) => (
-                        <div key={v.id} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 bg-white rounded-xl border border-[#E7ECF3]">
-                          <span className="text-xs font-bold text-[#6D7A8B] w-5 text-center">{idx + 1}</span>
-                          <div className="w-8 h-8 rounded-full border-2 border-white shadow ring-1 ring-[#E7ECF3] shrink-0" style={{ background: v.color_hex }} />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm text-[#0B0F1A]">{v.color_name} — {v.size}</p>
-                            <p className="text-xs text-[#6D7A8B]">SKU: {v.sku} · Stock: {v.stock_quantity} · Adj: Ksh {v.price_adjustment}</p>
-                          </div>
-                          {v.image_url && <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#E7ECF3] shrink-0"><img src={v.image_url} className="w-full h-full object-cover" /></div>}
-                          <label className="px-3 py-1.5 bg-[#E8F4FD] text-[#2B4C73] rounded-lg cursor-pointer border border-[#2B4C73]/20 flex items-center gap-1 text-xs font-medium hover:bg-[#2B4C73] hover:text-white transition shrink-0">
-                            <Upload size={13} /> Image
-                            <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleVariantImageChange(v.id, f); }} />
-                          </label>
-                          <button type="button" onClick={() => removeVariant(v.id)} className="p-1.5 bg-[#FFF0F0] text-[#E53E3E] rounded-lg border border-[#E53E3E]/20 hover:bg-[#E53E3E] hover:text-white transition shrink-0"><Trash2 size={14} /></button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 bg-[#F7F9FC] rounded-xl border-2 border-dashed border-[#E7ECF3]">
-                      <Package className="mx-auto text-[#E7ECF3] mb-2" size={32} />
-                      <p className="text-sm text-[#6D7A8B]">No variants added yet</p>
-                      <p className="text-xs text-[#6D7A8B]">Use the form above to add color/size combinations</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-2 border-t border-[#E7ECF3]">
-                  <button type="submit" disabled={productLoading}
-                    className="px-6 py-2.5 bg-gradient-to-r from-[#2B4C73] to-[#1E3A5F] text-white rounded-lg hover:opacity-90 flex items-center gap-2 font-semibold disabled:opacity-50">
-                    {productLoading && <Loader2 className="animate-spin" size={16} />}
-                    {productLoading ? "Saving..." : editingProduct ? "Update Product" : "Create Product"}
-                  </button>
-                  <button type="button" onClick={resetProductForm} className="px-6 py-2.5 bg-[#F7F9FC] text-[#6D7A8B] rounded-lg hover:bg-[#E7ECF3] border border-[#E7ECF3] font-medium">Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* CSR Event Form */}
-      {showCSREventForm && (
-        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) resetCsrForm(); }}>
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-[#0B0F1A]">{editingCSREvent ? "Edit CSR Event" : "Add CSR Event"}</h3>
-                <button onClick={resetCsrForm} className="p-2 text-[#6D7A8B] hover:bg-[#F7F9FC] rounded-lg"><X size={20} /></button>
-              </div>
-              <form onSubmit={editingCSREvent ? handleUpdateCSREvent : handleCreateCSREvent} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Type *</label><select required value={newCSREvent.event_type} onChange={e => setNewCSREvent({...newCSREvent, event_type: e.target.value as CSREvent['event_type']})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none"><option value="tree_planting">Tree Planting</option><option value="community_service">Community Service</option><option value="charity_drive">Charity Drive</option><option value="educational">Educational</option><option value="health_campaign">Health Campaign</option><option value="other">Other</option></select></div>
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Title *</label><input type="text" required value={newCSREvent.title} onChange={e => setNewCSREvent({...newCSREvent, title: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Date *</label><input type="date" required value={newCSREvent.event_date} onChange={e => setNewCSREvent({...newCSREvent, event_date: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                  <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Location *</label><input type="text" required value={newCSREvent.location} onChange={e => setNewCSREvent({...newCSREvent, location: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none" /></div>
-                  <div className="md:col-span-2"><ImageUploadField label="Main Image" preview={csrMainImagePreview} onFileChange={e => { const f = e.target.files?.[0]; if (f) handleFileChange(f, setCsrMainImage, setCsrMainImagePreview); }} onClear={() => { setCsrMainImage(null); setCsrMainImagePreview(''); }} /></div>
-                  {!editingCSREvent && (<div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-[#6D7A8B] mb-1">Event Photos (optional)</label>
-                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-[#E7ECF3] rounded-lg cursor-pointer hover:border-[#FF7A00] hover:bg-[#FFF4E6] transition">
-                      <Upload className="text-[#6D7A8B] mb-1" size={20} /><span className="text-sm text-[#6D7A8B]">Upload multiple photos</span>
-                      <input type="file" accept="image/*" multiple onChange={handleCsrPhotoFilesChange} className="hidden" />
-                    </label>
-                    {csrPhotoPreviews.length > 0 && <div className="flex flex-wrap gap-2 mt-3">{csrPhotoPreviews.map((preview, i) => (<div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#E7ECF3]"><img src={preview} className="w-full h-full object-cover" /><button type="button" onClick={() => { setCsrPhotoFiles(prev => prev.filter((_, idx) => idx !== i)); setCsrPhotoPreviews(prev => prev.filter((_, idx) => idx !== i)); }} className="absolute top-0.5 right-0.5 p-0.5 bg-red-500 text-white rounded-full"><X size={10} /></button></div>))}</div>}
-                  </div>)}
-                </div>
-                <div><label className="block text-sm font-medium text-[#6D7A8B] mb-1">Description *</label><textarea required rows={4} value={newCSREvent.description} onChange={e => setNewCSREvent({...newCSREvent, description: e.target.value})} className="w-full px-3 py-2 border border-[#E7ECF3] rounded-lg focus:ring-2 focus:ring-[#FF7A00]/30 focus:outline-none resize-none" /></div>
-                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={newCSREvent.is_published} onChange={e => setNewCSREvent({...newCSREvent, is_published: e.target.checked})} className="rounded accent-[#2B4C73]" /><span className="text-sm text-[#6D7A8B]">Publish immediately</span></label>
-                <div className="flex gap-3 pt-2">
-                  <button type="submit" disabled={csrLoading} className="px-6 py-2 bg-gradient-to-r from-[#E53E3E] to-[#FF7A00] text-white rounded-lg hover:opacity-90 flex items-center gap-2 font-medium disabled:opacity-50">{csrLoading && <Loader2 className="animate-spin" size={16} />}{csrLoading ? "Saving..." : editingCSREvent ? "Update Event" : "Create Event"}</button>
-                  <button type="button" onClick={resetCsrForm} className="px-6 py-2 bg-[#F7F9FC] text-[#6D7A8B] rounded-lg hover:bg-[#E7ECF3] border border-[#E7ECF3]">Cancel</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Message modal */}
+      {/* Message View Modal */}
       {showMessageModal && selectedMessage && (
-        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setShowMessageModal(false); }}>
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl overflow-hidden">
             <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-[#0B0F1A]">Message Details</h3>
-                <button onClick={() => setShowMessageModal(false)} className="p-2 text-[#6D7A8B] hover:bg-[#F7F9FC] rounded-lg"><X size={20} /></button>
+              <div className="flex justify-between items-center mb-4 border-b border-[#1B3A6B]/10 pb-3">
+                <h3 className="text-base font-serif font-bold text-[#1B3A6B]">Inquiry Details</h3>
+                <button onClick={() => setShowMessageModal(false)} className="p-1 text-[#1B3A6B]/50 hover:bg-[#1B3A6B]/5 rounded"><X size={18} /></button>
               </div>
-              <div className="space-y-4">
-                <div className="bg-[#F7F9FC] p-4 rounded-xl border border-[#E7ECF3]">
-                  <div className="grid grid-cols-2 gap-4 mb-3">
-                    <div><p className="text-xs text-[#6D7A8B]">Name</p><p className="font-semibold">{selectedMessage.name}</p></div>
-                    <div><p className="text-xs text-[#6D7A8B]">Date</p><p className="font-semibold">{formatDate(selectedMessage.created_at)}</p></div>
-                    <div><p className="text-xs text-[#6D7A8B]">Email</p><a href={`mailto:${selectedMessage.email}`} className="font-semibold text-[#2B4C73] hover:underline">{selectedMessage.email}</a></div>
-                    {selectedMessage.phone && <div><p className="text-xs text-[#6D7A8B]">Phone</p><a href={`tel:${selectedMessage.phone}`} className="font-semibold text-[#2B4C73] hover:underline">{selectedMessage.phone}</a></div>}
-                  </div>
-                  <div className="mb-3"><p className="text-xs text-[#6D7A8B]">Subject</p><p className="font-semibold">{selectedMessage.subject}</p></div>
-                  <div><p className="text-xs text-[#6D7A8B] mb-1">Message</p><p className="text-gray-700 whitespace-pre-wrap bg-white p-3 rounded-lg border border-[#E7ECF3] text-sm">{selectedMessage.message}</p></div>
-                </div>
-                <div className="flex gap-3">
-                  <select value={selectedMessage.status}
-                    onChange={async e => {
-                      const newStatus = e.target.value as ContactMessage['status'];
-                      const token = await getSessionToken(); if (!token) return;
-                      const res = await fetch(`/api/admin/contact-messages/${selectedMessage.id}`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
-                      if (res.ok) { setContactMessages(prev => prev.map(m => m.id === selectedMessage.id ? { ...m, status: newStatus } : m)); setSelectedMessage({ ...selectedMessage, status: newStatus }); showSuccessMessage("Success", "Status updated!"); }
-                    }}
-                    className="px-3 py-2 border border-[#E7ECF3] rounded-lg bg-white text-sm focus:outline-none">
-                    <option value="unread">Unread</option>
-                    <option value="read">Read</option>
-                    <option value="replied">Replied</option>
-                    <option value="archived">Archived</option>
-                  </select>
+              <div className="space-y-3 text-xs text-[#1B3A6B]">
+                <div><p className="text-[#1B3A6B]/50">From:</p><p className="font-semibold text-sm">{selectedMessage.name} ({selectedMessage.email})</p></div>
+                <div><p className="text-[#1B3A6B]/50">Subject:</p><p className="font-medium">{selectedMessage.subject}</p></div>
+                <div><p className="text-[#1B3A6B]/50">Message</p><p className="bg-[#1B3A6B]/5 p-3 rounded border border-[#1B3A6B]/10 mt-1 whitespace-pre-wrap">{selectedMessage.message}</p></div>
+                <div className="pt-2 flex gap-3">
                   <button onClick={() => window.location.href = `mailto:${selectedMessage.email}?subject=Re: ${selectedMessage.subject}`}
-                    className="px-4 py-2 bg-[#2B4C73] text-white rounded-lg hover:bg-[#1E3A5F] flex items-center gap-2 text-sm font-medium transition">
-                    <Mail size={15} /> Reply via Email
+                    className="px-4 py-2 bg-[#1B3A6B] text-white rounded font-medium flex items-center gap-2">
+                    <Mail size={14} /> Reply via Email
                   </button>
                 </div>
               </div>
@@ -1991,42 +1544,10 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Photo upload modal */}
-      {showPhotoUploadModal && (
-        <div className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setShowPhotoUploadModal(false); }}>
-          <div className="bg-white rounded-xl max-w-lg w-full shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-[#0B0F1A]">Upload Event Photos</h3>
-                <button onClick={() => { setShowPhotoUploadModal(false); setCsrPhotoFiles([]); setCsrPhotoPreviews([]); }} className="p-2 text-[#6D7A8B] hover:bg-[#F7F9FC] rounded-lg"><X size={20} /></button>
-              </div>
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-[#E7ECF3] rounded-xl cursor-pointer hover:border-[#FF7A00] hover:bg-[#FFF4E6] transition mb-4">
-                <Upload className="text-[#6D7A8B] mb-2" size={24} /><span className="text-sm text-[#6D7A8B]">Click to select photos</span>
-                <input type="file" accept="image/*" multiple onChange={handleCsrPhotoFilesChange} className="hidden" />
-              </label>
-              {csrPhotoPreviews.length > 0 && <div className="flex flex-wrap gap-2 mb-4">{csrPhotoPreviews.map((preview, i) => (<div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#E7ECF3]"><img src={preview} className="w-full h-full object-cover" /><button onClick={() => { setCsrPhotoFiles(prev => prev.filter((_, idx) => idx !== i)); setCsrPhotoPreviews(prev => prev.filter((_, idx) => idx !== i)); }} className="absolute top-0.5 right-0.5 p-0.5 bg-red-500 text-white rounded-full"><X size={10} /></button></div>))}</div>}
-              <p className="text-sm text-[#6D7A8B] mb-4">{csrPhotoFiles.length} photo(s) selected</p>
-              <div className="flex gap-3">
-                <button onClick={handleUploadPhotos} disabled={csrLoading || csrPhotoFiles.length === 0}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-lg hover:opacity-90 flex items-center justify-center gap-2 font-medium disabled:opacity-50">
-                  {csrLoading && <Loader2 className="animate-spin" size={16} />}{csrLoading ? "Uploading..." : "Upload Photos"}
-                </button>
-                <button onClick={() => { setShowPhotoUploadModal(false); setCsrPhotoFiles([]); setCsrPhotoPreviews([]); }} className="px-4 py-2 bg-[#F7F9FC] text-[#6D7A8B] rounded-lg hover:bg-[#E7ECF3] border border-[#E7ECF3]">Cancel</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Status modals */}
+      {/* Status Modals */}
       <StatusModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} type="success" title={modalTitle} message={modalMessage} />
       <StatusModal isOpen={showErrorModal} onClose={() => setShowErrorModal(false)} type="error" title={modalTitle} message={modalMessage} />
       <ConfirmationModal isOpen={showConfirmModal} onClose={() => setShowConfirmModal(false)} onConfirm={confirmAction || (async () => {})} title={modalTitle} message={modalMessage} />
-
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-        .font-montserrat { font-family: 'Poppins', sans-serif; }
-      `}</style>
 
       <Footer />
     </div>

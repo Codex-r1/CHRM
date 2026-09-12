@@ -1,92 +1,112 @@
-import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '../../../lib/supabase/admin';
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Get today's date range
+    const today = new Date();
+    const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+    const todayEnd = new Date(today.setHours(23, 59, 59, 999)).toISOString();
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    const { data: { user }, error: userError } = await supabaseAdmin().auth.getUser(token);
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Run all queries in parallel
+    const [
+      { count: totalMembers },
+      { count: activeMembers },
+      { data: paymentsData },
+      { data: ordersData },
+      { data: eventsData },
+      { data: revenueData }
+    ] = await Promise.all([
+      // Total members
+      supabaseAdmin()
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'member'),
+      
+      // Active members
+      supabaseAdmin()
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'member')
+        .eq('status', 'active'),
+      
+      // Payments data
+      supabaseAdmin()
+        .from('payments')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100),
+      
+      // Orders data
+      supabaseAdmin()
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100),
+      
+      // Events data
+      supabaseAdmin()
+        .from('events')
+        .select('*')
+        .order('event_date', { ascending: true }),
+      
+      // Today's revenue
+      supabaseAdmin()
+        .from('payments')
+        .select('amount')
+        .eq('status', 'confirmed')
+        .gte('created_at', todayStart)
+        .lte('created_at', todayEnd)
+    ]);
 
-    const { data: payments, error } = await supabaseAdmin()
-      .from("payments")
-      .select(`
-        *,
-        profiles:user_id (
-          full_name,
-          email,
-          membership_number
-        )
-      `)
-      .order("created_at", { ascending: false });
+    // Calculate stats
+    const totalRevenue = paymentsData
+      ?.filter(p => p.status === 'confirmed')
+      .reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0) || 0;
 
-    if (error) {
-      console.error("Error fetching payments:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch payments" },
-        { status: 500 }
-      );
-    }
+    const todayRevenue = revenueData
+      ?.reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0) || 0;
 
-    return NextResponse.json({ payments });
-  } catch (error: any) {
+    const pendingPayments = paymentsData
+      ?.filter(p => p.status === 'pending').length || 0;
+
+    const pendingOrders = ordersData
+      ?.filter(o => o.status === 'pending').length || 0;
+
+    const upcomingEvents = eventsData
+      ?.filter(e => e.status === 'upcoming' && e.is_active).length || 0;
+
+    // Recent activity
+    const recentPayments = paymentsData?.slice(0, 5) || [];
+    const recentMembers = await supabaseAdmin()
+      .from('profiles')
+      .select('*')
+      .eq('role', 'member')
+      .order('created_at', { ascending: false })
+      .limit(5)
+      .then(({ data }) => data || []);
+
+    return NextResponse.json({
+      stats: {
+        totalMembers: totalMembers || 0,
+        activeMembers: activeMembers || 0,
+        totalRevenue,
+        todayRevenue,
+        pendingPayments,
+        pendingOrders,
+        totalEvents: eventsData?.length || 0,
+        upcomingEvents
+      },
+      recentPayments,
+      recentMembers,
+      payments: paymentsData || [],
+      orders: ordersData || [],
+      events: eventsData || []
+    });
+  } catch (error) {
+    console.error('Error fetching admin stats:', error);
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PATCH(request: Request) {
-  try {
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    
-    const { data: { user }, error: userError } = await supabaseAdmin().auth.getUser(token);
-    if (userError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { paymentId, status } = body;
-
-    if (!paymentId || !status) {
-      return NextResponse.json(
-        { error: "paymentId and status are required" },
-        { status: 400 }
-      );
-    }
-
-    const { data, error } = await supabaseAdmin()
-      .from("payments")
-      .update({ status })
-      .eq("id", paymentId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error updating payment:", error);
-      return NextResponse.json(
-        { error: "Failed to update payment" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ payment: data });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: 'Failed to fetch dashboard data' },
       { status: 500 }
     );
   }

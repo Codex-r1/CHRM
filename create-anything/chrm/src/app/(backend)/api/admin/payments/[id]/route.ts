@@ -15,7 +15,7 @@ const supabase = createClient(
 
 async function verifyAdminAuth(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
+    const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return { error: 'Missing or invalid authorization header', admin: null };
     }

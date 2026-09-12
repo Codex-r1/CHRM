@@ -111,7 +111,7 @@ export default function ContactPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Failed to send message");
 
-      setFeedback({ type: "success", text: "Message sent successfully! Our team will respond within 24 hours." });
+      setFeedback({ type: "success", text: "Message sent! Our team will respond within 24 hours." });
       setForm({ name: "", email: "", phone: "", subject: "", message: "" });
     } catch (err: any) {
       setFeedback({ type: "error", text: err.message || "Something went wrong. Please try again." });

@@ -1,39 +1,40 @@
 // app/api/auth/session/route.ts
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
+import { cookies } from "next/headers";
 
 export async function GET() {
   try {
     const cookieStore = cookies();
-    const sessionUserId = cookieStore.get("session_user_id");
+    const userId = cookieStore.get("session_user_id")?.value;
+    const accessToken = cookieStore.get("sb-access-token")?.value;
 
-    if (!sessionUserId) {
+    if (!userId) {
       return NextResponse.json({ user: null }, { status: 401 });
     }
 
-    // Get user profile
-    const { data: profile, error } = await supabaseAdmin()
+    const { data: profile } = await supabaseAdmin()
       .from("profiles")
-      .select("id, full_name, email, role, membership_number")
-      .eq("id", sessionUserId.value)
+      .select("*")
+      .eq("id", userId)
       .maybeSingle();
 
-    if (error || !profile) {
-      return NextResponse.json({ user: null }, { status: 401 });
+    if (!profile) {
+      return NextResponse.json({ user: null }, { status: 404 });
     }
 
     return NextResponse.json({
       user: {
-        id: profile.id,
+        id: userId,
         email: profile.email,
         full_name: profile.full_name,
-        role: profile.role,
         membership_number: profile.membership_number,
-      }
+        role: profile.role,
+      },
+      // ← ADD: return the token so the dashboard can pick it up
+      access_token: accessToken || null,
     });
-  } catch (error) {
-    console.error("Session error:", error);
+  } catch (err) {
     return NextResponse.json({ user: null }, { status: 500 });
   }
 }

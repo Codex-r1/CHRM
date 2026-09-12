@@ -7,7 +7,8 @@ export async function POST() {
     // Clear the session cookie
     const cookieStore = cookies();
     cookieStore.delete("session_user_id");
-    
+  cookieStore.delete('sb-access-token');   // ← ADD
+  cookieStore.delete('sb-refresh-token');  // ← ADD
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Logout error:", error);

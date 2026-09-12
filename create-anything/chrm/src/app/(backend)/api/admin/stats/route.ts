@@ -4,9 +4,9 @@ import { supabaseAdmin } from '../../../lib/supabase/admin';
 export async function GET(request: NextRequest) {
   try {
     // Get today's date range
-    const today = new Date();
-    const todayStart = new Date(today.setHours(0, 0, 0, 0)).toISOString();
-    const todayEnd = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+    const now = new Date();
+const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).toISOString();
+const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
 
     // Run all queries in parallel
     const [

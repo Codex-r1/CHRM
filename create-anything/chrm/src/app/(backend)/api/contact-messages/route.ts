@@ -62,10 +62,22 @@ export async function POST(req: Request) {
       .select("id")
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+        if (error) {
+      console.error('contact_messages insert error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: error.code,
+          hint: error.hint,
+        },
+        { status: 500 }
+      );
     }
-
     return NextResponse.json({ ok: true, id: data?.id }, { status: 201 });
   } catch (e: any) {
     return NextResponse.json(

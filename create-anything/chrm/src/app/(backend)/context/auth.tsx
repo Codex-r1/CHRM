@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     checkSession();
   }, []);
 
-  const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string) => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -90,6 +90,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('lastActivity', Date.now().toString());
 
+      // ← NEW: store Supabase tokens
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+      }
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+
       const redirectPath = data.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
       window.location.href = redirectPath;
 
@@ -99,9 +107,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = async () => {
+   const logout = async () => {
     try {
-      await fetch('/api/auth/logout', { 
+      await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       });
@@ -110,8 +118,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setUser(null);
       localStorage.removeItem('user');
+      localStorage.removeItem('access_token');   // ← NEW
+      localStorage.removeItem('refresh_token');  // ← NEW
       sessionStorage.clear();
-      
+
       await new Promise(resolve => setTimeout(resolve, 100));
       window.location.href = '/';
     }
@@ -138,22 +148,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Add the refreshSession method
-  const refreshSession = async () => {
+    const refreshSession = async () => {
     try {
-      // Update the last activity timestamp
       localStorage.setItem('lastActivity', Date.now().toString());
-      
-      // Optionally, you can also refresh the session with the server
+
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.user) {
           setUser(data.user);
           localStorage.setItem('user', JSON.stringify(data.user));
+        }
+        // ← NEW: update token if refresh returns a new one
+        if (data.access_token) {
+          localStorage.setItem('access_token', data.access_token);
+        }
+        if (data.refresh_token) {
+          localStorage.setItem('refresh_token', data.refresh_token);
         }
       }
     } catch (error) {

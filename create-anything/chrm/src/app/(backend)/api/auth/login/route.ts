@@ -66,8 +66,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5. Set session cookie
+    // 5. Set session cookies (both the user_id cookie AND the Supabase tokens)
     const cookieStore = cookies();
+
     cookieStore.set("session_user_id", userId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -76,7 +77,28 @@ export async function POST(request: Request) {
       path: "/",
     });
 
-    // 6. Return success with user data
+    // Store the Supabase access token so API routes can validate it
+    if (authData.session?.access_token) {
+      cookieStore.set("sb-access-token", authData.session.access_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+        path: "/",
+      });
+    }
+
+    if (authData.session?.refresh_token) {
+      cookieStore.set("sb-refresh-token", authData.session.refresh_token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        path: "/",
+      });
+    }
+
+    // 6. Return success with user data AND the access token
     const userData = {
       id: userId,
       email: cleanEmail,
@@ -85,14 +107,14 @@ export async function POST(request: Request) {
       role: profile.role || "member",
     };
 
-    // Create response with proper headers
     const response = NextResponse.json({
       success: true,
       role: profile.role || "member",
       user: userData,
+      access_token: authData.session?.access_token,
+      refresh_token: authData.session?.refresh_token,
     });
 
-    // Add additional headers to prevent caching issues
     response.headers.set('Cache-Control', 'no-store, max-age=0');
     response.headers.set('Pragma', 'no-cache');
 

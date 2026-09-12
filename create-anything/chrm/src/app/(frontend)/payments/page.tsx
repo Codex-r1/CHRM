@@ -31,6 +31,8 @@ import {
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Variants } from "framer-motion";
+import { FEATURES } from "../../(backend)/lib/features/features";
+import StripeCheckout from "../components/StripeCheckout";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type FormData = {
@@ -148,29 +150,31 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
 
   const paymentMethods = [
-    {
-      id: "mpesa" as PaymentMethod,
-      label: "M-PESA",
-      icon: "/m-pesa-logo_1.png",
-      isImage: true,
-      description: "Kenya",
-    },
-    {
-      id: "visa" as PaymentMethod,
-      label: "Visa / Mastercard",
-      icon: "/mastercard.png",
-      isImage: true,
-      description: "Global",
-    },
-    {
-      id: "paypal" as PaymentMethod,
-      label: "PayPal",
-      icon: "/paypal-3384015_1280.png",
-      isImage: true,
-      description: "Global",
-    },
-  ];
-
+  {
+    id: "mpesa" as PaymentMethod,
+    label: "M-PESA",
+    icon: "/m-pesa-logo_1.png",
+    isImage: true,
+    description: "Kenya",
+    disabled: false,
+  },
+  {
+    id: "visa" as PaymentMethod,
+    label: "Visa / Mastercard",
+    icon: "/mastercard.png",
+    isImage: true,
+    description: "Global",
+    disabled: false,
+  },
+  {
+    id: "paypal" as PaymentMethod,
+    label: "PayPal",
+    icon: "/paypal-3384015_1280.png",
+    isImage: true,
+    description: "Global",
+    disabled: !FEATURES.paypal.enabled,
+  },
+];
   const cardType = detectCardType(cardDetails.cardNumber);
 
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -299,90 +303,82 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       {/* SELECTION GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {paymentMethods.map((method) => {
-          const isSelected = paymentMethod === method.id;
-          const isHovered = hoveredMethod === method.id;
+  const isSelected = paymentMethod === method.id;
+  const isHovered = hoveredMethod === method.id;
+  const isDisabled = method.disabled;
 
-          return (
-            <motion.button
-              key={method.id}
-              type="button"
-              onClick={() => setPaymentMethod(method.id)}
-              onMouseEnter={() => setHoveredMethod(method.id)}
-              onMouseLeave={() => setHoveredMethod(null)}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              className={`relative p-4 border-2 rounded-lg transition-all duration-300 text-center group cursor-pointer ${
-                isSelected
-                  ? "border-[#C9A84C] bg-[#C9A84C]/5 shadow-sm"
-                  : "border-[#1B3A6B]/10 hover:border-[#1B3A6B]/20 hover:bg-[#1B3A6B]/5"
-              }`}
-            >
-              {isSelected && (
-                <motion.div
-                  layoutId="payment-selection"
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#C9A84C] rounded-full flex items-center justify-center"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  <CheckCircle className="w-3 h-3 text-white" />
-                </motion.div>
-              )}
+  return (
+    <motion.button
+      key={method.id}
+      type="button"
+      onClick={() => {
+        if (isDisabled) return;
+        setPaymentMethod(method.id);
+      }}
+      onMouseEnter={() => !isDisabled && setHoveredMethod(method.id)}
+      onMouseLeave={() => setHoveredMethod(null)}
+      whileHover={isDisabled ? undefined : { y: -2 }}
+      whileTap={isDisabled ? undefined : { scale: 0.97 }}
+      disabled={isDisabled}
+      title={isDisabled ? "PayPal payments are coming soon. Please use M-PESA or Card." : undefined}
+      className={`relative p-4 border-2 rounded-lg transition-all duration-300 text-center group ${
+        isDisabled
+          ? "cursor-not-allowed opacity-60 bg-gray-50 border-[#1B3A6B]/5"
+          : isSelected
+            ? "cursor-pointer border-[#C9A84C] bg-[#C9A84C]/5 shadow-sm"
+            : "cursor-pointer border-[#1B3A6B]/10 hover:border-[#1B3A6B]/20 hover:bg-[#1B3A6B]/5"
+      }`}
+    >
+      {isSelected && !isDisabled && (
+        <motion.div
+          layoutId="payment-selection"
+          className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#C9A84C] rounded-full flex items-center justify-center"
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        >
+          <CheckCircle className="w-3 h-3 text-white" />
+        </motion.div>
+      )}
 
-              <motion.div
-                animate={{
-                  scale: isSelected || isHovered ? 1.05 : 1,
-                  rotate: isHovered ? [0, -3, 3, 0] : 0,
-                }}
-                transition={{ duration: 0.3 }}
-                className={`w-14 h-14 mx-auto rounded-xl flex items-center justify-center mb-3 transition-all duration-300 ${
-                  isSelected
-                    ? "bg-[#C9A84C]/10 shadow-md"
-                    : "bg-[#1B3A6B]/5 group-hover:shadow-sm"
-                }`}
-              >
-                {method.isImage ? (
-                  <img
-                    src={method.icon as string}
-                    alt={method.label}
-                    className={`w-10 h-10 object-contain transition-all duration-300 ${
-                      isSelected ? "scale-110" : "group-hover:scale-105"
-                    }`}
-                  />
-                ) : (
-                  <method.icon
-                    className={`transition-transform duration-300 ${
-                      isSelected
-                        ? "text-[#C9A84C]"
-                        : "text-[#1B3A6B]/50 group-hover:text-[#1B3A6B]"
-                    }`}
-                    size={28}
-                  />
-                )}
-              </motion.div>
+      {isDisabled && (
+        <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-[#C9A84C]/20 text-[#1B3A6B] rounded">
+          Soon
+        </span>
+      )}
 
-              <p
-                className={`text-sm font-medium transition-colors duration-300 ${
-                  isSelected
-                    ? "text-[#1B3A6B]"
-                    : "text-[#1B3A6B]/70 group-hover:text-[#1B3A6B]"
-                }`}
-              >
-                {method.label}
-              </p>
+      <div className="flex flex-col items-center gap-2 mb-2">
+        <div className={`h-10 flex items-center justify-center ${isDisabled ? "grayscale" : ""}`}>
+          <img
+            src={method.icon}
+            alt={method.label}
+            className={`w-12 h-8 object-contain ${isDisabled ? "opacity-50" : ""}`}
+          />
+        </div>
+      </div>
 
-              {isSelected && (
-                <motion.div
-                  layoutId="payment-underline"
-                  className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#C9A84C] rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: 32 }}
-                  transition={{ duration: 0.3 }}
-                />
-              )}
-            </motion.button>
-          );
-        })}
+      <p className={`text-sm font-medium transition-colors duration-300 ${
+        isDisabled
+          ? "text-[#1B3A6B]/40"
+          : isSelected
+            ? "text-[#1B3A6B]"
+            : "text-[#1B3A6B]/70 group-hover:text-[#1B3A6B]"
+      }`}>
+        {method.label}
+      </p>
+
+      {isSelected && !isDisabled && (
+        <motion.div
+          layoutId="payment-underline"
+          className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#C9A84C] rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: 32 }}
+          transition={{ duration: 0.3 }}
+        />
+      )}
+    </motion.button>
+  );
+})}
       </div>
 
       {/* METHOD FORMS */}

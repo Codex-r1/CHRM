@@ -1,3 +1,4 @@
+//api/admin/merchanside/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 

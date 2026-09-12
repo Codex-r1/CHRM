@@ -14,7 +14,16 @@ export async function GET(request: Request) {
     if (userError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+// After verifying the user in the orders route
+const { data: profile } = await supabaseAdmin()
+  .from("profiles")
+  .select("role")
+  .eq("id", user.id)
+  .single();
 
+if (profile?.role !== "admin") {
+  return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 });
+}
     const { data: orders, error } = await supabaseAdmin()
       .from("orders")
       .select(`

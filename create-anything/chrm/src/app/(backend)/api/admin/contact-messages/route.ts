@@ -27,7 +27,7 @@ function supabaseAdmin() {
 }
 
 function getBearerToken(req: Request) {
-  const h = req.headers.get("authorization") || "";
+  const h = req.headers.get("Authorization") || "";
   return h.toLowerCase().startsWith("bearer ") ? h.slice(7) : null;
 }
 
