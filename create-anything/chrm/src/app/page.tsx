@@ -4,7 +4,7 @@ import Footer from "./(frontend)/components/Footer";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Globe, Shield, Calendar, ShoppingBag, Users, Award, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
-
+import Image from "next/image";
 export default function HomePage() {
   const stats = [
     { value: "4,500+", label: "Global Old Turians" },
@@ -53,35 +53,39 @@ export default function HomePage() {
 
       <main className="flex-1">
         {/* HERO SECTION */}
-        <section className="relative h-[75vh] min-h-[540px] w-full overflow-hidden">
-          {/* Background Image */}
-          <div className="absolute inset-0">
-            <img 
-              src="/turi-2.jpg" 
-              alt="St Andrew's Turi - School Grounds" 
-              className="h-full w-full object-cover"
-            />
-            {/* Dark overlay for better text contrast */}
-            <div className="absolute inset-0 bg-black/30" />
-          </div>
-          
-          {/* Anchored Crimson/Maroon Block with Gold Accent Bar */}
-          <div className="absolute bottom-0 left-0 w-full max-w-2xl border-t-4 border-[#C9A84C] bg-[#800020] p-8 md:p-12 lg:ml-12 shadow-2xl">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <h1 className="font-serif text-3xl font-bold leading-tight text-white md:text-5xl">
-                Welcome Home, <br />
-                Old Turian
-              </h1>
-              <p className="mt-3 text-base font-semibold tracking-wide text-[#C9A84C] md:text-lg">
-                Connecting the Turi community across the world
-              </p>
-            </motion.div>
-          </div>
-        </section>
+        <section className="relative h-[60vh] min-h-[420px] md:h-[75vh] md:min-h-[540px] w-full overflow-hidden bg-[#1B3A6B]">
+  <div className="absolute inset-0">
+    <Image
+      src="/turi1.jpg"
+      alt="St Andrew's Turi campus at golden hour"
+      fill
+      priority
+      quality={90}
+      sizes="100vw"
+      className="object-cover object-center"
+    />
+    {/* Lighter overlays — no reason to darken as much with a cleaner source */}
+    <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-black/15 to-transparent" />
+    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+  </div>
+
+  <div className="absolute bottom-0 left-0 w-full max-w-2xl p-6 md:p-12 lg:ml-12">
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      className="border-l-4 border-[#C9A84C] bg-[#1B3A6B]/85 backdrop-blur-md p-8 md:p-10 shadow-2xl"
+    >
+      <h1 className="font-serif text-3xl font-bold leading-tight text-white md:text-5xl">
+        Welcome Home, <br />
+        Old Turian
+      </h1>
+      <p className="mt-3 text-base font-semibold tracking-wide text-[#C9A84C] md:text-lg">
+        Connecting the Turi community across the world
+      </p>
+    </motion.div>
+  </div>
+</section>
 
         {/* QUICK STATS BAR: Solid Navy Grid with Gold Dividers */}
         <section className="border-y border-[#1B3A6B]/10 bg-[#1B3A6B] text-white">
