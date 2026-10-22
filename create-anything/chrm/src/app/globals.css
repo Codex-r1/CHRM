@@ -8,11 +8,16 @@
     --white: #FFFFFF;
   }
 
-  body, p, span, a, button, input, label {
-    font-family: var(--font-montserrat), sans-serif !important;
+  body {
+    font-family: var(--font-montserrat), sans-serif;
+    color: var(--navy);
+    -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-playfair), Georgia, serif !important;
+    font-family: var(--font-playfair), Georgia, serif;
+    font-weight: 1000;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
   }
 }

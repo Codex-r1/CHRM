@@ -61,10 +61,6 @@ export async function PATCH(
     const updateData: any = { updated_at: new Date().toISOString() };
     if (name !== undefined) {
       updateData.name = name;
-      // Generate new slug if name changed
-      updateData.slug = name.toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
     }
     if (description !== undefined) updateData.description = description;
     if (base_price !== undefined) updateData.base_price = parseFloat(base_price);

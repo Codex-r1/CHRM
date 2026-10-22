@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Menu, X, Loader2, CheckCircle, Users } from "lucide-react";
+import { Menu, X, Loader2, CheckCircle, Users, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from '../../(backend)/context/auth';
@@ -17,12 +17,10 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Close mobile menu on route change
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  // Prevent scrolling when overlay is open
   useEffect(() => {
     if (showLogoutOverlay) {
       document.body.style.overflow = 'hidden';
@@ -34,39 +32,16 @@ export default function Header() {
     };
   }, [showLogoutOverlay]);
 
-  // Clean up stale session data
-  useEffect(() => {
-    if (!authLoading && !user) {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        localStorage.removeItem('user');
-        sessionStorage.clear();
-      }
-    }
-  }, [user, authLoading]);
-
-  // Handle logout with proper state clearing
   const handleLogout = async () => {
     if (isLoggingOut) return;
-    
     setIsLoggingOut(true);
     setShowLogoutOverlay(true);
     setLogoutStep('logging');
-
     try {
-      // Call the logout function from auth context
       await logout();
-      
-      // Show success state
       setLogoutStep('success');
-      
-      // Wait for success animation
       await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Force a full page reload to clear all state
-      // The auth context logout should handle the redirect, but we'll ensure it happens
       window.location.href = '/';
-      
     } catch (error) {
       console.error('Logout error:', error);
       setShowLogoutOverlay(false);
@@ -75,9 +50,10 @@ export default function Header() {
     }
   };
 
-  // Standard Public Navigation
+  // Added "Alumni Stories" and refined order for narrative flow
   const publicNavItems = [
     { label: "Old Turians", href: "/" },
+    { label: "Alumni Stories", href: "/stories" }, 
     { label: "Membership", href: "/payments" },
     { label: "Events", href: "/events" },
     { label: "Merchandise", href: "/merchandise" },
@@ -85,12 +61,11 @@ export default function Header() {
     { label: "Get In Touch", href: "/contact" },
   ];
 
-  // Dynamic Navigation: Appends "Find Alumni" when authenticated
   const navItems = user 
     ? [
-        ...publicNavItems.slice(0, 2),
+        ...publicNavItems.slice(0, 3),
         { label: "Find Old Friends", href: "/member/directory" },
-        ...publicNavItems.slice(2)
+        ...publicNavItems.slice(3)
       ]
     : publicNavItems;
 
@@ -106,103 +81,101 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full shadow-md">
-        {/* BRANDING BAR (Maroon Top) */}
-        <div className="border-b-2 border-[#C9A84C] bg-[#800020] text-white">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3 lg:px-12">
-        
-<Link href="/" className="group flex items-center gap-4">
-  <img 
-    src="/St-Andrews-Turi.png" 
-    alt="St Andrew's Turi" 
-    className="h-14 w-auto transition-transform group-hover:scale-105 object-contain"
-  />
-  <div>
-    <span className="block font-serif text-lg font-bold tracking-tight text-white uppercase md:text-xl">
-      St Andrew's Turi
-    </span>
-    <span className="block text-[10px] font-semibold tracking-widest text-[#C9A84C] uppercase md:text-xs">
-      Est. 1931 · Seeking the Highest
-    </span>
-  </div>
-</Link>
+      <header className="sticky top-0 z-50 w-full shadow-sm">
+        {/* BRANDING BAR: Refined spacing and typography hierarchy */}
+        <div className="border-b border-[#C9A84C]/30 bg-[#800020] text-white">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-12">
+            <Link href="/" className="group flex items-center gap-4">
+              <img 
+                src="/St-Andrews-Turi.png" 
+                alt="St Andrew's Turi" 
+                className="h-12 w-auto transition-transform group-hover:scale-105 object-contain"
+              />
+              <div className="flex flex-col">
+                <span className="font-serif text-xl font-semibold tracking-wide text-white leading-none">
+                  St Andrew's Turi
+                </span>
+                <span className="text-[10px] font-medium tracking-[0.15em] text-[#C9A84C] uppercase mt-1">
+                  Est. 1931 · Old Turians
+                </span>
+              </div>
+            </Link>
 
-            {/* Desktop Auth Controls */}
-            <div className="hidden items-center gap-4 md:flex">
+            {/* Desktop Auth Controls - Refined Button Styles */}
+            <div className="hidden items-center gap-6 md:flex">
               {user ? (
                 <>
                   <Link
                     href="/member/directory"
-                    className="flex items-center gap-1.5 border border-[#C9A84C] bg-white/10 px-4 py-2 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#C9A84C] hover:text-[#1B3A6B]"
+                    className="text-xs font-semibold tracking-wider text-white/90 uppercase hover:text-[#C9A84C] transition-colors flex items-center gap-2"
                   >
-                    <Users size={14} /> Find Old Friends
+                    <Users size={14} /> Directory
                   </Link>
                   <Link
                     href={user.role === 'admin' ? "/admin/dashboard" : "/member/dashboard"}
-                    className="border border-[#C9A84C] bg-[#C9A84C] px-5 py-2 text-xs font-bold tracking-wider text-[#1B3A6B] uppercase transition-all hover:bg-white hover:text-[#800020]"
+                    className="bg-[#C9A84C] px-5 py-2.5 text-xs font-bold tracking-wider text-[#1B3A6B] uppercase transition-all hover:bg-white"
                   >
                     Dashboard
                   </Link>
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="flex items-center gap-2 border border-white/40 bg-transparent px-5 py-2 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-white hover:text-[#800020] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    className="text-xs font-semibold tracking-wider text-white/60 hover:text-white transition-colors"
                   >
-                    {isLoggingOut ? (
-                      <>
-                        <Loader2 className="animate-spin" size={14} /> Logging out...
-                      </>
-                    ) : (
-                      'Logout'
-                    )}
+                    {isLoggingOut ? <Loader2 className="animate-spin" size={16} /> : 'Logout'}
                   </button>
                 </>
               ) : (
                 <>
                   <Link
                     href="/login"
-                    className="text-xs font-bold tracking-wider text-white uppercase hover:text-[#C9A84C] transition-colors"
+                    className="text-xs font-semibold tracking-wider text-white uppercase hover:text-[#C9A84C] transition-colors"
                   >
                     Login
                   </Link>
                   <Link
                     href="/payments"
-                    className="border-2 border-[#C9A84C] bg-[#C9A84C] px-5 py-2 text-xs font-bold tracking-wider text-[#1B3A6B] uppercase transition-all hover:bg-white hover:text-[#800020]"
+                    className="bg-[#C9A84C] px-6 py-2.5 text-xs font-bold tracking-wider text-[#1B3A6B] uppercase transition-all hover:bg-white"
                   >
-                    Register Profile
+                    Join the Society
                   </Link>
                 </>
               )}
             </div>
 
-            {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-white hover:text-[#C9A84C] md:hidden cursor-pointer transition-colors"
+              className="p-2 text-white md:hidden"
               aria-label="Toggle menu"
             >
-              {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
 
-        {/* NAVIGATION BAR (Navy Blue) */}
+        {/* NAVIGATION BAR: Refined spacing and hover states */}
         <nav className="hidden bg-[#1B3A6B] md:block">
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <ul className="flex flex-wrap items-center gap-1">
+            <ul className="flex items-center gap-8">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <li key={item.label}>
                     <Link
                       href={item.href}
-                      className={`block border-b-4 px-5 py-3 text-xs font-bold uppercase tracking-widest transition-all ${
+                      className={`block py-4 text-[13px] font-semibold tracking-wide transition-colors relative ${
                         isActive
-                          ? "border-[#C9A84C] bg-white/10 text-white"
-                          : "border-transparent text-white/90 hover:border-[#C9A84C] hover:bg-white/5 hover:text-white"
+                          ? "text-[#C9A84C]"
+                          : "text-white/80 hover:text-white"
                       }`}
                     >
                       {item.label}
+                      {isActive && (
+                        <motion.div 
+                          layoutId="nav-underline"
+                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#C9A84C]" 
+                        />
+                      )}
                     </Link>
                   </li>
                 );
@@ -211,14 +184,13 @@ export default function Header() {
           </div>
         </nav>
 
-        {/* MOBILE DROPDOWN MENU */}
+        {/* Mobile Menu - Logic remains similar but styled cleaner */}
         <AnimatePresence>
           {mobileMenuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               className="border-t border-[#C9A84C] bg-[#1B3A6B] text-white md:hidden overflow-hidden"
             >
               <nav className="flex flex-col px-6 py-6 space-y-4">
@@ -226,58 +198,21 @@ export default function Header() {
                   <Link
                     key={item.label}
                     href={item.href}
-                    className={`text-xs font-bold uppercase tracking-widest py-2 border-b border-white/10 ${
-                      pathname === item.href ? "text-[#C9A84C]" : "text-white hover:text-[#C9A84C]"
-                    } transition-colors`}
-                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-sm font-medium tracking-wide text-white/90 hover:text-[#C9A84C]"
                   >
                     {item.label}
                   </Link>
                 ))}
-                {/* Mobile Auth Actions */}
+                <div className="h-px bg-white/10 my-2" />
                 {user ? (
                   <>
-                    <Link
-                      href="/member/directory"
-                      className="text-xs font-bold uppercase tracking-widest py-2 border-b border-white/10 text-[#C9A84C] flex items-center gap-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <Users size={14} /> Find Old Friends
-                    </Link>
-                    <Link
-                      href={user.role === 'admin' ? "/admin/dashboard" : "/member/dashboard"}
-                      className="text-xs font-bold uppercase tracking-widest py-2 border-b border-white/10 text-[#C9A84C]"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
-                    <button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        handleLogout();
-                      }}
-                      disabled={isLoggingOut}
-                      className="text-xs font-bold uppercase tracking-widest py-2 text-white/70 hover:text-white transition-colors text-left disabled:opacity-50"
-                    >
-                      {isLoggingOut ? 'Logging out...' : 'Logout'}
-                    </button>
+                    <Link href="/member/dashboard" className="text-sm font-medium text-[#C9A84C]">Dashboard</Link>
+                    <button onClick={() => { setMobileMenuOpen(false); handleLogout(); }} className="text-left text-sm text-white/60">LOGOUT</button>
                   </>
                 ) : (
                   <>
-                    <Link
-                      href="/login"
-                      className="text-xs font-bold uppercase tracking-widest py-2 border-b border-white/10 text-white hover:text-[#C9A84C] transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Portal Login
-                    </Link>
-                    <Link
-                      href="/payments"
-                      className="text-xs font-bold uppercase tracking-widest py-2 text-[#C9A84C] hover:text-[#C9A84C]/80 transition-colors"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Register Profile
-                    </Link>
+                    <Link href="/login" className="text-sm font-medium text-[#C9A84C]">Login</Link>
+                    <Link href="/payments" className="text-sm font-medium text-white">Join the Society</Link>
                   </>
                 )}
               </nav>
@@ -286,72 +221,30 @@ export default function Header() {
         </AnimatePresence>
       </header>
 
-      {/* LOGOUT OVERLAY */}
+      {/* Logout Overlay*/}
       <AnimatePresence>
         {showLogoutOverlay && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
             className="fixed inset-0 z-[9999] bg-[#1B3A6B]/95 backdrop-blur-sm flex items-center justify-center"
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ 
-                duration: 0.4, 
-                ease: [0.16, 1, 0.3, 1],
-                delay: 0.1 
-              }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
               className="bg-white rounded-lg p-8 max-w-sm w-full mx-4 text-center shadow-2xl"
             >
               {logoutStep === 'logging' && (
                 <>
-                  <div className="w-20 h-20 bg-[#1B3A6B]/10 rounded-full flex items-center justify-center mx-auto mb-5">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-                    >
-                      <Loader2 className="text-[#1B3A6B]" size={36} />
-                    </motion.div>
-                  </div>
-                  <h3 className="text-2xl font-serif font-bold text-[#1B3A6B] mb-2">
-                    Logging Out
-                  </h3>
-                  <p className="text-[#1B3A6B]/60 text-sm">
-                    Please wait while we securely log you out of your account.
-                  </p>
-                  <div className="mt-6 flex justify-center gap-2">
-                    <div className="w-2 h-2 bg-[#C9A84C] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 bg-[#C9A84C] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 bg-[#C9A84C] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
+                  <Loader2 className="animate-spin text-[#1B3A6B] mx-auto mb-4" size={32} />
+                  <h3 className="text-xl font-serif font-bold text-[#1B3A6B]">Logging Out</h3>
                 </>
               )}
-
               {logoutStep === 'success' && (
                 <>
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ 
-                      type: "spring", 
-                      stiffness: 300, 
-                      damping: 25,
-                      delay: 0.1 
-                    }}
-                    className="w-20 h-20 bg-[#C9A84C]/10 rounded-full flex items-center justify-center mx-auto mb-5"
-                  >
-                    <CheckCircle className="text-[#C9A84C]" size={40} />
-                  </motion.div>
-                  <h3 className="text-2xl font-serif font-bold text-[#1B3A6B] mb-2">
-                    Goodbye!
-                  </h3>
-                  <p className="text-[#1B3A6B]/60 text-sm">
-                    You have been successfully logged out.
-                  </p>
+                  <CheckCircle className="text-[#C9A84C] mx-auto mb-4" size={32} />
+                  <h3 className="text-xl font-serif font-bold text-[#1B3A6B]">Goodbye!</h3>
                 </>
               )}
             </motion.div>

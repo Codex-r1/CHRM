@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { Users, Award, Target, Globe, Shield, BookOpen, Compass } from "lucide-react";
+import { Users, Award, Target, Globe, Shield, BookOpen, Compass, ArrowRight } from "lucide-react";
+import { motion } from "framer-motion";
+import Link from "next/link";
 
 type Official = {
   id: string;
@@ -37,118 +39,160 @@ export default function AboutPage() {
       <Header />
 
       <main className="flex-1">
-        {/* EDITORIAL HERO HEADER */}
-        <section className="border-b border-[#1B3A6B]/10 bg-[#1B3A6B] py-16 text-white">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">
-              Est. 1931 · Seeking the Highest
-            </span>
-            <h1 className="mt-2 font-serif text-3xl font-bold md:text-5xl">
-              About The Old Turians Society
-            </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white/80 md:text-base">
-              Preserving our school's rich heritage, promoting lifelong global connections, and supporting future generations of St Andrew's School, Turi.
-            </p>
+        {/* ─── 1. FULL-BLEED HERO (EMULATING SCREENSHOT) ─── */}
+        <section className="relative h-[60vh] min-h-[500px] w-full overflow-hidden">
+          <img
+            src="/turi1.jpg"
+            alt="Aerial view of St Andrew's Turi campus"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          {/* Subtle dark overlay for text legibility */}
+          <div className="absolute inset-0 bg-black/30" />
+          
+          <div className="absolute bottom-12 left-0 w-full px-6 md:px-12">
+            <div className="mx-auto max-w-7xl">
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                className="font-serif text-5xl font-bold text-white md:text-7xl"
+              >
+                About Turi
+              </motion.h1>
+            </div>
           </div>
         </section>
 
-        {/* MISSION, VISION & GOALS (3-COL GRID WITH GOLD BORDERS) */}
+        {/* ─── 2. EDITORIAL SPLIT SECTION ─── */}
         <section className="mx-auto max-w-7xl px-6 py-16 lg:px-12">
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            {/* Our Mission */}
-            <div className="border-t-4 border-[#C9A84C] border-x border-b border-[#1B3A6B]/10 bg-white p-8">
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center bg-[#1B3A6B] text-[#C9A84C]">
-                <Target size={22} />
-              </div>
-              <h2 className="font-serif text-xl font-bold text-[#1B3A6B]">Our Mission</h2>
-              <blockquote className="mt-4 border-l-2 border-[#C9A84C] pl-4 font-serif italic text-sm text-[#1B3A6B]/90">
-                "To establish and enhance mutually beneficial and enduring relationships between the alumni, students, and school fraternity."
-              </blockquote>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24">
+            
+            {/* Left: Main Narrative (7 cols) */}
+            <div className="lg:col-span-8">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+              >
+                <h2 className="font-serif text-3xl font-bold text-[#1B3A6B]">
+                  The Old Turians Society
+                </h2>
+                <div className="mt-6 space-y-6 text-lg leading-relaxed text-[#1B3A6B]/80">
+                  <p>
+                    Founded in 1931, St Andrew's School, Turi has shaped generations of leaders across East Africa and beyond. The Old Turians Society serves as a lifelong anchor for alumni—fostering global professional networks, preserving school traditions, and supporting current students.
+                  </p>
+                  <p>
+                    Whether you attended the Prep School or Senior School, the society exists to keep you connected to the friends, mentors, and formative experiences that defined your time in Molo. 
+                  </p>
+                </div>
+                
+                <div className="mt-10 border-t border-[#1B3A6B]/10 pt-8">
+                  <h3 className="font-serif text-xl font-bold text-[#1B3A6B] mb-4">How it Works</h3>
+                  <p className="text-base text-[#1B3A6B]/70">
+                    All Old Turian students become members of the association the minute they depart for pastures new. This means you are always welcome back at Turi, at Old Turian events, and can receive regular timely updates on what's going on at the School. 
+                  </p>
+                </div>
+              </motion.div>
             </div>
 
-            {/* Our Vision */}
-            <div className="border-t-4 border-[#C9A84C] border-x border-b border-[#1B3A6B]/10 bg-white p-8">
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center bg-[#1B3A6B] text-[#C9A84C]">
-                <Award size={22} />
-              </div>
-              <h2 className="font-serif text-xl font-bold text-[#1B3A6B]">Our Vision</h2>
-              <blockquote className="mt-4 border-l-2 border-[#C9A84C] pl-4 font-serif italic text-sm text-[#1B3A6B]/90">
-                "To stand as the premier alumni network in Sub-Saharan Africa, recognized for global leadership and community impact."
-              </blockquote>
+            {/* Right: Sidebar Links (4 cols) */}
+            <div className="lg:col-span-4">
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="bg-[#1B3A6B]/5 border-l-4 border-[#C9A84C] p-8"
+              >
+                <h3 className="font-serif text-2xl font-bold text-[#1B3A6B] mb-6">
+                  Quick Links
+                </h3>
+                <ul className="space-y-4">
+                  {[
+                    { label: "Our Purpose", href: "#purpose" },
+                    { label: "Vision, Mission & Values", href: "#vision" },
+                    { label: "Our History", href: "#history" },
+                    { label: "Executive Committee", href: "#leadership" },
+                  ].map((link, idx) => (
+                    <li key={idx}>
+                      <Link 
+                        href={link.href}
+                        className="group flex items-center justify-between text-base font-medium text-[#1B3A6B] hover:text-[#C9A84C] transition-colors"
+                      >
+                        {link.label}
+                        <ArrowRight size={16} className="text-[#C9A84C] opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
             </div>
 
-            {/* Key Functions */}
-            <div className="border-t-4 border-[#C9A84C] border-x border-b border-[#1B3A6B]/10 bg-white p-8">
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center bg-[#1B3A6B] text-[#C9A84C]">
-                <Compass size={22} />
-              </div>
-              <h2 className="font-serif text-xl font-bold text-[#1B3A6B]">Key Objectives</h2>
-              <p className="mt-4 text-xs leading-relaxed text-[#1B3A6B]/80">
-                Advising school management, facilitating student mentorship, connecting alumni professionally across continents, and funding bursaries.
-              </p>
-            </div>
           </div>
         </section>
 
-        {/* CORE VALUES SECTION */}
-        <section className="border-y border-[#1B3A6B]/10 bg-[#1B3A6B]/5 py-16">
+        {/* ─── 3. MISSION & VISION CARDS (ANIMATED) ─── */}
+        <section id="vision" className="border-y border-[#1B3A6B]/10 bg-[#F7F6F2] py-20">
           <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="mb-12 border-b border-[#1B3A6B]/15 pb-4">
+            <div className="mb-12 text-center">
               <span className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">
                 Guiding Principles
               </span>
-              <h2 className="mt-1 font-serif text-2xl font-bold text-[#1B3A6B] md:text-3xl">
-                Our Core Values
+              <h2 className="mt-2 font-serif text-3xl font-bold text-[#1B3A6B] md:text-4xl">
+                Vision, Mission & Objectives
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
               {[
                 {
-                  title: "Relational Fellowship",
-                  desc: "Building enduring lifelong connections across year groups and continents.",
-                  icon: Users,
+                  title: "Our Mission",
+                  icon: Target,
+                  text: "To establish and enhance mutually beneficial and enduring relationships between the alumni, students, and school fraternity."
                 },
                 {
-                  title: "Empowerment",
-                  desc: "Opening global career opportunities, mentorship, and business networks.",
-                  icon: Globe,
+                  title: "Our Vision",
+                  icon: Award,
+                  text: "To stand as the premier alumni network in Sub-Saharan Africa, recognized for global leadership and community impact."
                 },
                 {
-                  title: "Unwavering Integrity",
-                  desc: "Upholding Christian values, accountability, and ethical leadership in all endeavors.",
-                  icon: Shield,
-                },
-                {
-                  title: "Creating Value",
-                  desc: "Investing in bursaries, school projects, and meaningful social impact initiatives.",
-                  icon: BookOpen,
-                },
-              ].map((value, idx) => (
-                <div key={idx} className="border border-[#1B3A6B]/15 bg-white p-6">
-                  <value.icon className="text-[#C9A84C]" size={26} />
-                  <h3 className="mt-4 font-serif text-lg font-bold text-[#1B3A6B]">
-                    {value.title}
+                  title: "Key Objectives",
+                  icon: Compass,
+                  text: "Advising school management, facilitating student mentorship, connecting alumni professionally, and funding bursaries."
+                }
+              ].map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: idx * 0.15 }}
+                  className="group relative bg-white p-8 shadow-sm border border-[#1B3A6B]/10 hover:border-[#C9A84C] transition-colors duration-300"
+                >
+                  <div className="mb-6 inline-flex h-14 w-14 items-center justify-center bg-[#800020] text-[#C9A84C]">
+                    <item.icon size={26} />
+                  </div>
+                  <h3 className="font-serif text-2xl font-bold text-[#1B3A6B]">
+                    {item.title}
                   </h3>
-                  <p className="mt-2 text-xs leading-relaxed text-[#1B3A6B]/80">
-                    {value.desc}
+                  <p className="mt-4 text-sm leading-relaxed text-[#1B3A6B]/70">
+                    {item.text}
                   </p>
-                </div>
+                  <div className="absolute top-0 left-0 w-full h-1 bg-[#C9A84C] scale-x-0 group-hover:scale-x-100 origin-left transition-transform duration-300" />
+                </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* OFFICIALS & EXECUTIVE BOARD SECTION */}
-        <section className="mx-auto max-w-7xl px-6 py-20 lg:px-12">
-          <div className="mb-12 border-b border-[#1B3A6B]/15 pb-4 text-center">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">
-              Leadership
-            </span>
-            <h2 className="mt-1 font-serif text-3xl font-bold text-[#1B3A6B]">
-              Executive Committee & Officials
+        {/* ─── 4. EXECUTIVE COMMITTEE (ANIMATED) ─── */}
+        <section id="leadership" className="mx-auto max-w-7xl px-6 py-20 lg:px-12">
+          <div className="mb-16 text-center">
+            <h2 className="font-serif text-3xl font-bold text-[#1B3A6B] md:text-4xl">
+              Executive Committee
             </h2>
-            <p className="mt-2 text-xs text-[#1B3A6B]/70">
+            <p className="mt-4 text-base text-[#1B3A6B]/60">
               Meet the dedicated Old Turians who lead society operations globally
             </p>
           </div>
@@ -159,77 +203,40 @@ export default function AboutPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {officials.map((official) => (
-                <div
+              {officials.map((official, idx) => (
+                <motion.div
                   key={official.id}
-                  className="group border border-[#1B3A6B]/15 bg-white p-4 transition-all hover:border-[#C9A84C]"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: idx * 0.1 }}
+                  whileHover={{ y: -8 }}
+                  className="group bg-white border border-[#1B3A6B]/10 overflow-hidden hover:shadow-xl transition-all duration-300"
                 >
                   <div className="relative h-80 w-full overflow-hidden bg-[#1B3A6B]/5">
                     <img
                       src={official.image_url}
                       alt={official.name}
-                      className="h-full w-full object-cover grayscale transition-all duration-300 group-hover:grayscale-0"
-                      loading="lazy"
+                      className="h-full w-full object-cover grayscale transition-all duration-500 group-hover:grayscale-0 group-hover:scale-105"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          "https://via.placeholder.com/400x500?text=Photo+Not+Found";
+                        (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x500?text=Photo+Not+Found";
                       }}
                     />
                   </div>
-                  <div className="mt-4 text-center">
-                    <h3 className="font-serif text-lg font-bold text-[#1B3A6B]">
+                  <div className="p-6 text-center">
+                    <h3 className="font-serif text-xl font-bold text-[#1B3A6B]">
                       {official.name}
                     </h3>
                     <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-[#C9A84C]">
                       {official.position}
                     </p>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
-
-          {!loading && officials.length === 0 && (
-            <div className="py-12 text-center">
-              <Users className="mx-auto text-[#1B3A6B]/20" size={48} />
-              <p className="mt-2 text-xs text-[#1B3A6B]/70">No executive officials registered</p>
-            </div>
-          )}
         </section>
 
-        {/* NINETEEN THIRTY-ONE HISTORY & STATS SECTION */}
-        <section className="border-t border-[#1B3A6B]/10 bg-[#1B3A6B] py-16 text-white">
-          <div className="mx-auto max-w-5xl px-6 text-center">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">
-              Ninety-Five Years of Heritage
-            </span>
-            <h2 className="mt-2 font-serif text-3xl font-bold md:text-4xl">
-              The Turi Legacy
-            </h2>
-            <p className="mt-6 text-sm leading-relaxed text-white/80 md:text-base">
-              From its beginnings on a 450-acre highland estate in Molo, Kenya, St Andrew's School, Turi has grown into an iconic institution. Old Turians now occupy prominent leadership positions across financial services, diplomacy, agriculture, technology, and arts worldwide.
-            </p>
-
-            <div className="mt-12 grid grid-cols-2 gap-6 border-t border-white/10 pt-8 md:grid-cols-4">
-              <div>
-                <span className="font-serif text-3xl font-bold text-[#C9A84C]">4,500+</span>
-                <span className="mt-1 block text-[10px] uppercase tracking-widest text-white/70">Global Alumni</span>
-              </div>
-              <div>
-                <span className="font-serif text-3xl font-bold text-[#C9A84C]">38</span>
-                <span className="mt-1 block text-[10px] uppercase tracking-widest text-white/70">Countries</span>
-              </div>
-              <div>
-                <span className="font-serif text-3xl font-bold text-[#C9A84C]">1931</span>
-                <span className="mt-1 block text-[10px] uppercase tracking-widest text-white/70">Founding Year</span>
-              </div>
-              <div>
-                <span className="font-serif text-3xl font-bold text-[#C9A84C]">100%</span>
-                <span className="mt-1 block text-[10px] uppercase tracking-widest text-white/70">Commitment</span>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
       <Footer />

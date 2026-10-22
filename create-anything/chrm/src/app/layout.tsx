@@ -1,8 +1,8 @@
-import { Playfair_Display, Montserrat } from "next/font/google";
 import "./globals.css";
 import React from "react";
 import { AuthProvider } from "./(backend)/context/auth";
 import SessionWarning from "./(frontend)/components/SessionWarning";
+import { Playfair_Display, Montserrat } from "next/font/google";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -13,7 +13,7 @@ const playfair = Playfair_Display({
 const montserrat = Montserrat({
   subsets: ["latin"],
   variable: "--font-montserrat",
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["600", "800", "900", "900", "700"],
   display: "swap",
 });
 
@@ -29,17 +29,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${playfair.variable} ${montserrat.variable}`}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
-      {/* Explicitly set font-montserrat class and apply Montserrat variable */}
-      <body className={`${montserrat.className} bg-white text-[#1B3A6B] antialiased selection:bg-[#C9A84C] selection:text-[#1B3A6B]`}>
+      <body className="bg-white text-[#1B3A6B] antialiased selection:bg-[#C9A84C] selection:text-[#1B3A6B]">
         <AuthProvider>
           <SessionWarning />
-          <main className="min-h-screen">
-            {children}
-          </main>
+          <main className="min-h-screen">{children}</main>
         </AuthProvider>
       </body>
     </html>

@@ -130,7 +130,7 @@ function LoginForm() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="border-t-4 border-[#C9A84C] border-x border-b border-[#1B3A6B]/15 bg-white p-8 md:p-10 shadow-sm"
+            className="border-t-4 border-x border-b border-[#1B3A6B]/15 bg-white p-8 md:p-10 shadow-sm"
           >
             {/* CARD HEADER */}
             <div className="mb-8 text-center">

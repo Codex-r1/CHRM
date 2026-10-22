@@ -1,64 +1,114 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../../(backend)/context/auth';
-import { AlertTriangle, X, RefreshCw, Clock } from 'lucide-react';
+import { X, RefreshCw, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const SESSION_TIMEOUT = 20 * 60 * 1000; // 20 minutes
 const WARNING_TIME = 5 * 60 * 1000; // Warn 5 minutes before
 
 export default function SessionWarning() {
-  const { user, refreshSession } = useAuth();
+  const { user, refreshSession, logout } = useAuth();
+  const router = useRouter();
   const [showWarning, setShowWarning] = useState(false);
   const [minutesLeft, setMinutesLeft] = useState(5);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const loggingOutRef = useRef(false);
 
+  // Set initial activity when user logs in
+  useEffect(() => {
+    if (user) {
+      if (!localStorage.getItem('lastActivity')) {
+        localStorage.setItem('lastActivity', Date.now().toString());
+      }
+    }
+  }, [user]);
+
+  // Main check interval
   useEffect(() => {
     if (!user) return;
 
-    const checkInterval = setInterval(() => {
+    const checkSession = async () => {
       const lastActivity = parseInt(localStorage.getItem('lastActivity') || Date.now().toString());
       const timeSinceLastActivity = Date.now() - lastActivity;
       const timeUntilExpiry = SESSION_TIMEOUT - timeSinceLastActivity;
 
-      if (timeUntilExpiry > 0 && timeUntilExpiry <= WARNING_TIME) {
+      // ✅ LOGOUT when time has expired
+      if (timeUntilExpiry <= 0) {
+        if (loggingOutRef.current) return;
+        loggingOutRef.current = true;
+
+        console.log('⏰ Session expired - logging out');
+        setShowWarning(false);
+        try {
+          if (logout) await logout();
+        } catch (e) {
+          console.error('Logout failed:', e);
+        }
+        localStorage.removeItem('lastActivity');
+        router.push('/login?reason=session_expired');
+        return;
+      }
+
+      // Show warning when 5 minutes left
+      if (timeUntilExpiry <= WARNING_TIME) {
         const minutes = Math.ceil(timeUntilExpiry / 60000);
         setMinutesLeft(minutes);
         setShowWarning(true);
       } else {
         setShowWarning(false);
       }
-    }, 10000); // Check every 10 seconds
+    };
+
+    // Check immediately, then every 10 seconds
+    checkSession();
+    const checkInterval = setInterval(checkSession, 10000);
 
     return () => clearInterval(checkInterval);
-  }, [user]);
+  }, [user, logout, router]);
 
-  // Update last activity on user interaction
+  // Update activity on user interaction
   useEffect(() => {
+    if (!user) return;
+
     const updateActivity = () => {
+      // Don't update if we're mid-logout
+      if (loggingOutRef.current) return;
       localStorage.setItem('lastActivity', Date.now().toString());
     };
 
-    // Update activity on any user interaction
-    window.addEventListener('click', updateActivity);
-    window.addEventListener('keydown', updateActivity);
-    window.addEventListener('scroll', updateActivity);
-    window.addEventListener('mousemove', updateActivity);
+    const events = ['click', 'keydown', 'scroll', 'mousemove', 'touchstart'];
+
+    events.forEach((event) => {
+      window.addEventListener(event, updateActivity, { passive: true });
+    });
 
     return () => {
-      window.removeEventListener('click', updateActivity);
-      window.removeEventListener('keydown', updateActivity);
-      window.removeEventListener('scroll', updateActivity);
-      window.removeEventListener('mousemove', updateActivity);
+      events.forEach((event) => {
+        window.removeEventListener(event, updateActivity);
+      });
     };
+  }, [user]);
+
+  // Cross-tab sync
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'lastActivity' && e.newValue) {
+        // Another tab updated activity — reset warning
+        setShowWarning(false);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const handleStayLoggedIn = async () => {
     setIsRefreshing(true);
     try {
       localStorage.setItem('lastActivity', Date.now().toString());
-      await refreshSession();
+      if (refreshSession) await refreshSession();
       setShowWarning(false);
     } catch (error) {
       console.error('Failed to refresh session:', error);
@@ -75,7 +125,7 @@ export default function SessionWarning() {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -100, opacity: 0 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md w-full mx-4"
+          className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] max-w-md w-full mx-4"
         >
           <div className="bg-white border-2 border-[#C9A84C] rounded-lg shadow-xl p-5">
             <div className="flex items-start gap-4">
@@ -89,7 +139,9 @@ export default function SessionWarning() {
                   Session Expiring Soon
                 </h3>
                 <p className="text-sm text-[#1B3A6B]/70 mb-3">
-                  Your session will expire in <span className="font-bold text-[#1B3A6B]">{minutesLeft}</span> minute{minutesLeft !== 1 ? 's' : ''} due to inactivity.
+                  Your session will expire in{' '}
+                  <span className="font-bold text-[#1B3A6B]">{minutesLeft}</span>{' '}
+                  minute{minutesLeft !== 1 ? 's' : ''} due to inactivity.
                 </p>
                 <button
                   onClick={handleStayLoggedIn}
@@ -112,6 +164,7 @@ export default function SessionWarning() {
               <button
                 onClick={() => setShowWarning(false)}
                 className="flex-shrink-0 text-[#1B3A6B]/30 hover:text-[#1B3A6B] transition-colors"
+                aria-label="Dismiss"
               >
                 <X size={20} />
               </button>
