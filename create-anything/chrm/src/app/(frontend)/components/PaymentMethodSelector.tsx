@@ -1,9 +1,10 @@
 "use client";
 
-import { Smartphone, CreditCard, Wallet } from "lucide-react";
+import type { Dispatch, SetStateAction } from "react";
 import { FEATURES } from "../../(backend)/lib/features/features";
+import { Field, Input, RadioGroup, type RadioOption } from "./ui";
 
-export type PaymentMethod = 'mpesa' | 'visa' | 'paypal';
+export type PaymentMethod = "mpesa" | "visa" | "paypal";
 
 export interface CardDetails {
   cardNumber: string;
@@ -12,7 +13,9 @@ export interface CardDetails {
   cardholderName: string;
 }
 
-export const detectCardType = (number: string) => {
+export type CardBrand = "visa" | "mastercard" | "amex" | "unknown";
+
+export const detectCardType = (number: string): CardBrand => {
   const clean = number.replace(/\D/g, "");
   if (/^4/.test(clean)) return "visa";
   if (/^(5[1-5]|2[2-7])/.test(clean)) return "mastercard";
@@ -33,93 +36,131 @@ export const formatExpiry = (value: string) => {
   return clean.length >= 3 ? `${clean.slice(0, 2)}/${clean.slice(2)}` : clean;
 };
 
-export default function PaymentMethodSelector({
-  paymentMethod, setPaymentMethod, cardDetails, setCardDetails, currentFee, isProcessing
-}: {
+const CARD_LOGOS: Record<Exclude<CardBrand, "unknown">, { src: string; alt: string }> = {
+  visa: { src: "/images.png", alt: "Visa" },
+  mastercard: { src: "/mastercard.png", alt: "Mastercard" },
+  amex: { src: "/amex.png", alt: "Amex" },
+};
+
+const METHOD_ENABLED: Record<PaymentMethod, boolean> = {
+  mpesa: FEATURES.mpesa.enabled,
+  visa: FEATURES.card.enabled,
+  paypal: FEATURES.paypal.enabled,
+};
+
+function methodOptions(): RadioOption<PaymentMethod>[] {
+  const base: Array<{ value: PaymentMethod; label: string; description: string }> = [
+    { value: "mpesa", label: "M-PESA", description: "Kenya" },
+    { value: "visa", label: "Card", description: "Visa / Mastercard" },
+    { value: "paypal", label: "PayPal", description: "Global" },
+  ];
+  return base.map((m) => ({
+    ...m,
+    disabled: !METHOD_ENABLED[m.value],
+    description: METHOD_ENABLED[m.value] ? m.description : `${m.description} · Soon`,
+  }));
+}
+
+interface PaymentMethodSelectorProps {
   paymentMethod: PaymentMethod;
   setPaymentMethod: (m: PaymentMethod) => void;
   cardDetails: CardDetails;
-  setCardDetails: React.Dispatch<React.SetStateAction<CardDetails>>;
+  setCardDetails: Dispatch<SetStateAction<CardDetails>>;
+  /** Amount in KES shown in the method notes. */
   currentFee: number;
   isProcessing: boolean;
-}) {
-  const methods = [
-    { id: 'mpesa' as PaymentMethod, label: 'M-PESA', sub: 'Kenya', icon: Smartphone, enabled: true },
-    { id: 'visa' as PaymentMethod, label: 'Card', sub: 'Visa / Mastercard', icon: CreditCard, enabled: true },
-    { id: 'paypal' as PaymentMethod, label: 'PayPal', sub: 'Global', icon: Wallet, enabled: FEATURES.paypal.enabled },
-  ];
+  /** Show the explanatory note under M-PESA / PayPal. Set false when the parent renders its own. */
+  showNotes?: boolean;
+}
 
-  const cardType = detectCardType(cardDetails.cardNumber);
-
-  const getCardLogo = () => {
-    switch (cardType) {
-      case "visa": return <img src="/images.png" alt="Visa" className="h-6 w-auto object-contain" />;
-      case "mastercard": return <img src="/mastercard.png" alt="Mastercard" className="h-6 w-auto object-contain" />;
-      case "amex": return <img src="/amex.png" alt="Amex" className="h-6 w-auto object-contain" />;
-      default: return <CreditCard size={18} className="text-[#1B3A6B]/20" />;
-    }
-  };
+export default function PaymentMethodSelector({
+  paymentMethod,
+  setPaymentMethod,
+  cardDetails,
+  setCardDetails,
+  currentFee,
+  isProcessing,
+  showNotes = true,
+}: PaymentMethodSelectorProps) {
+  const brand = detectCardType(cardDetails.cardNumber);
+  const logo = brand !== "unknown" ? CARD_LOGOS[brand] : null;
+  const fee = `KES ${currentFee.toLocaleString()}`;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-3 gap-2">
-        {methods.map((m) => {
-          const isSelected = paymentMethod === m.id;
-          const isDisabled = !m.enabled || isProcessing;
-          return (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => !isDisabled && setPaymentMethod(m.id)}
-              disabled={isDisabled}
-              className={`relative flex flex-col items-center justify-center gap-1 border py-3 px-2 transition-all ${
-                !m.enabled ? "opacity-40 cursor-not-allowed border-gray-200 bg-gray-50" :
-                isSelected ? "border-[#1B3A6B] bg-[#1B3A6B]/5" : "border-[#1B3A6B]/15 hover:border-[#1B3A6B]/30"
-              }`}
-            >
-              {!m.enabled && (
-                <span className="absolute -top-2 right-1 text-[8px] font-bold uppercase bg-white px-1 border border-[#C9A84C] text-[#C9A84C]">Soon</span>
-              )}
-              <m.icon size={18} className={isSelected ? "text-[#1B3A6B]" : "text-[#1B3A6B]/50"} />
-              <span className={`text-[11px] font-semibold uppercase tracking-wider ${isSelected ? "text-[#1B3A6B]" : "text-[#1B3A6B]/50"}`}>{m.label}</span>
-              <span className="text-[9px] text-[#1B3A6B]/40">{m.sub}</span>
-            </button>
-          );
-        })}
-      </div>
+    <div className="ot-stack" style={{ gap: "var(--space-4)" }}>
+      <RadioGroup
+        name="payment-method"
+        aria-label="Payment method"
+        variant="card"
+        orientation="horizontal"
+        options={methodOptions()}
+        value={paymentMethod}
+        onValueChange={setPaymentMethod}
+        disabled={isProcessing}
+      />
 
-      {paymentMethod === 'visa' && (
-        <div className="space-y-4 pt-2">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-[#1B3A6B] mb-1">Card Number</label>
-            <div className="relative flex items-center">
-              <input
-                type="text" maxLength={19} value={cardDetails.cardNumber}
-                onChange={(e) => setCardDetails(p => ({ ...p, cardNumber: formatCardNumber(e.target.value) }))}
-                className="w-full border-b border-[#1B3A6B]/30 bg-transparent py-2 pr-12 text-sm text-[#1B3A6B] focus:border-[#1B3A6B] focus:outline-none transition-colors font-mono"
-                placeholder="0000 0000 0000 0000"
+      {showNotes && paymentMethod === "mpesa" && (
+        <p className="ot-dense ot-muted">
+          You will receive an STK push on your phone. Enter your M-PESA PIN to authorize the payment of {fee}.
+        </p>
+      )}
+
+      {showNotes && paymentMethod === "paypal" && (
+        <p className="ot-dense ot-muted">You will be redirected to PayPal to complete the payment of {fee}.</p>
+      )}
+
+      {paymentMethod === "visa" && (
+        <div className="ot-stack" style={{ gap: "var(--space-4)" }}>
+          <Field label="Card number" htmlFor="card-number" required>
+            <Input
+              id="card-number"
+              inputMode="numeric"
+              autoComplete="cc-number"
+              maxLength={19}
+              placeholder="0000 0000 0000 0000"
+              value={cardDetails.cardNumber}
+              onChange={(e) => setCardDetails((p) => ({ ...p, cardNumber: formatCardNumber(e.target.value) }))}
+              style={{ fontVariantNumeric: "tabular-nums" }}
+              trailing={
+                // eslint-disable-next-line @next/next/no-img-element
+                logo ? <img src={logo.src} alt={logo.alt} style={{ height: 20, width: "auto" }} /> : undefined
+              }
+            />
+          </Field>
+          <div className="ot-grid" style={{ ["--ot-min" as string]: "140px", gap: "var(--space-4)" }}>
+            <Field label="Expiry" htmlFor="card-expiry" required>
+              <Input
+                id="card-expiry"
+                inputMode="numeric"
+                autoComplete="cc-exp"
+                maxLength={5}
+                placeholder="MM/YY"
+                value={cardDetails.expiryDate}
+                onChange={(e) => setCardDetails((p) => ({ ...p, expiryDate: formatExpiry(e.target.value) }))}
               />
-              <div className="absolute right-0 top-1/2 -translate-y-1/2">{getCardLogo()}</div>
-            </div>
+            </Field>
+            <Field label="CVV" htmlFor="card-cvv" required>
+              <Input
+                id="card-cvv"
+                type="password"
+                inputMode="numeric"
+                autoComplete="cc-csc"
+                maxLength={4}
+                placeholder="•••"
+                value={cardDetails.cvv}
+                onChange={(e) => setCardDetails((p) => ({ ...p, cvv: e.target.value.replace(/\D/g, "") }))}
+              />
+            </Field>
           </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#1B3A6B] mb-1">Expiry</label>
-              <input
-                type="text" maxLength={5} value={cardDetails.expiryDate}
-                onChange={(e) => setCardDetails(p => ({ ...p, expiryDate: formatExpiry(e.target.value) }))}
-                className="w-full border-b border-[#1B3A6B]/30 bg-transparent py-2 text-sm text-[#1B3A6B] focus:border-[#1B3A6B] focus:outline-none transition-colors" placeholder="MM/YY"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#1B3A6B] mb-1">CVV</label>
-              <input
-                type="password" maxLength={4} value={cardDetails.cvv}
-                onChange={(e) => setCardDetails(p => ({ ...p, cvv: e.target.value.replace(/\D/g, '') }))}
-                className="w-full border-b border-[#1B3A6B]/30 bg-transparent py-2 text-sm text-[#1B3A6B] focus:border-[#1B3A6B] focus:outline-none transition-colors" placeholder="•••"
-              />
-            </div>
-          </div>
+          <Field label="Cardholder name" htmlFor="card-name" required>
+            <Input
+              id="card-name"
+              autoComplete="cc-name"
+              placeholder="Name as it appears on card"
+              value={cardDetails.cardholderName}
+              onChange={(e) => setCardDetails((p) => ({ ...p, cardholderName: e.target.value }))}
+            />
+          </Field>
         </div>
       )}
     </div>

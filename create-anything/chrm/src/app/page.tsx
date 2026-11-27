@@ -1,200 +1,82 @@
-"use client";
-import Header from "./(frontend)/components/Header";
-import Footer from "./(frontend)/components/Footer";
-import Link from "next/link";
-import { ArrowRight, Globe, Shield, Calendar, ShoppingBag } from "lucide-react";
-import { motion } from "framer-motion";
 import Image from "next/image";
+import SiteShell from "./(frontend)/components/site/SiteShell";
+import { ArrowLink, AutoGrid, FeatureBand, ImageFrame, Section, Tile } from "./(frontend)/components/site/primitives";
+import { ButtonLink } from "./(frontend)/components/ui";
+import { HOME_STATS, PILLARS, ROUTES } from "./(frontend)/content/site";
 
 export default function HomePage() {
-  const stats = [
-    { value: "4,500+", label: "Global Old Turians" },
-    { value: "38", label: "Countries Represented" },
-    { value: "1931", label: "Year Established" },
-  ];
-
-  const Pillars = [
-    {
-      title: "Global Network",
-      description:
-        "Connecting Old Turians across East Africa, the UK, North America and worldwide through dedicated regional chapters.",
-      icon: Globe,
-      link: "/member/dashboard/profile/edit",
-      linkText: "Explore Directory",
-    },
-    {
-      title: "Enduring Heritage",
-      description:
-        "Preserving ninety-five years of tradition, excellence and the foundational values of St Andrew's School, Turi.",
-      icon: Shield,
-      link: "/about",
-      linkText: "Our History",
-    },
-    {
-      title: "Global Events & Reunions",
-      description:
-        "Annual gatherings, regional dinners and milestone reunions.",
-      icon: Calendar,
-      link: "/events",
-      linkText: "Upcoming Events",
-    },
-    {
-      title: "Official Memorabilia",
-      description:
-        "Tailored blazers, crest ties and archival publications dispatchable worldwide via DHL international shipping.",
-      icon: ShoppingBag,
-      link: "/merchandise",
-      linkText: "Visit Store",
-    },
-  ];
-
   return (
-    <div className="flex min-h-screen flex-col bg-white text-[#1B3A6B]">
-      <Header />
-
-      <main className="flex-1">
-        {/* HERO SECTION */}
-        <section className="relative h-[60vh] min-h-[420px] md:h-[75vh] md:min-h-[540px] w-full overflow-hidden bg-[#1B3A6B]">
-          <div className="absolute inset-0">
-            <Image
-              src="/turi1.jpg"
-              alt="St Andrew's Turi campus at golden hour"
-              fill
-              priority
-              quality={90}
-              sizes="100vw"
-              className="object-cover object-center"
-            />
-            {/* Lighter overlays — no reason to darken as much with a cleaner source */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-black/60 via-black/15 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-          </div>
-
-          <div className="absolute bottom-0 left-0 w-full max-w-2xl p-6 md:p-12 lg:ml-12">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-              className="border-l-4 bg-[#1B3A6B]/85 backdrop-blur-md p-8 md:p-10 shadow-2xl"
-            >
-              <h1 className="font-serif text-3xl font-bold leading-tight text-white md:text-5xl">
-                Welcome Home, <br />
-                Old Turian
-              </h1>
-              <p className="mt-3 text-base font-semibold tracking-wide text-[#C9A84C] md:text-lg">
-                Connecting the Turi community across the world
-              </p>
-            </motion.div>
-          </div>
-        </section>
-
-        {/* QUICK STATS BAR */}
-        <section className="border-y border-[#1B3A6B]/10 bg-[#1B3A6B] text-white border-b-4 border-b-[#C9A84C]">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <div className="grid grid-cols-1 divide-y divide-white/10 md:grid-cols-3 md:divide-x md:divide-y-0">
-              {stats.map((stat, idx) => (
-                <div key={idx} className="p-8 text-center">
-                  <motion.span
-                    initial={{ opacity: 0, y: 10 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: idx * 0.1, duration: 0.5 }}
-                    className="block font-serif text-4xl font-bold text-[#C9A84C]"
-                  >
-                    {stat.value}
-                  </motion.span>
-                  <span className="mt-1 block text-xs font-semibold uppercase tracking-widest text-white/80">
-                    {stat.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* INSTITUTIONAL PILLARS GRID */}
-        <section className="bg-white py-20">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="mb-12 text-center"
-            >
-              <span className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">
-                Portal Services
-              </span>
-              <h2 className="mt-2 font-serif text-3xl font-bold text-[#1B3A6B] md:text-4xl">
-                Society Pillars
-              </h2>
-            </motion.div>
-
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-              {Pillars.map((pillar, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1, duration: 0.5 }}
-                  whileHover={{ y: -8, transition: { duration: 0.2 } }}
-                  className="flex flex-col justify-between border border-[#1B3A6B]/15 bg-[#F7F6F2] p-8 transition-all hover:border-[#C9A84C] hover:shadow-lg"
-                >
-                  <div>
-                    <div className="mb-6 inline-flex h-12 w-12 items-center justify-center border border-[#1B3A6B] bg-[#1B3A6B] text-[#C9A84C]">
-                      <pillar.icon size={22} />
-                    </div>
-                    <h3 className="font-serif text-xl font-bold text-[#1B3A6B]">
-                      {pillar.title}
-                    </h3>
-                    <p className="mt-3 text-xs leading-relaxed text-[#1B3A6B]/80">
-                      {pillar.description}
-                    </p>
-                  </div>
-
-                  <div className="mt-8 pt-4 border-t border-[#1B3A6B]/10">
-                    <Link
-                      href={pillar.link}
-                      className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#1B3A6B] hover:text-[#C9A84C] transition-colors"
-                    >
-                      {pillar.linkText} <ArrowRight size={14} />
-                    </Link>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CALL TO ACTION BANNER */}
-        <section className="border-t-4 border-[#C9A84C] bg-[#800020] py-16 text-center text-white">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="mx-auto max-w-4xl px-6"
-          >
-            <h2 className="font-serif text-3xl font-bold text-white md:text-4xl">
-              Are you an Old Turian?
-            </h2>
-            <p className="mt-4 text-sm text-white/80 md:text-base">
-              Join thousands of alumni across the globe. Keep your contact details updated to receive society updates, reunion invites, and regional event access.
+    <SiteShell>
+      {/* Intro */}
+      <Section spacing="intro">
+        <AutoGrid min={280} gap="var(--space-12)" style={{ alignItems: "end" }}>
+          <div className="ot-stack ot-span-2" style={{ gap: "var(--space-6)", maxWidth: 760 }}>
+            <h1 className="ot-hero">Welcome home, Old Turian</h1>
+            <p className="ot-lede">
+              Connecting the Turi community across the world. Preserving our heritage, fostering lifelong connections across East
+              Africa and globally, and supporting future generations since 1931.
             </p>
-            <div className="mt-8">
-              <Link
-                href="/payments"
-                className="inline-block border-2 border-[#C9A84C] bg-[#C9A84C] px-10 py-4 text-xs font-semibold uppercase tracking-widest text-[#1B3A6B] transition-all hover:bg-white hover:border-white"
-              >
-                Join The Society Today
-              </Link>
-            </div>
-          </motion.div>
-        </section>
-      </main>
+          </div>
+          <div className="ot-stack" style={{ gap: "var(--space-3)" }}>
+            <ArrowLink href={ROUTES.membership}>Join the society</ArrowLink>
+            <ArrowLink href={ROUTES.login}>Alumni directory</ArrowLink>
+          </div>
+        </AutoGrid>
 
-      <Footer />
-    </div>
+        <div className="ot-media ot-media--banner" style={{ marginTop: "var(--space-12)" }}>
+          <Image
+            src="/images/campus-aerial.jpg"
+            alt="Aerial view of St Andrew's Turi campus"
+            fill
+            priority
+            sizes="(max-width: 1200px) 100vw, 1152px"
+            style={{ objectFit: "cover" }}
+          />
+        </div>
+
+        <AutoGrid min={200} style={{ marginTop: "var(--space-12)", borderTop: "1px solid var(--divider-strong)" }}>
+          {HOME_STATS.map((stat, i) => (
+            <div
+              key={stat.label}
+              className="ot-stack"
+              style={{
+                gap: "var(--space-2)",
+                padding: i === 0 ? "var(--space-6) var(--space-6) 0 0" : "var(--space-6) var(--space-6) 0",
+                borderLeft: i === 0 ? undefined : "1px solid var(--divider-strong)",
+              }}
+            >
+              <span className="ot-stat">{stat.value}</span>
+              <span className="ot-dense ot-muted">{stat.label}</span>
+            </div>
+          ))}
+        </AutoGrid>
+      </Section>
+
+      {/* Pillars */}
+      <Section>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "var(--space-4)", marginBottom: "var(--space-6)" }}>
+          <h2 className="ot-h2">Society pillars</h2>
+          <span className="ot-caption">Portal services</span>
+        </div>
+        <AutoGrid min={260} gap="var(--space-8) var(--space-6)">
+          {PILLARS.map((p) => (
+            <Tile key={p.title} title={p.title} href={p.href} media={<ImageFrame aspect="wide" placeholder={p.photoNote} />}>
+              <p className="ot-body">{p.body}</p>
+            </Tile>
+          ))}
+        </AutoGrid>
+      </Section>
+
+      {/* Membership band */}
+      <FeatureBand title="Are you an Old Turian?" spacing="last">
+        <p className="ot-body-relaxed">
+          Join thousands of alumni across the globe. Keep your contact details updated to receive society updates, reunion
+          invites, and regional event access.
+        </p>
+        <ButtonLink href={ROUTES.membership} variant="accent" size="lg">
+          Join the society today
+        </ButtonLink>
+      </FeatureBand>
+    </SiteShell>
   );
 }

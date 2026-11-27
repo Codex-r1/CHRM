@@ -1,378 +1,556 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../(backend)/context/auth";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import {
-  ShoppingCart, Minus, Plus, CheckCircle, Package, AlertCircle, 
-  TrashIcon, LogIn, Loader2, ArrowLeft, Globe, Truck, Shield, X, Smartphone
-} from "lucide-react";
-import Link from "next/link";
-import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import PaymentMethodSelector, { PaymentMethod, CardDetails } from "../components/PaymentMethodSelector";
+import SiteShell from "../components/site/SiteShell";
+import { ArrowLink, AutoGrid, FeatureBand, ImageFrame, Notice, PageIntro, Section, Tile } from "../components/site/primitives";
+import PaymentMethodSelector, { type CardDetails, type PaymentMethod } from "../components/PaymentMethodSelector";
+import { Button, ButtonLink, Empty, Field, Input, NativeSelect, RadioGroup, Spinner, ToggleGroup } from "../components/ui";
+import { ROUTES, SHIPPING_COUNTRIES, SHIPPING_METHODS, STORE_CATEGORIES } from "../content/site";
+import type { CartItem, Product, ShippingMethod, StoreCategory, VariantSelection } from "../types/merchandise";
 
-type ProductVariant = { id: string; color_name: string; color_value: string; color_hex: string; size: string; stock_quantity: number; is_available: boolean; image_url: string; };
-type Product = { id: string; name: string; base_price: number; description: string; is_out_of_stock: boolean; variants: ProductVariant[]; };
-type CartItem = { variant_id: string; product_id: string; name: string; price: number; color_name: string; size: string; image: string; quantity: number; stock_available: number; };
+type Step = "shop" | "checkout" | "awaiting-pin" | "success";
 
-type ShippingMethod = 'dhl_express' | 'dhl_economy' | 'pickup';
-const SHIPPING_METHODS: { id: ShippingMethod; label: string; price: number; time: string }[] = [
-  { id: 'dhl_express', label: 'DHL Express Worldwide', price: 45, time: '2-4 business days' },
-  { id: 'dhl_economy', label: 'DHL Economy Select', price: 25, time: '5-8 business days' },
-  { id: 'pickup', label: 'Pickup from School', price: 0, time: 'Ready in 2-3 days' },
-];
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_ATTEMPTS = 40;
+const kes = (n: number) => `KES ${n.toLocaleString()}`;
 
-const SHIPPING_COUNTRIES = ["Kenya", "United Kingdom", "United States", "Canada", "Australia", "South Africa", "Other"];
+/* ── Product helpers ─────────────────────────────────────────────────── */
+
+const uniqueColors = (p: Product) => Array.from(new Map(p.variants.map((v) => [v.color_value, v])).values());
+const sizesFor = (p: Product, color: string) =>
+  p.variants.filter((v) => v.color_value === color).map((v) => ({ size: v.size, available: v.stock_quantity > 0, variant_id: v.id }));
+const imageFor = (p: Product, color: string) => p.variants.find((v) => v.color_value === color)?.image_url || p.variants[0]?.image_url;
+
+/**
+ * Products have no category column yet, so categories are matched by keyword
+ * in the name/description. Replace with a real `category` field when added.
+ */
+function inCategory(p: Product, cat: StoreCategory) {
+  if (cat === "all") return true;
+  const keywords = STORE_CATEGORIES.find((c) => c.value === cat)?.keywords ?? [];
+  const text = `${p.name} ${p.description}`.toLowerCase();
+  return keywords.some((k) => new RegExp(`\\b${k}`).test(text));
+}
+
+/* ── Product card ────────────────────────────────────────────────────── */
+
+function ProductCard({
+  product,
+  selection,
+  onColor,
+  onSize,
+  onAdd,
+}: {
+  product: Product;
+  selection: VariantSelection;
+  onColor: (color: string) => void;
+  onSize: (size: string, variantId: string) => void;
+  onAdd: () => void;
+}) {
+  const colors = uniqueColors(product);
+  const sizes = selection.color ? sizesFor(product, selection.color) : [];
+  const variant = product.variants.find((v) => v.id === selection.variant_id);
+  const canAdd = !!selection.variant_id && !product.is_out_of_stock && (variant?.stock_quantity ?? 0) > 0;
+
+  return (
+    <Tile
+      title={
+        <span style={{ display: "flex", flexDirection: "column" }}>
+          {product.name}
+          <span className="ot-dense" style={{ fontWeight: 600, opacity: 0.85 }}>
+            {kes(product.base_price)}
+          </span>
+        </span>
+      }
+      media={<ImageFrame aspect="photo" src={imageFor(product, selection.color)} alt={product.name} placeholder="Product photo pending" />}
+    >
+      {product.description && <p className="ot-body">{product.description}</p>}
+
+      {colors.length > 0 && (
+        <div className="ot-stack" style={{ gap: "var(--space-2)" }}>
+          <span className="ot-caption">Colour{selection.color ? `: ${colors.find((c) => c.color_value === selection.color)?.color_name}` : ""}</span>
+          <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+            {colors.map((c) => (
+              <button
+                key={c.color_value}
+                type="button"
+                className="ot-swatch"
+                style={{ backgroundColor: c.color_hex }}
+                aria-pressed={selection.color === c.color_value}
+                aria-label={c.color_name}
+                title={c.color_name}
+                onClick={() => onColor(c.color_value)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {selection.color && (
+        <div className="ot-stack" style={{ gap: "var(--space-2)" }}>
+          <span className="ot-caption">Size</span>
+          <div style={{ display: "flex", gap: "var(--space-2)", flexWrap: "wrap" }}>
+            {sizes.map((s) => (
+              <button
+                key={s.variant_id}
+                type="button"
+                className="ot-size"
+                disabled={!s.available}
+                aria-pressed={selection.size === s.size}
+                onClick={() => onSize(s.size, s.variant_id)}
+              >
+                {s.size}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {variant && (
+        <span className="ot-caption" style={{ color: variant.stock_quantity > 5 ? "var(--leaf-ink)" : variant.stock_quantity > 0 ? "var(--honey-ink)" : "var(--signal-ink)" }}>
+          {variant.stock_quantity > 5 ? `${variant.stock_quantity} in stock` : variant.stock_quantity > 0 ? `Only ${variant.stock_quantity} left` : "Out of stock"}
+        </span>
+      )}
+
+      <Button variant={canAdd ? "primary" : "outline"} disabled={!canAdd} onClick={onAdd} block>
+        {product.is_out_of_stock ? "Out of stock" : selection.variant_id ? "Add to cart" : "Choose colour and size"}
+      </Button>
+    </Tile>
+  );
+}
+
+/* ── Page ────────────────────────────────────────────────────────────── */
 
 export default function MerchandisePage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [category, setCategory] = useState<StoreCategory>("all");
+  const [selections, setSelections] = useState<Record<string, VariantSelection>>({});
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [step, setStep] = useState(1); // 1 = Shop, 2 = Checkout, 3 = Waiting for PIN, 4 = Success
-  const [selectedProducts, setSelectedProducts] = useState<Record<string, { color: string; size: string; variant_id: string }>>({});
-  
-  // Checkout State
-  const [customer, setCustomer] = useState({ name: "", email: "", phone: "", address: "", city: "", country: "Kenya", shippingMethod: 'dhl_express' as ShippingMethod });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa');
-  const [cardDetails, setCardDetails] = useState<CardDetails>({ cardNumber: '', expiryDate: '', cvv: '', cardholderName: '' });
-  
-  const [loadingCheckout, setLoadingCheckout] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [step, setStep] = useState<Step>("shop");
 
-  // M-PESA Polling State
-  const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [customer, setCustomer] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    country: "Kenya",
+    shippingMethod: "dhl_express" as ShippingMethod,
+  });
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa");
+  const [cardDetails, setCardDetails] = useState<CardDetails>({ cardNumber: "", expiryDate: "", cvv: "", cardholderName: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = null;
+  };
+  useEffect(() => stopPolling, []);
 
   useEffect(() => {
-    fetch('/api/products/list').then(res => res.json()).then(data => setProducts(data.products || []));
+    fetch("/api/products/list")
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data: { products?: Product[] }) => setProducts(data.products ?? []))
+      .catch(() => setProductsError("We couldn't load the store right now. Please try again shortly."))
+      .finally(() => setProductsLoading(false));
   }, []);
 
   useEffect(() => {
-    if (user) setCustomer(prev => ({ ...prev, name: user.user_metadata?.full_name || "", email: user.email || "" }));
+    if (user) setCustomer((prev) => ({ ...prev, name: user.user_metadata?.full_name || "", email: user.email || "" }));
   }, [user]);
 
-  // Cleanup polling
-  useEffect(() => {
-    return () => { if (pollingInterval) clearInterval(pollingInterval); };
-  }, [pollingInterval]);
+  const visibleProducts = useMemo(() => products.filter((p) => inCategory(p, category)), [products, category]);
 
-  // --- Product Logic (Restored) ---
-  const getAvailableColors = (product: Product) => Array.from(new Map(product.variants.map(v => [v.color_value, v])).values());
-  const getAvailableSizes = (product: Product, colorValue: string) => product.variants.filter(v => v.color_value === colorValue).map(v => ({ size: v.size, available: v.stock_quantity > 0, variant_id: v.id, stock: v.stock_quantity }));
-  const getProductImage = (product: Product, colorValue: string) => product.variants.find(v => v.color_value === colorValue)?.image_url || product.variants[0]?.image_url;
-
-  const handleColorSelect = (productId: string, color: string) => setSelectedProducts(prev => ({ ...prev, [productId]: { color, size: "", variant_id: "" } }));
-  const handleSizeSelect = (productId: string, size: string, variantId: string) => setSelectedProducts(prev => ({ ...prev, [productId]: { ...prev[productId], size, variant_id: variantId } }));
-
+  /* Cart */
   const addToCart = (product: Product) => {
-    const sel = selectedProducts[product.id];
-    if (!sel?.variant_id) return;
-    const variant = product.variants.find(v => v.id === sel.variant_id);
+    const sel = selections[product.id];
+    const variant = sel?.variant_id ? product.variants.find((v) => v.id === sel.variant_id) : undefined;
     if (!variant) return;
-
-    setCart(prev => {
-      const existing = prev.find(item => item.variant_id === variant.id);
+    setCart((prev) => {
+      const existing = prev.find((i) => i.variant_id === variant.id);
       if (existing) {
         if (existing.quantity >= variant.stock_quantity) return prev;
-        return prev.map(item => item.variant_id === variant.id ? { ...item, quantity: item.quantity + 1 } : item);
+        return prev.map((i) => (i.variant_id === variant.id ? { ...i, quantity: i.quantity + 1 } : i));
       }
-      return [...prev, { variant_id: variant.id, product_id: product.id, name: product.name, price: product.base_price, color_name: variant.color_name, size: variant.size, image: variant.image_url, quantity: 1, stock_available: variant.stock_quantity }];
+      return [
+        ...prev,
+        {
+          variant_id: variant.id,
+          product_id: product.id,
+          name: product.name,
+          price: product.base_price,
+          color_name: variant.color_name,
+          size: variant.size,
+          image: variant.image_url,
+          quantity: 1,
+          stock_available: variant.stock_quantity,
+        },
+      ];
     });
   };
+  const updateQty = (idx: number, delta: number) =>
+    setCart((prev) => prev.map((i, n) => (n === idx ? { ...i, quantity: Math.min(i.stock_available, Math.max(1, i.quantity + delta)) } : i)));
+  const removeItem = (idx: number) => setCart((prev) => prev.filter((_, n) => n !== idx));
 
-  const updateQty = (idx: number, delta: number) => setCart(prev => prev.map((item, i) => i === idx ? { ...item, quantity: Math.min(item.stock_available, Math.max(1, item.quantity + delta)) } : item));
-  const removeItem = (idx: number) => setCart(prev => prev.filter((_, i) => i !== idx));
+  const itemCount = cart.reduce((s, i) => s + i.quantity, 0);
+  const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+  const shippingOption = SHIPPING_METHODS.find((m) => m.id === customer.shippingMethod);
+  const shippingCost = shippingOption?.price ?? 0;
+  const total = subtotal + shippingCost;
 
-  const calculateSubtotal = () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const getShippingCost = () => SHIPPING_METHODS.find(m => m.id === customer.shippingMethod)?.price || 0;
-  const calculateTotal = () => calculateSubtotal() + getShippingCost();
+  /* Checkout */
+  const startPolling = (checkoutRequestId: string) => {
+    stopPolling();
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      if (attempts > POLL_MAX_ATTEMPTS) {
+        stopPolling();
+        setStep("checkout");
+        setErrorMsg("Payment timed out.");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/payments/${checkoutRequestId}`);
+        const data = await res.json();
+        if (data.status === "confirmed") {
+          stopPolling();
+          setStep("success");
+        } else if (data.status === "failed" || data.status === "cancelled") {
+          stopPolling();
+          setStep("checkout");
+          setErrorMsg("Payment failed or was cancelled.");
+        }
+      } catch {
+        // keep polling
+      }
+    }, POLL_INTERVAL_MS);
+  };
 
-  // --- Checkout Flow ---
-  const handleCheckout = async (e: React.FormEvent) => {
+  const handleCheckout = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user) return router.push('/login?redirect=/merchandise');
-    setLoadingCheckout(true);
+    if (!user) {
+      router.push(`${ROUTES.login}?redirect=${ROUTES.store}`);
+      return;
+    }
+    setSubmitting(true);
     setErrorMsg("");
-
     try {
-      const total = calculateTotal();
-      const res = await fetch('/api/orders/create', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: user.id, items: cart, total, customer_name: customer.name, customer_email: customer.email, customer_phone: customer.phone, shipping_address: customer.shippingMethod === 'pickup' ? 'Pickup from School' : `${customer.address}, ${customer.city}, ${customer.country}`, shipping_method: customer.shippingMethod, payment_method: paymentMethod })
+      const res = await fetch("/api/orders/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          items: cart,
+          total,
+          customer_name: customer.name,
+          customer_email: customer.email,
+          customer_phone: customer.phone,
+          shipping_address: customer.shippingMethod === "pickup" ? "Pickup from School" : `${customer.address}, ${customer.city}, ${customer.country}`,
+          shipping_method: customer.shippingMethod,
+          payment_method: paymentMethod,
+        }),
       });
       const order = await res.json();
       if (!res.ok) throw new Error(order.error);
 
-      if (paymentMethod === 'mpesa') {
-        const mpesaRes = await fetch('/api/payments/stk-push', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phoneNumber: customer.phone, amount: total, paymentType: 'merchandise', userId: user.id, metadata: { order_id: order.order.id, items: cart } })
+      if (paymentMethod === "mpesa") {
+        const mpesaRes = await fetch("/api/payments/stk-push", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber: customer.phone, amount: total, paymentType: "merchandise", userId: user.id, metadata: { order_id: order.order.id, items: cart } }),
         });
         const mpesaData = await mpesaRes.json();
         if (!mpesaRes.ok) throw new Error(mpesaData.message);
-        
-        setCheckoutRequestId(mpesaData.checkoutRequestID);
-        setStep(3); // Show PIN Modal
+        setStep("awaiting-pin");
         startPolling(mpesaData.checkoutRequestID);
       } else {
-        // Stripe Card Logic
-        setStep(4); // Success
+        // TODO: card payments are not charged here yet (unchanged from the previous implementation).
+        setStep("success");
       }
-    } catch (err: any) {
-      setErrorMsg(err.message);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Checkout failed.");
     } finally {
-      setLoadingCheckout(false);
+      setSubmitting(false);
     }
   };
 
-  const startPolling = (id: string) => {
-    let count = 0;
-    const interval = setInterval(async () => {
-      count++;
-      if (count > 40) { clearInterval(interval); setPollingInterval(null); setStep(2); setErrorMsg("Payment timed out."); return; }
-      
-      const res = await fetch(`/api/payments/${id}`);
-      const data = await res.json();
-      
-      if (data.status === 'confirmed') {
-        clearInterval(interval); setPollingInterval(null);
-        setStep(4); // Success
-      } else if (data.status === 'failed' || data.status === 'cancelled') {
-        clearInterval(interval); setPollingInterval(null);
-        setStep(2); setErrorMsg("Payment failed or was cancelled.");
-      }
-    }, 3000);
-    setPollingInterval(interval);
-  };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-
-  // ─── PIN MODAL (Step 3) ───
-  if (step === 3) {
+  if (authLoading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center p-6">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-sm w-full bg-white border border-[#1B3A6B]/10 rounded-lg shadow-xl p-8 text-center">
-            <div className="w-16 h-16 bg-[#1B3A6B]/5 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Smartphone className="text-[#1B3A6B]" size={32} />
-            </div>
-            <h2 className="font-serif text-2xl text-[#1B3A6B] mb-2">Enter M-PESA PIN</h2>
-            <p className="text-sm text-[#1B3A6B]/60 mb-6">A prompt was sent to <strong>{customer.phone}</strong>. Please enter your PIN on your phone to authorize the payment of <strong>KES {calculateTotal().toLocaleString()}</strong>.</p>
-            <div className="flex justify-center gap-2 mb-6">
-              <div className="w-2 h-2 bg-[#C9A84C] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 bg-[#C9A84C] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2 h-2 bg-[#C9A84C] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-            </div>
-            <button onClick={() => { if(pollingInterval) clearInterval(pollingInterval); setStep(2); }} className="text-sm text-[#1B3A6B]/50 hover:text-[#1B3A6B]">Cancel Payment</button>
-          </motion.div>
-        </main>
-        <Footer />
-      </div>
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-24)", display: "flex", justifyContent: "center", color: "var(--brand)" }}>
+          <Spinner size={32} label="Loading" />
+        </Section>
+      </SiteShell>
     );
   }
 
-  // ─── SUCCESS (Step 4) ───
-  if (step === 4) {
+  /* ── Awaiting M-PESA PIN ── */
+  if (step === "awaiting-pin") {
     return (
-      <div className="min-h-screen bg-white flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center p-6 text-center">
-          <div className="max-w-md">
-            <CheckCircle className="mx-auto text-[#C9A84C] mb-6" size={48} />
-            <h1 className="font-serif text-3xl text-[#1B3A6B] mb-4">Order Confirmed</h1>
-            <p className="text-[#1B3A6B]/60 mb-8">Thank you for your purchase. We will email you DHL tracking information shortly.</p>
-            <Link href="/member/dashboard" className="bg-[#1B3A6B] text-white px-8 py-3 rounded-sm text-sm font-semibold uppercase tracking-wider">View Orders</Link>
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-24)" }}>
+          <div className="ot-panel ot-panel--lg ot-fade-in" style={{ maxWidth: 480, margin: "0 auto", alignItems: "center", textAlign: "center" }} aria-live="polite">
+            <h1 className="ot-h2">Enter your M-PESA PIN</h1>
+            <p className="ot-body">
+              A prompt was sent to <strong>{customer.phone}</strong>. Enter your PIN on your phone to authorise the payment of{" "}
+              <strong>{kes(total)}</strong>.
+            </p>
+            <div className="ot-dots" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                stopPolling();
+                setStep("checkout");
+              }}
+            >
+              Cancel payment
+            </Button>
           </div>
-        </main>
-        <Footer />
-      </div>
+        </Section>
+      </SiteShell>
     );
   }
 
-  // ─── CHECKOUT (Step 2) ───
-  if (step === 2) {
+  /* ── Success ── */
+  if (step === "success") {
     return (
-      <div className="min-h-screen bg-white flex flex-col">
-        <Header />
-        <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-12">
-          <div className="mb-10 flex items-center justify-between border-b border-[#1B3A6B]/10 pb-4">
-            <h1 className="font-serif text-3xl text-[#1B3A6B]">Checkout</h1>
-            <button onClick={() => setStep(1)} className="text-sm text-[#1B3A6B]/60 hover:text-[#1B3A6B]">Return to Shop</button>
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-24)" }}>
+          <div className="ot-stack ot-fade-in" style={{ maxWidth: 520, margin: "0 auto", alignItems: "center", textAlign: "center", gap: "var(--space-4)" }}>
+            <span className="ui-badge ui-badge--success">Order confirmed</span>
+            <h1 className="ot-display-sm">Thank you for your order</h1>
+            <p className="ot-body">We will email you DHL tracking information shortly.</p>
+            <ButtonLink href={ROUTES.memberDashboard} size="lg">
+              View orders
+            </ButtonLink>
           </div>
+        </Section>
+      </SiteShell>
+    );
+  }
 
-          <div className="grid md:grid-cols-2 gap-16">
-            <form onSubmit={handleCheckout} className="space-y-8">
-              {errorMsg && <div className="p-3 bg-red-50 text-red-600 text-sm border-l-2 border-red-500">{errorMsg}</div>}
-              
-              <div className="space-y-4">
-                <h2 className="font-serif text-xl text-[#1B3A6B]">Contact</h2>
-                <input required type="email" placeholder="Email" value={customer.email} onChange={e => setCustomer({...customer, email: e.target.value})} className="w-full border-b border-[#1B3A6B]/30 py-2 text-sm focus:border-[#1B3A6B] outline-none" />
-                <input required type="tel" placeholder="Phone (M-PESA)" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} className="w-full border-b border-[#1B3A6B]/30 py-2 text-sm focus:border-[#1B3A6B] outline-none" />
-              </div>
+  /* ── Checkout ── */
+  if (step === "checkout") {
+    const set = (key: keyof typeof customer) => (e: { target: { value: string } }) => setCustomer((p) => ({ ...p, [key]: e.target.value }));
+    return (
+      <SiteShell>
+        <Section spacing="intro">
+          <div className="ot-intro" style={{ display: "flex", justifyContent: "space-between", alignItems: "end", gap: "var(--space-4)", flexWrap: "wrap" }}>
+            <h1 className="ot-hero">Checkout</h1>
+            <Button variant="ghost" onClick={() => setStep("shop")}>
+              Return to shop
+            </Button>
+          </div>
+        </Section>
 
-              <div className="space-y-4">
-                <h2 className="font-serif text-xl text-[#1B3A6B]">Shipping</h2>
-                <input required type="text" placeholder="Full Name" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} className="w-full border-b border-[#1B3A6B]/30 py-2 text-sm focus:border-[#1B3A6B] outline-none" />
-                
-                {customer.shippingMethod !== 'pickup' && (
+        <Section spacing="last">
+          <AutoGrid min={340} gap="var(--space-12)" style={{ alignItems: "start" }}>
+            <form id="checkout-form" onSubmit={handleCheckout} className="ot-stack ot-span-2" style={{ gap: "var(--space-10)", minWidth: 0 }}>
+              {errorMsg && <Notice tone="danger">{errorMsg}</Notice>}
+              {!user && <Notice tone="info">You&rsquo;ll be asked to log in before payment.</Notice>}
+
+              <fieldset className="ot-stack ot-rule-top" style={{ gap: "var(--space-4)", border: 0, margin: 0, padding: "var(--space-6) 0 0" }}>
+                <legend className="ot-h3" style={{ float: "left", marginBottom: "var(--space-2)" }}>
+                  Contact
+                </legend>
+                <AutoGrid min={220} gap="var(--space-4)">
+                  <Field label="Email address" htmlFor="co-email" required>
+                    <Input id="co-email" type="email" autoComplete="email" required value={customer.email} onChange={set("email")} />
+                  </Field>
+                  <Field label="Phone (M-PESA)" htmlFor="co-phone" required>
+                    <Input id="co-phone" type="tel" autoComplete="tel" placeholder="07** *** ***" required value={customer.phone} onChange={set("phone")} />
+                  </Field>
+                </AutoGrid>
+              </fieldset>
+
+              <fieldset className="ot-stack ot-rule-top" style={{ gap: "var(--space-4)", border: 0, margin: 0, padding: "var(--space-6) 0 0" }}>
+                <legend className="ot-h3" style={{ float: "left", marginBottom: "var(--space-2)" }}>
+                  Shipping
+                </legend>
+                <Field label="Full name" htmlFor="co-name" required>
+                  <Input id="co-name" autoComplete="name" required value={customer.name} onChange={set("name")} />
+                </Field>
+                {customer.shippingMethod !== "pickup" && (
                   <>
-                    <input required type="text" placeholder="Address" value={customer.address} onChange={e => setCustomer({...customer, address: e.target.value})} className="w-full border-b border-[#1B3A6B]/30 py-2 text-sm focus:border-[#1B3A6B] outline-none" />
-                    <div className="grid grid-cols-2 gap-4">
-                      <input required type="text" placeholder="City" value={customer.city} onChange={e => setCustomer({...customer, city: e.target.value})} className="w-full border-b border-[#1B3A6B]/30 py-2 text-sm focus:border-[#1B3A6B] outline-none" />
-                      <select required value={customer.country} onChange={e => setCustomer({...customer, country: e.target.value})} className="w-full border-b border-[#1B3A6B]/30 py-2 text-sm focus:border-[#1B3A6B] outline-none bg-transparent">
-                        {SHIPPING_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
+                    <Field label="Address" htmlFor="co-address" required>
+                      <Input id="co-address" autoComplete="street-address" required value={customer.address} onChange={set("address")} />
+                    </Field>
+                    <AutoGrid min={200} gap="var(--space-4)">
+                      <Field label="City" htmlFor="co-city" required>
+                        <Input id="co-city" autoComplete="address-level2" required value={customer.city} onChange={set("city")} />
+                      </Field>
+                      <Field label="Country" htmlFor="co-country" required>
+                        <NativeSelect id="co-country" options={SHIPPING_COUNTRIES} required value={customer.country} onChange={set("country")} />
+                      </Field>
+                    </AutoGrid>
                   </>
                 )}
+                <RadioGroup
+                  name="shipping"
+                  aria-label="Shipping method"
+                  variant="card"
+                  options={SHIPPING_METHODS.map((m) => ({
+                    value: m.id,
+                    label: `${m.label} · ${m.price === 0 ? "Free" : kes(m.price)}`,
+                    description: m.time,
+                  }))}
+                  value={customer.shippingMethod}
+                  onValueChange={(v) => setCustomer((p) => ({ ...p, shippingMethod: v }))}
+                />
+              </fieldset>
 
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#1B3A6B] mb-2">Shipping Method</label>
-                  <div className="space-y-2">
-                    {SHIPPING_METHODS.map(m => (
-                      <label key={m.id} className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all ${customer.shippingMethod === m.id ? 'border-[#1B3A6B] bg-[#1B3A6B]/5' : 'border-[#1B3A6B]/10 hover:border-[#1B3A6B]/30'}`}>
-                        <div className="flex items-center gap-3">
-                          <input type="radio" name="shipping" checked={customer.shippingMethod === m.id} onChange={() => setCustomer({...customer, shippingMethod: m.id})} className="accent-[#1B3A6B]" />
-                          <div>
-                            <p className="text-sm font-medium text-[#1B3A6B]">{m.label}</p>
-                            <p className="text-xs text-[#1B3A6B]/50">{m.time}</p>
-                          </div>
-                        </div>
-                        <span className="text-sm font-bold text-[#1B3A6B]">{m.price === 0 ? 'FREE' : `KES ${m.price}`}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h2 className="font-serif text-xl text-[#1B3A6B]">Payment</h2>
-                <PaymentMethodSelector paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} cardDetails={cardDetails} setCardDetails={setCardDetails} currentFee={calculateTotal()} isProcessing={loadingCheckout} />
-              </div>
-
-              <button type="submit" disabled={loadingCheckout} className="w-full bg-[#1B3A6B] text-white py-3.5 text-xs font-bold uppercase tracking-widest hover:bg-[#152e55] transition flex justify-center items-center gap-2">
-                {loadingCheckout ? <Loader2 className="animate-spin" size={16} /> : `Pay KES ${calculateTotal().toLocaleString()}`}
-              </button>
+              <fieldset className="ot-stack ot-rule-top" style={{ gap: "var(--space-4)", border: 0, margin: 0, padding: "var(--space-6) 0 0" }}>
+                <legend className="ot-h3" style={{ float: "left", marginBottom: "var(--space-2)" }}>
+                  Payment
+                </legend>
+                <PaymentMethodSelector
+                  paymentMethod={paymentMethod}
+                  setPaymentMethod={setPaymentMethod}
+                  cardDetails={cardDetails}
+                  setCardDetails={setCardDetails}
+                  currentFee={total}
+                  isProcessing={submitting}
+                />
+              </fieldset>
             </form>
 
-            <div className="bg-[#F9F9F8] p-8 h-fit border border-[#1B3A6B]/10">
-              <h2 className="font-serif text-xl text-[#1B3A6B] mb-6">Order Summary</h2>
-              <div className="space-y-4 mb-6">
+            <aside className="ot-panel ot-panel--lg ot-sticky">
+              <h2 className="ot-title">Order summary</h2>
+              <ul className="ot-stack" style={{ gap: "var(--space-4)", listStyle: "none", margin: 0, padding: 0 }}>
                 {cart.map((item, i) => (
-                  <div key={i} className="flex justify-between text-sm">
-                    <span className="text-[#1B3A6B]/70">{item.quantity}x {item.name} ({item.size})</span>
-                    <span className="text-[#1B3A6B] font-medium">KES {(item.price * item.quantity).toLocaleString()}</span>
-                  </div>
+                  <li key={item.variant_id} className="ot-stack" style={{ gap: "var(--space-2)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-3)" }} className="ot-dense">
+                      <span>
+                        {item.name}
+                        <span className="ot-muted">
+                          {" "}
+                          · {item.color_name}, {item.size}
+                        </span>
+                      </span>
+                      <strong>{kes(item.price * item.quantity)}</strong>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "var(--space-2)" }}>
+                      <Button size="sm" variant="outline" aria-label={`Decrease ${item.name}`} onClick={() => updateQty(i, -1)} disabled={item.quantity <= 1}>
+                        −
+                      </Button>
+                      <span className="ot-dense" style={{ minWidth: 24, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
+                        {item.quantity}
+                      </span>
+                      <Button size="sm" variant="outline" aria-label={`Increase ${item.name}`} onClick={() => updateQty(i, 1)} disabled={item.quantity >= item.stock_available}>
+                        +
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => removeItem(i)}>
+                        Remove
+                      </Button>
+                    </div>
+                  </li>
                 ))}
+              </ul>
+              <div className="ot-stack ot-dense ot-rule-top" style={{ gap: "var(--space-2)", paddingTop: "var(--space-4)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span className="ot-muted">Subtotal</span>
+                  <span>{kes(subtotal)}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--space-3)" }}>
+                  <span className="ot-muted">Shipping ({shippingOption?.label})</span>
+                  <span>{kes(shippingCost)}</span>
+                </div>
               </div>
-              <div className="border-t border-[#1B3A6B]/10 pt-4 space-y-2 text-sm">
-                <div className="flex justify-between text-[#1B3A6B]/60"><span>Subtotal</span><span>KES {calculateSubtotal().toLocaleString()}</span></div>
-                <div className="flex justify-between text-[#1B3A6B]/60"><span>Shipping ({SHIPPING_METHODS.find(m => m.id === customer.shippingMethod)?.label})</span><span>KES {getShippingCost().toLocaleString()}</span></div>
-                <div className="flex justify-between font-bold text-lg text-[#1B3A6B] mt-2 pt-2 border-t border-[#1B3A6B]/10"><span>Total</span><span>KES {calculateTotal().toLocaleString()}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <span className="ot-caption">Total</span>
+                <span className="ot-h2" style={{ color: "var(--brand)" }}>
+                  {kes(total)}
+                </span>
               </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
+              <Button type="submit" form="checkout-form" size="lg" block loading={submitting} disabled={cart.length === 0}>
+                {user ? `Pay ${kes(total)}` : "Log in to pay"}
+              </Button>
+            </aside>
+          </AutoGrid>
+        </Section>
+      </SiteShell>
     );
   }
 
-  // ─── SHOP (Step 1) ───
+  /* ── Shop ── */
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <Header />
-      <section className="bg-[#1B3A6B] py-16 px-4 text-center">
-        <h1 className="text-4xl md:text-5xl font-serif font-bold text-white mb-4">Alumni <span className="text-[#C9A84C]">Merchandise</span></h1>
-        <p className="text-lg text-white/70 max-w-2xl mx-auto">Show your Turi pride with official alumni-branded merchandise.</p>
-      </section>
+    <SiteShell bottomInset={cart.length > 0 ? 96 : undefined}>
+      <PageIntro title="Official memorabilia" lede="Tailored blazers, crest ties and archival publications dispatchable worldwide via DHL international shipping." />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-12">
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {products.map(product => {
-            const selection = selectedProducts[product.id] || { color: "", size: "", variant_id: "" };
-            const colors = getAvailableColors(product);
-            const sizes = selection.color ? getAvailableSizes(product, selection.color) : [];
-            const selectedVariant = product.variants.find(v => v.id === selection.variant_id);
-
-            return (
-              <div key={product.id} className="group border border-[#1B3A6B]/10 rounded-lg overflow-hidden hover:shadow-md transition-all flex flex-col">
-                <div className="relative aspect-[4/5] bg-[#F9F9F8]">
-                  <Image src={getProductImage(product, selection.color) || '/placeholder.png'} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform" />
-                  <div className="absolute top-3 right-3 bg-white px-3 py-1 rounded-lg border border-[#1B3A6B]/10">
-                    <p className="text-sm font-serif font-bold text-[#1B3A6B]">KES {product.base_price.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                <div className="p-5 flex-1 flex flex-col">
-                  <h3 className="font-serif text-lg font-bold text-[#1B3A6B] mb-1">{product.name}</h3>
-                  <p className="text-sm text-[#1B3A6B]/60 mb-4 line-clamp-2">{product.description}</p>
-
-                  {selectedVariant && (
-                    <div className="mb-4 pb-3 border-b border-[#1B3A6B]/10">
-                      {selectedVariant.stock_quantity > 5 ? (
-                        <span className="text-xs font-medium text-[#1B3A6B]/60 flex items-center gap-1.5"><CheckCircle size={14} className="text-[#C9A84C]" /> {selectedVariant.stock_quantity} in stock</span>
-                      ) : selectedVariant.stock_quantity > 0 ? (
-                        <span className="text-xs font-semibold text-[#FF7A00] flex items-center gap-1.5"><AlertCircle size={14} /> Only {selectedVariant.stock_quantity} left</span>
-                      ) : (
-                        <span className="text-xs font-semibold text-[#E53E3E] flex items-center gap-1.5"><AlertCircle size={14} /> Out of stock</span>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mb-4">
-                    <p className="text-xs uppercase tracking-wider text-[#1B3A6B]/50 font-medium mb-2">Color</p>
-                    <div className="flex gap-2 flex-wrap">
-                      {colors.map(c => (
-                        <button key={c.color_value} onClick={() => handleColorSelect(product.id, c.color_value)} className={`w-7 h-7 rounded-full border-2 transition-all ${selection.color === c.color_value ? "border-[#C9A84C] scale-110" : "border-[#1B3A6B]/20 hover:border-[#1B3A6B]/50"}`} style={{ backgroundColor: c.color_hex }} title={c.color_name} />
-                      ))}
-                    </div>
-                  </div>
-
-                  {selection.color && (
-                    <div className="mb-4">
-                      <p className="text-xs uppercase tracking-wider text-[#1B3A6B]/50 font-medium mb-2">Size</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {sizes.map(s => (
-                          <button key={s.size} onClick={() => handleSizeSelect(product.id, s.size, s.variant_id)} disabled={!s.available} className={`px-3 py-1 text-sm rounded-lg border transition ${selection.size === s.size ? "bg-[#1B3A6B] text-white border-[#1B3A6B]" : s.available ? "border-[#1B3A6B]/20 text-[#1B3A6B] hover:border-[#1B3A6B]/50" : "border-[#1B3A6B]/10 text-[#1B3A6B]/30 cursor-not-allowed"}`}>{s.size}</button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-auto">
-                    <button onClick={() => addToCart(product)} disabled={!selection.variant_id || product.is_out_of_stock} className={`w-full px-4 py-2.5 font-medium rounded-lg flex items-center justify-center gap-2 transition ${!selection.variant_id || product.is_out_of_stock ? "bg-[#1B3A6B]/5 text-[#1B3A6B]/40 cursor-not-allowed" : "bg-[#1B3A6B] text-white hover:bg-[#152e55]"}`}>
-                      <ShoppingCart className="w-4 h-4" /> Add to Cart
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      <Section>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-4)", flexWrap: "wrap", marginBottom: "var(--space-8)" }}>
+          <h2 className="ot-h2">Shop by category</h2>
+          <ToggleGroup options={STORE_CATEGORIES} value={category} onValueChange={setCategory} aria-label="Product category" />
         </div>
 
-        {cart.length > 0 && (
-          <div className="fixed bottom-0 left-0 w-full bg-white border-t border-[#1B3A6B]/10 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50">
-            <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#1B3A6B]/5 rounded-full flex items-center justify-center"><ShoppingCart size={18} className="text-[#1B3A6B]" /></div>
-                <div>
-                  <p className="font-serif text-lg text-[#1B3A6B]">{cart.reduce((sum, item) => sum + item.quantity, 0)} items</p>
-                  <p className="text-sm text-[#1B3A6B]/60">KES {calculateTotal().toLocaleString()}</p>
-                </div>
+        {productsLoading ? (
+          <AutoGrid min={260} gap="var(--space-4)" fill>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="ot-media ot-media--photo ui-skeleton" aria-hidden="true" />
+            ))}
+          </AutoGrid>
+        ) : productsError ? (
+          <Notice tone="danger">{productsError}</Notice>
+        ) : visibleProducts.length === 0 ? (
+          <div style={{ background: "var(--bg-sunken)", padding: "var(--space-16) var(--space-6)" }}>
+            <Empty
+              title={products.length === 0 ? "The store is being stocked" : "Nothing in this category yet"}
+              description="Blazers, crest ties and archival publications will appear here as they become available."
+            />
+          </div>
+        ) : (
+          <AutoGrid min={260} gap="var(--space-8) var(--space-4)" fill>
+            {visibleProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                selection={selections[product.id] ?? { color: "", size: "", variant_id: "" }}
+                onColor={(color) => setSelections((prev) => ({ ...prev, [product.id]: { color, size: "", variant_id: "" } }))}
+                onSize={(size, variantId) => setSelections((prev) => ({ ...prev, [product.id]: { ...prev[product.id], size, variant_id: variantId } }))}
+                onAdd={() => addToCart(product)}
+              />
+            ))}
+          </AutoGrid>
+        )}
+      </Section>
+
+      <FeatureBand title="Shipping worldwide" spacing="last">
+        <p className="ot-body-relaxed">Orders are dispatched worldwide via DHL international shipping.</p>
+        <ArrowLink href={ROUTES.contact}>Questions about an order</ArrowLink>
+      </FeatureBand>
+
+      {cart.length > 0 && (
+          <div className="ot-cart-bar ot-scope" role="region" aria-label="Cart">
+            <div className="ot-container ot-cart-bar-inner">
+              <div className="ot-stack">
+                <span className="ot-title">
+                  {itemCount} {itemCount === 1 ? "item" : "items"}
+                </span>
+                <span className="ot-dense ot-muted">Subtotal {kes(subtotal)}</span>
               </div>
-              <button onClick={() => setStep(2)} className="bg-[#1B3A6B] text-white px-8 py-3 text-xs font-bold uppercase tracking-wider rounded-sm hover:bg-[#152e55] transition">Proceed to Checkout</button>
+              <Button size="lg" onClick={() => setStep("checkout")}>
+                Proceed to checkout
+              </Button>
             </div>
           </div>
-        )}
-        <div className="h-24" />
-      </main>
-      <Footer />
-    </div>
+      )}
+    </SiteShell>
   );
 }

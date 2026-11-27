@@ -1,57 +1,73 @@
 import Link from "next/link";
+import { ROUTES, SOCIETY } from "../content/site";
+import { AutoGrid } from "./site/primitives";
 
-export default function Footer() {
+interface FooterProps {
+  /** The "Contact office" strip above the footer. Hidden on the contact page, which has its own. */
+  showContactStrip?: boolean;
+}
+
+export default function Footer({ showContactStrip = true }: FooterProps) {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="border-t-4 border-[#C9A84C] bg-[#1B3A6B] text-white">
-      <div className="mx-auto max-w-7xl px-6 py-12 lg:px-12">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-4">
-          {/* Col 1: Heritage */}
-          <div className="md:col-span-2">
-            <h3 className="font-serif text-2xl font-bold tracking-wide">St Andrew's School, Turi</h3>
-            <p className="mt-1 text-xs tracking-widest text-[#C9A84C] uppercase">The Old Turian Society</p>
-            <p className="mt-4 max-w-md text-sm leading-relaxed text-white/80">
-              Preserving our heritage, fostering lifelong connections across East Africa and globally, and supporting future generations since 1931.
-            </p>
-          </div>
+    <div className="ot-scope">
+      {showContactStrip && (
+        <section className="ot-contact-strip">
+          <AutoGrid min={240} className="ot-container ot-contact-strip-inner">
+            <h2 className="ot-h2">Contact office</h2>
+            <address className="ot-stack ot-dense" style={{ gap: "var(--space-1)", color: "var(--ink-2)", fontStyle: "normal" }}>
+              {SOCIETY.address.map((line) => (
+                <span key={line}>{line}</span>
+              ))}
+            </address>
+            <div className="ot-stack ot-dense" style={{ gap: "var(--space-1)" }}>
+              <span className="ot-muted">General enquiries</span>
+              <a href={`mailto:${SOCIETY.generalEmail}`} className="ot-underline">
+                {SOCIETY.generalEmail}
+              </a>
+            </div>
+          </AutoGrid>
+        </section>
+      )}
 
-          {/* Col 2: Navigation */}
-          <div>
-            <h4 className="font-serif text-base font-semibold tracking-wider text-[#C9A84C] uppercase">Quick Links</h4>
-            <ul className="mt-4 space-y-2 text-xs uppercase tracking-wider text-white/80">
-              <li><Link href="/login" className="hover:text-[#C9A84C]">Alumni Directory</Link></li>
-              <li><Link href="/payments" className="hover:text-[#C9A84C]">Membership </Link></li>
-              <li><Link href="/events" className="hover:text-[#C9A84C]">Global Events</Link></li>
-              <li><Link href="/merchandise" className="hover:text-[#C9A84C]">Official Store</Link></li>
-            </ul>
-          </div>
+      <footer className="ot-footer">
+        <div className="ot-container ot-footer-inner">
+          <AutoGrid min={220} className="ot-footer-grid">
+            <div className="ot-stack ot-span-2" style={{ gap: "var(--space-3)" }}>
+              <span className="ot-footer-label">{SOCIETY.name}</span>
+              <p className="ot-body" style={{ color: "#fff", maxWidth: 440 }}>
+                {SOCIETY.tagline}
+              </p>
+            </div>
+            <nav className="ot-stack" style={{ gap: "var(--space-2)" }} aria-label="Footer">
+              <span className="ot-footer-label" style={{ marginBottom: "var(--space-1)" }}>
+                Quick links
+              </span>
+              <Link href={ROUTES.login}>Alumni directory</Link>
+              <Link href={ROUTES.membership}>Membership</Link>
+              <Link href={ROUTES.events}>Global events</Link>
+              <Link href={ROUTES.store}>Official store</Link>
+            </nav>
+          </AutoGrid>
 
-          {/* Col 3: Contact */}
-          <div>
-            <h4 className="font-serif text-base font-semibold tracking-wider text-[#C9A84C] uppercase">Contact Office</h4>
-            <p className="mt-4 text-xs leading-relaxed text-white/80">
-              St Andrew's School, Turi<br />
-              P.O. Private Bag, Molo 20106<br />
-              Kenya<br />
-              <span className="mt-2 block text-[#C9A84C]">oldturians@standrewsturi.com</span>
-            </p>
+          <div className="ot-footer-base">
+            <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/turi-crest.png" alt="St Andrew's Turi crest" width={23} height={40} style={{ height: 40, width: "auto", display: "block" }} />
+              <span className="ot-stack">
+                <span style={{ fontWeight: 800, letterSpacing: "-0.02em", fontSize: "var(--fs-body)", lineHeight: "var(--lh-20)" }}>{SOCIETY.school}</span>
+                <span className="ot-footer-label">
+                  Est. {SOCIETY.founded} · {SOCIETY.motto}
+                </span>
+              </span>
+            </div>
+            <span className="ot-footer-label">
+              © {year} {SOCIETY.schoolFull}
+            </span>
           </div>
         </div>
-<div className="flex items-center gap-4">
-  <img 
-    src="/St-Andrews-Turi.png" 
-    alt="St Andrew's Turi" 
-    className="h-12 w-auto object-contain"
-  />
-  <div>
-    <h3 className="font-serif text-lg font-bold text-[#1B3A6B]">
-      St Andrew's Turi
-    </h3>
-    <p className="text-xs text-[#1B3A6B]/60">
-      Est. 1931 · Seeking the Highest
-    </p>
-  </div>
-</div>
-      </div>
-    </footer>
+      </footer>
+    </div>
   );
 }

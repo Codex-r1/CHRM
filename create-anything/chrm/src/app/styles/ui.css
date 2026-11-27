@@ -1,0 +1,136 @@
+/*
+ * UI primitives (buttons, toggles, fields, radios, empty states).
+ * Ported from the design export's component library. Class names are kept
+ * as `ui-*` so the React components in (frontend)/components/ui map 1:1.
+ */
+:root {
+  --ui-brand: var(--brand);
+  --ui-brand-deep: var(--brand-deep);
+  --ui-brand-fg: var(--brand-fg);
+  --ui-brand-tint: var(--brand-tint);
+  --ui-accent: var(--accent);
+  --ui-ink: var(--ink);
+  --ui-ink-2: var(--ink-2);
+  --ui-muted: var(--ink-3);
+  --ui-subtle: var(--ink-4);
+  --ui-border: var(--divider-strong);
+  --ui-surface: #ffffff;
+  --ui-surface-2: var(--bg-sunken);
+  --ui-radius-sm: 8px;
+  --ui-radius-md: 12px;
+  --ui-radius-pill: 999px;
+  --ui-radius-btn: 0px; /* the site uses square buttons */
+  --ui-radius-input: 12px;
+  --ui-shadow-1: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --ui-shadow-3: 0 12px 32px rgba(16, 24, 40, 0.12);
+  --ui-h-sm: 32px;
+  --ui-h-md: 40px;
+  --ui-h-lg: 48px;
+  --ui-focus: 0 0 0 4px var(--ui-brand-tint);
+  --ui-font: var(--font-manrope), "Manrope", -apple-system, "Segoe UI", sans-serif;
+}
+
+@keyframes ui-spin { to { transform: rotate(360deg); } }
+@keyframes ui-pop { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes ui-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ui-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.ui-spin { animation: ui-spin 0.8s linear infinite; }
+
+/* Button */
+.ui-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--ui-h-md); padding: 0 16px; border-radius: var(--ui-radius-btn); border: 1px solid transparent; font: 600 14px/20px var(--ui-font); cursor: pointer; white-space: nowrap; text-decoration: none; transition: background 0.15s, border-color 0.15s, color 0.15s, filter 0.15s, transform 0.1s; }
+.ui-btn:hover { text-decoration: none; }
+.ui-btn:focus-visible { outline: none; box-shadow: var(--ui-focus); }
+.ui-btn:active:not(:disabled) { transform: translateY(1px); }
+.ui-btn:disabled, .ui-btn[aria-disabled="true"] { opacity: 0.48; cursor: not-allowed; }
+.ui-btn--sm { height: var(--ui-h-sm); padding: 0 12px; gap: 4px; }
+.ui-btn--lg { height: var(--ui-h-lg); padding: 0 20px; font-size: 16px; line-height: 24px; }
+.ui-btn--block { width: 100%; }
+.ui-btn--primary, .ui-btn--primary:hover { color: var(--ui-brand-fg); }
+.ui-btn--primary { background: var(--ui-brand); }
+.ui-btn--primary:hover:not(:disabled) { background: var(--ui-brand-deep); }
+.ui-btn--secondary, .ui-btn--secondary:hover { background: var(--ui-brand-tint); color: var(--ui-brand); }
+.ui-btn--secondary:hover:not(:disabled) { filter: brightness(0.96); }
+.ui-btn--accent, .ui-btn--accent:hover { background: var(--ui-accent); color: var(--ui-ink); }
+.ui-btn--accent:hover:not(:disabled) { filter: brightness(0.94); }
+.ui-btn--outline, .ui-btn--outline:hover { background: var(--ui-surface); color: var(--ui-ink); border-color: var(--ui-border); }
+.ui-btn--outline:hover:not(:disabled) { background: var(--ui-surface-2); }
+.ui-btn--ghost, .ui-btn--ghost:hover { background: transparent; color: var(--ui-ink); }
+.ui-btn--ghost:hover:not(:disabled) { background: var(--ui-surface-2); }
+
+/* Toggle group */
+.ui-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--ui-h-md); padding: 0 12px; border-radius: var(--ui-radius-sm); border: 0; background: transparent; color: var(--ui-muted); font: 600 14px/20px var(--ui-font); cursor: pointer; white-space: nowrap; transition: background 0.15s, color 0.15s; }
+.ui-toggle:hover { color: var(--ui-ink); }
+.ui-toggle:focus-visible { outline: none; box-shadow: var(--ui-focus); }
+.ui-toggle:disabled { opacity: 0.48; cursor: not-allowed; }
+.ui-toggle[aria-pressed="true"] { background: var(--ui-brand-tint); color: var(--ui-brand); }
+.ui-toggle-group { display: inline-flex; gap: 4px; max-width: 100%; overflow-x: auto; }
+.ui-toggle-group--segmented { padding: 4px; background: var(--ui-surface-2); border-radius: var(--ui-radius-md); }
+.ui-toggle-group--segmented .ui-toggle { height: var(--ui-h-sm); }
+.ui-toggle-group--segmented .ui-toggle[aria-pressed="true"] { background: var(--ui-surface); color: var(--ui-ink); box-shadow: var(--ui-shadow-1); }
+
+/* Badge */
+.ui-badge { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: var(--ui-radius-pill); font: 600 12px/16px var(--ui-font); white-space: nowrap; }
+.ui-badge--brand { background: var(--ui-brand-tint); color: var(--ui-brand); }
+.ui-badge--accent { background: var(--accent-tint); color: var(--honey-ink); }
+.ui-badge--success { background: var(--leaf-tint); color: var(--leaf-ink); }
+.ui-badge--warning { background: var(--honey-tint); color: var(--honey-ink); }
+.ui-badge--danger { background: var(--signal-tint); color: var(--signal-ink); }
+
+/* Field, label, inputs */
+.ui-field { display: flex; flex-direction: column; gap: 8px; font-family: var(--ui-font); min-width: 0; }
+.ui-label { font: 600 14px/20px var(--ui-font); color: var(--ui-ink-2); }
+.ui-label-req { color: var(--signal); margin-left: 2px; }
+.ui-field-desc { font: 500 12px/16px var(--ui-font); color: var(--ui-muted); }
+.ui-field-error { display: flex; align-items: center; gap: 4px; font: 600 12px/16px var(--ui-font); color: var(--signal-ink); }
+.ui-input { width: 100%; height: var(--ui-h-md); padding: 0 12px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-input); background: var(--ui-surface); font: 500 14px/20px var(--ui-font); color: var(--ui-ink); transition: border-color 0.15s, box-shadow 0.15s; }
+.ui-input::placeholder { color: var(--ui-subtle); }
+.ui-input:focus { outline: none; border-color: var(--ui-brand); box-shadow: var(--ui-focus); }
+.ui-input[aria-invalid="true"] { border-color: var(--signal); }
+.ui-input:disabled { background: var(--ui-surface-2); color: var(--ui-subtle); cursor: not-allowed; }
+.ui-textarea { height: auto; min-height: 96px; padding: 8px 12px; resize: vertical; }
+.ui-input-wrap { position: relative; display: flex; align-items: center; }
+.ui-input-wrap > .ui-input { padding-right: 48px; }
+.ui-input-wrap > .ui-input-trailing { position: absolute; right: 12px; display: inline-flex; align-items: center; color: var(--ui-muted); }
+.ui-native-select { position: relative; display: flex; align-items: center; }
+.ui-native-select select { appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer; }
+.ui-native-select > svg { position: absolute; right: 12px; pointer-events: none; color: var(--ui-muted); }
+
+/* Radio group */
+.ui-check { position: relative; display: inline-flex; align-items: flex-start; gap: 12px; cursor: pointer; font: 500 14px/20px var(--ui-font); color: var(--ui-ink); }
+.ui-check.is-disabled { opacity: 0.48; cursor: not-allowed; }
+.ui-check > input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.ui-check-box { width: 20px; height: 20px; border: 1.5px solid var(--ui-border); border-radius: 4px; background: var(--ui-surface); display: inline-grid; place-items: center; flex-shrink: 0; transition: background 0.15s, border-color 0.15s; }
+.ui-check > input:focus-visible + .ui-check-box { box-shadow: var(--ui-focus); }
+.ui-check-text { display: flex; flex-direction: column; gap: 4px; }
+.ui-check-label { font-weight: 600; }
+.ui-check-desc { font: 500 12px/16px var(--ui-font); color: var(--ui-muted); }
+.ui-radio .ui-check-box { border-radius: var(--ui-radius-pill); }
+.ui-radio > input:checked + .ui-check-box { background: var(--ui-surface); border: 6px solid var(--ui-brand); }
+.ui-radio-group { display: flex; gap: 12px; }
+.ui-radio-group--vertical { flex-direction: column; }
+.ui-radio-group--horizontal { flex-wrap: wrap; }
+.ui-radio-group--card .ui-radio { flex: 1 1 160px; padding: 16px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); background: var(--ui-surface); transition: background 0.15s, border-color 0.15s; }
+.ui-radio-group--card .ui-radio.is-checked { border-color: var(--ui-brand); background: var(--ui-brand-tint); }
+
+/* Alert */
+.ui-alert { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: var(--ui-radius-md); font: 500 14px/20px var(--ui-font); }
+.ui-alert--danger { background: var(--signal-tint); color: var(--signal-ink); }
+.ui-alert--success { background: var(--leaf-tint); color: var(--leaf-ink); }
+.ui-alert--info { background: var(--sky-tint); color: var(--sky-ink); }
+.ui-alert--warning { background: var(--honey-tint); color: var(--honey-ink); }
+
+/* Dialog */
+.ui-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(13, 13, 26, 0.48); animation: ui-fade 0.15s ease; }
+.ui-dialog { position: relative; width: 100%; max-width: 640px; max-height: 85vh; overflow-y: auto; background: var(--ui-surface); box-shadow: var(--ui-shadow-3); animation: ui-pop 0.2s ease; font-family: var(--ui-font); color: var(--ui-ink); }
+.ui-dialog--sm { max-width: 400px; }
+.ui-icon-btn { width: 32px; height: 32px; border-radius: var(--ui-radius-sm); display: inline-grid; place-items: center; border: 0; background: transparent; color: var(--ui-muted); cursor: pointer; flex-shrink: 0; padding: 0; }
+.ui-icon-btn:hover { background: var(--ui-surface-2); color: var(--ui-ink); }
+.ui-icon-btn:focus-visible { outline: none; box-shadow: var(--ui-focus); }
+
+/* Empty, skeleton */
+.ui-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 24px; text-align: center; font-family: var(--ui-font); }
+.ui-empty-media { width: 48px; height: 48px; border-radius: var(--ui-radius-md); background: var(--ui-brand-tint); color: var(--ui-brand); display: inline-grid; place-items: center; }
+.ui-empty-title { margin: 0; font: 700 16px/24px var(--ui-font); color: var(--ui-ink); }
+.ui-empty-desc { margin: 0; max-width: 320px; font: 500 14px/20px var(--ui-font); color: var(--ui-muted); }
+.ui-empty-actions { display: flex; gap: 8px; margin-top: 4px; }
+.ui-skeleton { display: block; background: linear-gradient(90deg, var(--ui-surface-2) 0%, #f9f9fc 50%, var(--ui-surface-2) 100%); background-size: 200% 100%; animation: ui-shimmer 1.4s linear infinite; }
