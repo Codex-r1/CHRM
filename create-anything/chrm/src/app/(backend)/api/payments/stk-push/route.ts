@@ -2,11 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { mpesaService } from '../../../lib/mpesa/service';
 import { supabaseAdmin } from '../../../lib/supabase/admin';
+import { hashRegistrationPassword } from '../../../lib/registration/password';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('STK Push Request Body:', JSON.stringify(body, null, 2));
+    // Never log the raw body: registration requests contain the member's password.
+    console.log('STK Push request:', { paymentType: body?.paymentType, amount: body?.amount });
     
     const {
       phoneNumber,
@@ -113,7 +115,7 @@ switch (paymentType) {
         email: registrationData.email?.toLowerCase().trim(),
         full_name: registrationData.full_name,
         phone: registrationData.phone,
-        password: registrationData.password,
+        password_hash: registrationData.password ? await hashRegistrationPassword(registrationData.password) : undefined,
         graduation_year: registrationData.graduation_year,
         course: registrationData.course,
         country: registrationData.country,

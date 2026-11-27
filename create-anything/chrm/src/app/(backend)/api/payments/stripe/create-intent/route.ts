@@ -18,6 +18,10 @@ function supabaseAdmin() {
 
 export async function POST(request: Request) {
   try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("STRIPE_SECRET_KEY is not set for this deployment");
+      return NextResponse.json({ error: "Card payments are temporarily unavailable. Please pay with M-PESA or try again later.", code: "card_unavailable" }, { status: 503 });
+    }
     const body = await request.json();
     const {
       amount,

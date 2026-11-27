@@ -151,10 +151,17 @@ export async function completeRegistration(payment: any) {
     } else {
       console.log('🆕 Creating new user account after payment confirmation...');
       
-      // Create auth user
+      // Create auth user. Prefer the bcrypt hash captured at sign-up; fall back to a
+      // legacy plaintext password only for rows created before hashing was added.
+      // With neither, the account is created without a password (member uses reset).
+      const credentials = registrationData.password_hash
+        ? { password_hash: registrationData.password_hash as string }
+        : registrationData.password
+          ? { password: registrationData.password as string }
+          : {};
       const { data: authData, error: authError } = await supabaseAdmin().auth.admin.createUser({
         email: registrationData.email.toLowerCase(),
-        password: registrationData.password || 'TempPassword123!',
+        ...credentials,
         email_confirm: true,
         user_metadata: {
           full_name: registrationData.full_name,

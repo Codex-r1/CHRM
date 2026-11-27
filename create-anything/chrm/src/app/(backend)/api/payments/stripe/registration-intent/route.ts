@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 import { REGISTRATION_FEE_KES } from "@/app/(backend)/lib/registration/fees";
+import { hashRegistrationPassword } from "@/app/(backend)/lib/registration/password";
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -32,6 +33,10 @@ interface RegistrationInput {
 
 export async function POST(request: Request) {
   try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error("STRIPE_SECRET_KEY is not set for this deployment");
+      return NextResponse.json({ error: "Card payments are temporarily unavailable. Please pay with M-PESA or try again later.", code: "card_unavailable" }, { status: 503 });
+    }
     const { registrationData } = (await request.json()) as { registrationData?: RegistrationInput };
     const data = registrationData ?? {};
     const email = data.email?.toLowerCase().trim();
@@ -87,7 +92,7 @@ export async function POST(request: Request) {
           email,
           full_name: data.full_name,
           phone: data.phone,
-          password: data.password,
+          password_hash: await hashRegistrationPassword(data.password),
           graduation_year: data.graduation_year,
           course: data.course,
           country: data.country,

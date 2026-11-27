@@ -7,6 +7,7 @@ import {
   getMerchandiseEmail,
 } from '../../../../../app/(backend)/lib/email/service';
 import { completeRegistration } from '@/app/(backend)/lib/registration/service';
+import { stripRegistrationSecrets } from '@/app/(backend)/lib/registration/password';
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -267,8 +268,8 @@ async function handleRegistrationSucceeded(
   const result = await completeRegistration(payment);
   if (!result?.userId) throw new Error("Registration handler did not return userId");
 
-  // Confirm the payment and drop the plaintext password now that the account exists.
-  const { password: _password, ...registrationData } = payment.metadata?.registration_data ?? {};
+  // Confirm the payment and drop the password hash now that the account exists.
+  // (Not done on payment_failed: the customer can retry the same PaymentIntent with another card.)
   const { error: updateError } = await admin
     .from("payments")
     .update({
@@ -278,7 +279,7 @@ async function handleRegistrationSucceeded(
       paid_at: new Date().toISOString(),
       confirmed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      metadata: { ...payment.metadata, registration_data: registrationData },
+      metadata: stripRegistrationSecrets(payment.metadata),
     })
     .eq("id", payment.id);
 

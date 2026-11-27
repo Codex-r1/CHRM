@@ -7,6 +7,7 @@ import {
   completeRegistration,
   formatDate,
 } from '@/app/(backend)/lib/registration/service';
+import { stripRegistrationSecrets } from '@/app/(backend)/lib/registration/password';
 
 function calculateRenewalDates(currentExpiryDate: string | Date) {
   const expiryDate = new Date(currentExpiryDate);
@@ -317,6 +318,11 @@ const updateData: any = {
   updated_at: new Date().toISOString()
 };
 
+// The account now exists: drop password material from the stored registration data.
+if (payment.metadata?.registration_data) {
+  updateData.metadata = stripRegistrationSecrets(payment.metadata);
+}
+
 if (userId) {
   updateData.user_id = userId;
   console.log(' Linking payment to user:', userId);
@@ -351,6 +357,8 @@ if (updateError) {
         .update({
           status: 'failed',
           error_message: ResultDesc,
+          // A retry starts a new STK push with a new row, so this one no longer needs the password hash.
+          metadata: stripRegistrationSecrets(payment.metadata),
           updated_at: new Date().toISOString(),
           callback_data: body
         })
