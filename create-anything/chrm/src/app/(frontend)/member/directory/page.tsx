@@ -1,207 +1,168 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Header from "@/app/(frontend)/components/Header";
-import Footer from "@/app/(frontend)/components/Footer";
-import { Search, GraduationCap, MapPin, Linkedin, Eye, EyeOff, Users, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import Link from "next/link";
+import SiteShell from "@/app/(frontend)/components/site/SiteShell";
+import { AutoGrid, Notice, PageIntro, Section } from "@/app/(frontend)/components/site/primitives";
+import { Button, Empty, Input, NativeSelect } from "@/app/(frontend)/components/ui";
+import { ROUTES } from "@/app/(frontend)/content/site";
 
 type AlumniProfile = {
   id: string;
   full_name: string;
-  graduation_year: number;
-  course: string;
-  country: string;
-  bio?: string;
-  linkedin_url?: string;
+  graduation_year: number | null;
+  course: string | null;
+  country: string | null;
+  bio?: string | null;
+  linkedin_url?: string | null;
 };
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = [
+  { value: "", label: "All class years" },
+  ...Array.from({ length: CURRENT_YEAR - 1980 + 1 }, (_, i) => CURRENT_YEAR - i).map((yr) => ({ value: String(yr), label: `Class of ${yr}` })),
+];
+
+/** Only allow http(s) LinkedIn links from profile data. */
+function safeUrl(url?: string | null) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+const initials = (name: string) =>
+  name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0]?.toUpperCase())
+    .join("");
 
 export default function DirectoryPage() {
   const [alumni, setAlumni] = useState<AlumniProfile[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedYear, setSelectedYear] = useState("");
+  const [query, setQuery] = useState("");
+  const [year, setYear] = useState("");
   const [loading, setLoading] = useState(true);
-  const [directoryVisible, setDirectoryVisible] = useState(true);
-  const [privacySaving, setPrivacySaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchAlumni = async () => {
+  const fetchAlumni = useCallback(async (q: string, y: string) => {
     setLoading(true);
+    setError(null);
     try {
       const url = new URL("/api/alumni/search", window.location.origin);
-      if (searchQuery) url.searchParams.append("query", searchQuery);
-      if (selectedYear) url.searchParams.append("year", selectedYear);
-
+      if (q.trim()) url.searchParams.append("query", q.trim());
+      if (y) url.searchParams.append("year", y);
       const res = await fetch(url.toString());
       const data = await res.json();
-      if (data.success) {
-        setAlumni(data.alumni || []);
-      }
-    } catch (err) {
-      console.error("Directory search failed:", err);
+      if (!res.ok || !data.success) throw new Error();
+      setAlumni(data.alumni || []);
+    } catch {
+      setError("The directory couldn't be loaded. Please try again.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    fetchAlumni();
-  }, [selectedYear]);
+  // Year changes search immediately; the name search runs on submit.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => void fetchAlumni(query, year), [year, fetchAlumni]);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
+  const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    fetchAlumni();
+    fetchAlumni(query, year);
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#F9FAFB] text-[#1B3A6B]">
-      <Header />
+    <SiteShell>
+      <PageIntro
+        eyebrow="Members' area"
+        title="Find old friends"
+        lede="Reconnect with classmates and Old Turians across East Africa and around the world."
+      />
 
-      <main className="flex-1 py-12 px-6 lg:px-12 max-w-7xl mx-auto w-full">
-        {/* HERO HEADER */}
-        <div className="border-t-4 border-[#C9A84C] bg-white p-8 md:p-10 shadow-sm mb-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-[#C9A84C]">
-                Old Turians Society
-              </span>
-              <h1 className="mt-1 font-serif text-3xl font-bold text-[#1B3A6B]">
-                Global Alumni Directory
-              </h1>
-              <p className="mt-2 text-sm text-[#1B3A6B]/80 max-w-2xl">
-                Reconnect with classmates, expand your professional network across East Africa and worldwide, and message fellow Old Turians.
-              </p>
-            </div>
-
-            {/* PRIVACY OPT-IN TOGGLE */}
-            <div className="border border-[#1B3A6B]/15 bg-[#1B3A6B]/5 p-4 rounded-lg flex items-center gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase text-[#1B3A6B]">Visibility</p>
-                <p className="text-[11px] text-[#1B3A6B]/70">
-                  {directoryVisible ? "Your profile is visible to alumni" : "Your profile is hidden from search"}
-                </p>
-              </div>
-              <button
-                onClick={() => setDirectoryVisible(!directoryVisible)}
-                className={`px-3 py-1.5 text-xs font-bold uppercase transition flex items-center gap-1.5 border ${
-                  directoryVisible
-                    ? "bg-[#1B3A6B] text-white border-[#1B3A6B]"
-                    : "bg-white text-[#800020] border-[#800020]"
-                }`}
-              >
-                {directoryVisible ? <Eye size={14} /> : <EyeOff size={14} />}
-                {directoryVisible ? "Visible" : "Hidden"}
-              </button>
-            </div>
+      <Section spacing="last">
+        <form onSubmit={onSubmit} role="search" style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", alignItems: "flex-end", marginBottom: "var(--space-6)" }}>
+          <div style={{ flex: "2 1 260px" }}>
+            <label htmlFor="dir-q" className="ot-sr-only">
+              Search by name
+            </label>
+            <Input id="dir-q" type="search" placeholder="Search by name" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-        </div>
-
-        {/* SEARCH CONTROLS */}
-        <form onSubmit={handleSearchSubmit} className="mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative md:col-span-2">
-            <input
-              type="text"
-              placeholder="Search by full name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full border border-[#1B3A6B]/30 bg-white py-3 pl-11 pr-4 text-sm text-[#1B3A6B] focus:border-[#C9A84C] focus:outline-none"
-            />
-            <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#1B3A6B]/50" />
+          <div style={{ flex: "1 1 180px" }}>
+            <label htmlFor="dir-year" className="ot-sr-only">
+              Class year
+            </label>
+            <NativeSelect id="dir-year" options={YEAR_OPTIONS} value={year} onChange={(e) => setYear(e.target.value)} />
           </div>
-
-          <div>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full border border-[#1B3A6B]/30 bg-white py-3 px-4 text-sm text-[#1B3A6B] focus:border-[#C9A84C] focus:outline-none appearance-none"
-            >
-              <option value="">All Class Years</option>
-              {Array.from({ length: 45 }, (_, i) => 2026 - i).map((yr) => (
-                <option key={yr} value={yr}>
-                  Class of {yr}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            type="submit"
-            className="border-2 border-[#1B3A6B] bg-[#1B3A6B] py-3 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-[#800020] hover:border-[#800020] cursor-pointer"
-          >
-            Filter Results
-          </button>
+          <Button type="submit">Search</Button>
         </form>
 
-        {/* RESULTS GRID */}
-        {loading ? (
-          <div className="flex py-20 items-center justify-center">
-            <Loader2 className="animate-spin text-[#1B3A6B]" size={36} />
-          </div>
+        <p className="ot-caption" style={{ marginBottom: "var(--space-8)" }}>
+          All active members are listed by name, class year, course and country. To change how you appear, or to be removed,{" "}
+          <Link href={ROUTES.profileEdit} className="ot-underline">
+            update your profile
+          </Link>{" "}
+          or{" "}
+          <Link href={ROUTES.contact} className="ot-underline">
+            contact the alumni office
+          </Link>
+          .
+        </p>
+
+        <div className="ot-rule-top" style={{ display: "flex", justifyContent: "space-between", marginBottom: "var(--space-6)" }}>
+          <span className="ot-dense ot-muted" aria-live="polite">
+            {loading ? "Searching…" : `${alumni.length} ${alumni.length === 1 ? "member" : "members"}${alumni.length === 50 ? " (showing the first 50; refine your search)" : ""}`}
+          </span>
+        </div>
+
+        {error ? (
+          <Notice tone="danger">{error}</Notice>
+        ) : loading ? (
+          <AutoGrid min={260} fill gap="var(--space-4)">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="ui-skeleton" style={{ height: 120 }} aria-hidden="true" />
+            ))}
+          </AutoGrid>
         ) : alumni.length === 0 ? (
-          <div className="bg-white border border-[#1B3A6B]/15 p-12 text-center">
-            <Users size={40} className="mx-auto text-[#1B3A6B]/40 mb-3" />
-            <h3 className="font-serif text-lg font-bold">No Alumni Found</h3>
-            <p className="text-xs text-[#1B3A6B]/70 mt-1">
-              Try adjusting your search query or selecting a different class year.
-            </p>
+          <div style={{ background: "var(--bg-sunken)", padding: "var(--space-16) var(--space-6)" }}>
+            <Empty title="No members found" description="Try a different name or class year." />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {alumni.map((person) => (
-              <div
-                key={person.id}
-                className="border border-[#1B3A6B]/15 bg-white p-6 transition-all hover:border-[#C9A84C] hover:shadow-md flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between border-b border-[#1B3A6B]/10 pb-4 mb-4">
-                    <div>
-                      <h3 className="font-serif text-lg font-bold text-[#1B3A6B]">
-                        {person.full_name}
-                      </h3>
-                      <span className="inline-block mt-1 text-[11px] font-bold uppercase tracking-wider text-[#C9A84C]">
-                        Class of {person.graduation_year || "Alumni"}
+          <AutoGrid min={260} fill gap="0 var(--space-8)" as="ul" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+            {alumni.map((person) => {
+              const linkedin = safeUrl(person.linkedin_url);
+              return (
+                <li key={person.id} style={{ display: "flex", gap: "var(--space-4)", padding: "var(--space-5) 0", borderBottom: "1px solid var(--divider-strong)" }}>
+                  <span
+                    aria-hidden="true"
+                    style={{ flex: "none", width: 48, height: 48, borderRadius: 999, background: "var(--brand-tint)", color: "var(--brand)", display: "grid", placeItems: "center", fontWeight: 700 }}
+                  >
+                    {initials(person.full_name)}
+                  </span>
+                  <div className="ot-stack" style={{ gap: 2, minWidth: 0 }}>
+                    <span style={{ fontWeight: 700 }}>{person.full_name}</span>
+                    <span className="ot-caption">{person.graduation_year ? `Class of ${person.graduation_year}` : "Old Turian"}</span>
+                    {(person.course || person.country) && (
+                      <span className="ot-dense" style={{ color: "var(--ink-2)" }}>
+                        {[person.course, person.country].filter(Boolean).join(" · ")}
                       </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-xs text-[#1B3A6B]/80 mb-6">
-                    {person.course && (
-                      <p className="flex items-center gap-2">
-                        <GraduationCap size={14} className="text-[#1B3A6B]/50" />
-                        <span>{person.course}</span>
-                      </p>
                     )}
-                    {person.country && (
-                      <p className="flex items-center gap-2">
-                        <MapPin size={14} className="text-[#1B3A6B]/50" />
-                        <span>{person.country}</span>
-                      </p>
+                    {linkedin && (
+                      <a href={linkedin} target="_blank" rel="noopener noreferrer" className="ot-dense ot-underline" style={{ marginTop: "var(--space-1)" }}>
+                        LinkedIn profile
+                      </a>
                     )}
                   </div>
-                </div>
-
-                {person.linkedin_url ? (
-                  <a
-                    href={person.linkedin_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 border border-[#1B3A6B]/20 py-2 text-xs font-bold uppercase tracking-wider text-[#1B3A6B] transition hover:border-[#C9A84C] hover:bg-[#C9A84C]/10"
-                  >
-                    <Linkedin size={14} /> Connect on LinkedIn
-                  </a>
-                ) : (
-                  <button
-                    disabled
-                    className="w-full border border-[#1B3A6B]/10 bg-[#1B3A6B]/5 py-2 text-xs font-bold uppercase tracking-wider text-[#1B3A6B]/40 cursor-not-allowed"
-                  >
-                    Old Turian Member
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+                </li>
+              );
+            })}
+          </AutoGrid>
         )}
-      </main>
-
-      <Footer />
-    </div>
+      </Section>
+    </SiteShell>
   );
 }

@@ -287,3 +287,19 @@
 .ot-dl > div { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4) 0; border-bottom: 1px solid var(--divider-strong); }
 .ot-dl dt { font-size: var(--fs-caption); color: var(--ink-3); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .ot-dl dd { margin: 0; font-size: var(--fs-body); line-height: var(--lh-24); color: var(--ink); }
+
+/* ── Admin ──────────────────────────────────────────────── */
+.ot-table-wrap { width: 100%; overflow-x: auto; border-top: 1px solid var(--ink); }
+.ot-table { width: 100%; border-collapse: collapse; font-size: var(--fs-dense); line-height: var(--lh-20); }
+.ot-table th { text-align: left; padding: var(--space-3) var(--space-4) var(--space-3) 0; font-size: var(--fs-caption); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--divider-strong); white-space: nowrap; }
+.ot-table td { padding: var(--space-4) var(--space-4) var(--space-4) 0; border-bottom: 1px solid var(--divider-strong); vertical-align: top; }
+.ot-table td.num, .ot-table th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ot-table tr.is-highlight td { background: var(--accent-tint); }
+.ot-table .ot-sub { display: block; color: var(--ink-3); font-size: var(--fs-caption); }
+.ot-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-6); }
+.ot-toolbar-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.ot-scope .ot-link-btn { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; font-size: var(--fs-dense); color: var(--brand); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+.ot-scope .ot-link-btn--danger { color: var(--signal-ink); }
+.ot-tab-count { display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: var(--ink); font-size: 11px; line-height: 18px; text-align: center; }
+.ui-dialog--lg { max-width: 880px; }
+.ot-check-row { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-dense); cursor: pointer; }

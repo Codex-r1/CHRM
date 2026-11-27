@@ -1,137 +1,360 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from "react";
-import { useRouter, useParams } from "next/navigation";
-import Header from "../../../components/Header";
-import Footer from "../../../components/Footer";
-import { Calendar, MapPin, Users, CheckCircle, AlertCircle, ArrowLeft, Loader2, ArrowRight } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useAuth } from "../../../../(backend)/context/auth";
-import PaymentMethodSelector, { PaymentMethod, CardDetails } from "../../../components/PaymentMethodSelector";
+import SiteShell from "../../../components/site/SiteShell";
+import { AutoGrid, ImageFrame, Notice, Section } from "../../../components/site/primitives";
+import PaymentMethodSelector, { type CardDetails, type PaymentMethod } from "../../../components/PaymentMethodSelector";
+import StripeCheckout from "../../../components/StripeCheckout";
+import { Button, ButtonLink, Empty, Field, Input, Spinner } from "../../../components/ui";
+import { ROUTES } from "../../../content/site";
+import { kes } from "../../../lib/products";
+import type { AlumniEvent } from "../../../types/event";
+
+type Step = "form" | "awaiting-pin" | "card-payment" | "success";
+
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_ATTEMPTS = 40;
+
+const longDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
 export default function EventRegistrationPage() {
-  const router = useRouter();
-  const params = useParams();
-  const eventId = params?.eventId as string;
+  const params = useParams<{ eventId: string }>();
+  const eventId = params?.eventId;
   const { user } = useAuth();
 
-  const [event, setEvent] = useState<any>(null);
+  const [event, setEvent] = useState<AlumniEvent | null>(null);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState(1); // 1 = Form, 2 = Success
+  const [step, setStep] = useState<Step>("form");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mpesa');
-  const [cardDetails, setCardDetails] = useState<CardDetails>({ cardNumber: '', expiryDate: '', cvv: '', cardholderName: '' });
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa");
+  const [cardDetails, setCardDetails] = useState<CardDetails>({ cardNumber: "", expiryDate: "", cvv: "", cardholderName: "" });
+  const [cardClientSecret, setCardClientSecret] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = null;
+  };
+  useEffect(() => stopPolling, []);
 
   useEffect(() => {
-    if (user) setForm(prev => ({ ...prev, name: user.user_metadata?.full_name || "", email: user.email || "" }));
+    if (user) setForm((prev) => ({ ...prev, name: prev.name || user.user_metadata?.full_name || "", email: prev.email || user.email || "" }));
   }, [user]);
 
   useEffect(() => {
+    if (!eventId) return;
     fetch(`/api/events/${eventId}`)
-      .then(res => res.json())
-      .then(data => { setEvent(data); setLoading(false); })
-      .catch(() => { setError("Event not found"); setLoading(false); });
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setEvent(data && data.id ? { ...data, id: String(data.id) } : null))
+      .catch(() => setEvent(null))
+      .finally(() => setLoading(false));
   }, [eventId]);
+
+  const update = (key: keyof typeof form) => (e: { target: { value: string } }) => setForm((p) => ({ ...p, [key]: e.target.value }));
+
+  const startPolling = (checkoutRequestId: string) => {
+    stopPolling();
+    let attempts = 0;
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      if (attempts > POLL_MAX_ATTEMPTS) {
+        stopPolling();
+        setStep("form");
+        setError("We didn't receive confirmation from M-PESA in time. If you were charged, contact the alumni office.");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/payments/${checkoutRequestId}`);
+        const data = await res.json();
+        if (data.status === "confirmed") {
+          stopPolling();
+          setStep("success");
+        } else if (data.status === "failed" || data.status === "cancelled") {
+          stopPolling();
+          setStep("form");
+          setError("The M-PESA payment failed or was cancelled. Please try again.");
+        }
+      } catch {
+        // keep polling
+      }
+    }, POLL_INTERVAL_MS);
+  };
 
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
+    if (!event) return;
     setSubmitting(true);
     setError("");
+    const attendee = { attendee_name: form.name, attendee_email: form.email, attendee_phone: form.phone };
 
     try {
-      if (paymentMethod === 'mpesa') {
-        const res = await fetch('/api/payments/stk-push', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phoneNumber: form.phone, amount: event.price, paymentType: 'event', userId: user?.id || null, metadata: { event_id: event.id, attendee_name: form.name, attendee_email: form.email } })
+      if (!event.price) {
+        // Free event: register directly.
+        const res = await fetch("/api/events/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ event_id: event.id, user_id: user?.id ?? null, is_member: !!user, ...attendee }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Registration failed. Please try again.");
+        setStep("success");
+      } else if (paymentMethod === "mpesa") {
+        const res = await fetch("/api/payments/stk-push", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phoneNumber: form.phone,
+            amount: event.price,
+            paymentType: "event",
+            userId: user?.id || null,
+            metadata: { event_id: event.id, ...attendee },
+          }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message);
-        // Handle polling logic here
-        setStep(2);
+        if (!res.ok || !data.checkoutRequestID) throw new Error(data.message || "Could not start the M-PESA payment.");
+        setStep("awaiting-pin");
+        startPolling(data.checkoutRequestID);
+      } else if (paymentMethod === "visa") {
+        // The server prices the PaymentIntent from the event record; the webhook records the registration.
+        const res = await fetch("/api/payments/stripe/create-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: Math.round(event.price * 100),
+            currency: "KES",
+            customerEmail: form.email,
+            metadata: { payment_type: "event", event_id: event.id, event_name: event.name, user_id: user?.id || "", ...attendee, registration_type: user ? "member" : "guest" },
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.clientSecret) throw new Error(data.error || "Could not start card payment.");
+        setCardClientSecret(data.clientSecret);
+        setStep("card-payment");
       } else {
-        // Handle Stripe Card Intent here
-        setStep(2);
+        throw new Error("This payment method is not available yet.");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Registration failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  if (!event) return <div className="min-h-screen flex items-center justify-center">Event not found</div>;
-
-  if (step === 2) {
+  /* ── Loading / not found ── */
+  if (loading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center p-6 text-center">
-          <div className="max-w-md">
-            <CheckCircle className="mx-auto text-[#C9A84C] mb-6" size={48} />
-            <h1 className="font-serif text-3xl text-[#1B3A6B] mb-4">Registration Confirmed</h1>
-            <p className="text-[#1B3A6B]/60 mb-8">You are successfully registered for {event.name}. A confirmation email has been sent.</p>
-            <Link href="/events" className="bg-[#1B3A6B] text-white px-8 py-3 rounded-sm text-sm font-semibold uppercase tracking-wider">Back to Events</Link>
-          </div>
-        </main>
-        <Footer />
-      </div>
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-24)", display: "flex", justifyContent: "center", color: "var(--brand)" }}>
+          <Spinner size={32} label="Loading event" />
+        </Section>
+      </SiteShell>
+    );
+  }
+  if (!event) {
+    return (
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-16)" }}>
+          <Empty title="Event not found" description="It may have ended or been removed." actions={<ButtonLink href={ROUTES.events}>See all events</ButtonLink>} />
+        </Section>
+      </SiteShell>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-white flex flex-col">
-      <Header />
-      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-12">
-        <Link href="/events" className="inline-flex items-center text-sm text-[#1B3A6B]/60 hover:text-[#1B3A6B] mb-8">
-          <ArrowLeft size={16} className="mr-2" /> Back to Events
-        </Link>
+  const isFull = !!event.max_attendees && event.current_attendees >= event.max_attendees;
+  const isPast = new Date(event.event_date) < new Date(new Date().toDateString());
 
-        <div className="grid md:grid-cols-2 gap-16">
-          {/* Event Info */}
-          <div>
-            <h1 className="font-serif text-4xl text-[#1B3A6B] mb-4">{event.name}</h1>
-            <div className="space-y-4 text-sm text-[#1B3A6B]/70 mb-8">
-              <p className="flex items-center gap-3"><Calendar size={16} className="text-[#C9A84C]" /> {new Date(event.event_date).toLocaleDateString()}</p>
-              <p className="flex items-center gap-3"><MapPin size={16} className="text-[#C9A84C]" /> {event.location}</p>
-              <p className="flex items-center gap-3"><Users size={16} className="text-[#C9A84C]" /> {event.current_attendees} / {event.max_attendees} Registered</p>
-            </div>
-            <div className="border-t border-[#1B3A6B]/10 pt-6">
-              <p className="text-sm leading-relaxed text-[#1B3A6B]/70">{event.description}</p>
+  /* ── Result / payment screens ── */
+  if (step === "success") {
+    return (
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-24)" }}>
+          <div className="ot-stack ot-fade-in" style={{ maxWidth: 560, margin: "0 auto", alignItems: "center", textAlign: "center", gap: "var(--space-4)" }}>
+            <span className="ui-badge ui-badge--success">Registration confirmed</span>
+            <h1 className="ot-display-sm">See you at {event.name}</h1>
+            <p className="ot-body">
+              {longDate(event.event_date)}
+              {event.location ? `, ${event.location}` : ""}. A confirmation email is on its way to {form.email}.
+            </p>
+            <div style={{ display: "flex", gap: "var(--space-3)", flexWrap: "wrap", justifyContent: "center" }}>
+              <ButtonLink href={ROUTES.events} size="lg">
+                More events
+              </ButtonLink>
+              {user && (
+                <ButtonLink href={`${ROUTES.memberDashboard}?tab=events`} size="lg" variant="outline">
+                  My dashboard
+                </ButtonLink>
+              )}
             </div>
           </div>
+        </Section>
+      </SiteShell>
+    );
+  }
 
-          {/* Registration Form */}
-          <form onSubmit={handleRegister} className="bg-[#F9F9F8] p-8 border border-[#1B3A6B]/10">
-            <h2 className="font-serif text-2xl text-[#1B3A6B] mb-6">Register</h2>
-            {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
-
-            <div className="space-y-4 mb-8">
-              <input required type="text" placeholder="Full Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full border-b border-[#1B3A6B]/30 bg-transparent py-2 text-sm focus:border-[#1B3A6B] outline-none" />
-              <input required type="email" placeholder="Email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full border-b border-[#1B3A6B]/30 bg-transparent py-2 text-sm focus:border-[#1B3A6B] outline-none" />
-              <input required type="tel" placeholder="Phone (M-PESA)" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="w-full border-b border-[#1B3A6B]/30 bg-transparent py-2 text-sm focus:border-[#1B3A6B] outline-none" />
+  if (step === "awaiting-pin") {
+    return (
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-24)" }}>
+          <div className="ot-panel ot-panel--lg ot-fade-in" style={{ maxWidth: 480, margin: "0 auto", alignItems: "center", textAlign: "center" }} aria-live="polite">
+            <h1 className="ot-h2">Enter your M-PESA PIN</h1>
+            <p className="ot-body">
+              A prompt was sent to <strong>{form.phone}</strong> to pay <strong>{kes(event.price)}</strong> for {event.name}.
+            </p>
+            <div className="ot-dots" aria-hidden="true">
+              <span />
+              <span />
+              <span />
             </div>
+            <Button variant="ghost" onClick={() => { stopPolling(); setStep("form"); }}>
+              Cancel
+            </Button>
+          </div>
+        </Section>
+      </SiteShell>
+    );
+  }
 
-            <div className="mb-8">
-              <h3 className="font-serif text-lg text-[#1B3A6B] mb-3">Payment Method</h3>
-              <PaymentMethodSelector paymentMethod={paymentMethod} setPaymentMethod={setPaymentMethod} cardDetails={cardDetails} setCardDetails={setCardDetails} currentFee={event.price} isProcessing={submitting} />
+  if (step === "card-payment" && cardClientSecret) {
+    return (
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-16)" }}>
+          <div className="ot-stack ot-fade-in" style={{ maxWidth: 520, margin: "0 auto", gap: "var(--space-6)" }}>
+            <div className="ot-stack" style={{ gap: "var(--space-2)" }}>
+              <span className="ot-caption">Secure card payment</span>
+              <h1 className="ot-h2">Pay {kes(event.price)}</h1>
+              <p className="ot-body ot-muted">{event.name}</p>
             </div>
+            {error && <Notice tone="danger">{error}</Notice>}
+            <StripeCheckout clientSecret={cardClientSecret} payLabel={`Pay ${kes(event.price)}`} onSuccess={() => setStep("success")} onError={setError} />
+            <Button variant="ghost" onClick={() => { setCardClientSecret(null); setError(""); setStep("form"); }}>
+              Back
+            </Button>
+          </div>
+        </Section>
+      </SiteShell>
+    );
+  }
 
-            <div className="flex justify-between items-center border-t border-[#1B3A6B]/10 pt-4 mb-6">
-              <span className="text-sm font-semibold uppercase text-[#1B3A6B]">Total Due</span>
-              <span className="font-serif text-2xl text-[#1B3A6B]">KES {event.price.toLocaleString()}</span>
+  /* ── Form ── */
+  return (
+    <SiteShell>
+      <Section spacing="intro" style={{ paddingTop: "var(--space-10)" }}>
+        <nav className="ot-breadcrumb" aria-label="Breadcrumb" style={{ marginBottom: "var(--space-6)" }}>
+          <Link href={ROUTES.events}>Events</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page">{event.name}</span>
+        </nav>
+        <AutoGrid min={320} className="ot-intro">
+          <div className="ot-stack" style={{ gap: "var(--space-3)" }}>
+            <span className="ot-caption">Event registration</span>
+            <h1 className="ot-hero">{event.name}</h1>
+          </div>
+          <dl className="ot-dl" style={{ gridTemplateColumns: "1fr" }}>
+            <div>
+              <dt>When</dt>
+              <dd>{longDate(event.event_date)}</dd>
             </div>
+            {event.location && (
+              <div>
+                <dt>Where</dt>
+                <dd>{event.location}</dd>
+              </div>
+            )}
+            {event.max_attendees ? (
+              <div>
+                <dt>Places</dt>
+                <dd>
+                  {event.current_attendees} of {event.max_attendees} taken
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        </AutoGrid>
+      </Section>
 
-            <button type="submit" disabled={submitting} className="w-full bg-[#1B3A6B] text-white py-3.5 text-xs font-bold uppercase tracking-widest hover:bg-[#152e55] transition flex justify-center items-center gap-2">
-              {submitting ? <Loader2 className="animate-spin" size={16} /> : 'Complete Registration'}
-            </button>
-          </form>
-        </div>
-      </main>
-      <Footer />
-    </div>
+      <Section spacing="last">
+        <AutoGrid min={340} gap="var(--space-12)" style={{ alignItems: "start" }}>
+          <div className="ot-stack ot-span-2" style={{ gap: "var(--space-10)", minWidth: 0 }}>
+            {event.image_url && <ImageFrame aspect="wide" src={event.image_url} alt={event.name} />}
+            {event.description && (
+              <div className="ot-stack" style={{ gap: "var(--space-3)" }}>
+                <h2 className="ot-h3">About this event</h2>
+                <p className="ot-body-relaxed" style={{ whiteSpace: "pre-line" }}>
+                  {event.description}
+                </p>
+              </div>
+            )}
+
+            {isPast || isFull ? (
+              <Notice tone="info">{isPast ? "This event has already taken place." : "This event is fully booked."}</Notice>
+            ) : (
+              <form id="event-form" onSubmit={handleRegister} className="ot-stack ot-rule-top" style={{ gap: "var(--space-6)" }}>
+                <h2 className="ot-h3">Your details</h2>
+                {error && <Notice tone="danger">{error}</Notice>}
+                <AutoGrid min={220} gap="var(--space-4)">
+                  <Field label="Full name" htmlFor="ev-name" required>
+                    <Input id="ev-name" autoComplete="name" required value={form.name} onChange={update("name")} />
+                  </Field>
+                  <Field label="Email address" htmlFor="ev-email" required>
+                    <Input id="ev-email" type="email" autoComplete="email" required value={form.email} onChange={update("email")} />
+                  </Field>
+                </AutoGrid>
+                <Field
+                  label={paymentMethod === "mpesa" && event.price ? "M-PESA phone number" : "Phone number"}
+                  htmlFor="ev-phone"
+                  required
+                  description={paymentMethod === "mpesa" && event.price ? "You'll receive an STK push to authorise the payment." : undefined}
+                >
+                  <Input id="ev-phone" type="tel" autoComplete="tel" placeholder="07** *** ***" required value={form.phone} onChange={update("phone")} />
+                </Field>
+
+                {event.price > 0 && (
+                  <div className="ot-stack" style={{ gap: "var(--space-4)" }}>
+                    <h2 className="ot-h3">Payment method</h2>
+                    <PaymentMethodSelector
+                      paymentMethod={paymentMethod}
+                      setPaymentMethod={setPaymentMethod}
+                      cardDetails={cardDetails}
+                      setCardDetails={setCardDetails}
+                      currentFee={event.price}
+                      isProcessing={submitting}
+                      showNotes={paymentMethod !== "mpesa"}
+                      collectCardDetails={false}
+                    />
+                  </div>
+                )}
+              </form>
+            )}
+          </div>
+
+          <aside className="ot-panel ot-panel--lg ot-sticky">
+            <div className="ot-stack" style={{ gap: "var(--space-2)" }}>
+              <span className="ot-caption">Ticket price</span>
+              <span className="ot-stat">{event.price ? kes(event.price) : "Free"}</span>
+            </div>
+            {!isPast && !isFull && (
+              <Button type="submit" form="event-form" size="lg" block loading={submitting}>
+                {event.price ? `Register and pay ${kes(event.price)}` : "Register"}
+              </Button>
+            )}
+            {!user && (
+              <p className="ot-dense ot-muted">
+                Already a member?{" "}
+                <Link href={`${ROUTES.login}?redirect=${encodeURIComponent(`/events/register/${event.id}`)}`} className="ot-underline">
+                  Sign in
+                </Link>{" "}
+                to fill in your details.
+              </p>
+            )}
+          </aside>
+        </AutoGrid>
+      </Section>
+    </SiteShell>
   );
 }

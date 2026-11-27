@@ -7,7 +7,7 @@ interface DialogProps {
   open: boolean;
   onClose: () => void;
   title: ReactNode;
-  size?: "md" | "sm";
+  size?: "md" | "sm" | "lg";
   children: ReactNode;
 }
 
@@ -35,7 +35,7 @@ export function Dialog({ open, onClose, title, size = "md", children }: DialogPr
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={cx("ui-dialog", size === "sm" && "ui-dialog--sm")}
+        className={cx("ui-dialog", size === "sm" && "ui-dialog--sm", size === "lg" && "ui-dialog--lg")}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, padding: "20px 24px", borderBottom: "1px solid var(--divider-strong)" }}>
