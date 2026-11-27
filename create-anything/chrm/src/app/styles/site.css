@@ -182,3 +182,74 @@
   .ot-fade-in, .ot-dots span, .ui-spin { animation: none; }
 }
 .ot-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* ── Shop ───────────────────────────────────────────────── */
+.ot-media--square { aspect-ratio: 1 / 1; }
+.ot-media--hero { aspect-ratio: 3 / 1; min-height: 280px; }
+
+/* Category bar under the shop intro (scrolls sideways on phones) */
+.ot-shop-nav { border-top: 1px solid var(--divider-strong); border-bottom: 1px solid var(--divider-strong); background: #fff; }
+.ot-shop-nav-inner { display: flex; align-items: center; gap: var(--space-8); overflow-x: auto; scrollbar-width: none; }
+.ot-shop-nav-inner::-webkit-scrollbar { display: none; }
+.ot-scope .ot-shop-nav-link { flex: none; padding: var(--space-4) 0 calc(var(--space-4) - 2px); border-bottom: 2px solid transparent; font-weight: 600; font-size: var(--fs-dense); line-height: var(--lh-20); color: var(--ink-3); white-space: nowrap; }
+.ot-scope .ot-shop-nav-link:hover { color: var(--ink); text-decoration: none; }
+.ot-scope .ot-shop-nav-link[aria-current="page"] { color: var(--brand); border-bottom-color: var(--brand); }
+
+/* Category tiles: square image, label underneath (centred) */
+.ot-scope a.ot-cat-tile { display: flex; flex-direction: column; gap: var(--space-3); color: var(--ink); text-align: center; }
+.ot-scope a.ot-cat-tile:hover { text-decoration: none; }
+.ot-cat-tile .ot-media { background: #f7f7fa; }
+.ot-cat-tile .ot-media > img { object-fit: contain; padding: 8%; transition: transform 0.3s ease; }
+.ot-cat-tile:hover .ot-media > img { transform: scale(1.04); }
+.ot-cat-tile-label { font-weight: 600; font-size: var(--fs-dense); line-height: var(--lh-20); }
+
+/* Product card */
+.ot-scope a.ot-product-card { display: flex; flex-direction: column; gap: var(--space-3); color: var(--ink); min-width: 0; }
+.ot-scope a.ot-product-card:hover { text-decoration: none; }
+.ot-product-card .ot-media { background: #f7f7fa; }
+.ot-product-card .ot-media > img { transition: transform 0.35s ease; }
+.ot-product-card:hover .ot-media > img { transform: scale(1.04); }
+.ot-product-card-name { font-weight: 600; font-size: var(--fs-body); line-height: var(--lh-24); }
+.ot-product-card:hover .ot-product-card-name { text-decoration: underline; text-underline-offset: 4px; }
+.ot-product-card-badge { position: absolute; top: var(--space-3); left: var(--space-3); }
+.ot-dots-row { display: flex; gap: 4px; align-items: center; }
+.ot-dots-row i { width: 10px; height: 10px; border-radius: 999px; border: 1px solid rgba(13, 13, 26, 0.15); display: inline-block; }
+
+/* Pill button (Imperial-style "View all") */
+.ot-scope a.ot-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 280px; height: 56px; padding: 0 var(--space-8); border: 1.5px solid var(--ink); border-radius: 999px; color: var(--ink); font-weight: 600; font-size: var(--fs-dense); letter-spacing: 0.12em; text-transform: uppercase; transition: background 0.15s, color 0.15s; }
+.ot-scope a.ot-pill:hover { background: var(--ink); color: #fff; text-decoration: none; }
+
+/* Featured banner (image with gradient and overlaid copy) */
+.ot-feature { position: relative; overflow: hidden; background: var(--brand-deep); color: #fff; }
+.ot-feature > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ot-feature::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10, 18, 48, 0.85) 0%, rgba(10, 18, 48, 0.55) 45%, rgba(10, 18, 48, 0.1) 100%); }
+.ot-feature-body { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; max-width: 640px; padding: var(--space-20) var(--space-10); }
+.ot-feature-body .ot-caption { color: rgba(255, 255, 255, 0.8); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; }
+.ot-feature-body p { color: rgba(255, 255, 255, 0.9); }
+@media (max-width: 599px) { .ot-feature-body { padding: var(--space-12) var(--space-6); } }
+
+/* Product page */
+.ot-gallery { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.ot-gallery .ot-media { background: #f7f7fa; }
+.ot-thumbs { display: flex; gap: var(--space-2); overflow-x: auto; }
+.ot-thumb { flex: none; width: 72px; height: 72px; padding: 0; border: 2px solid transparent; background: #f7f7fa; cursor: pointer; overflow: hidden; }
+.ot-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ot-thumb[aria-pressed="true"] { border-color: var(--brand); }
+.ot-qty { display: inline-flex; align-items: center; border: 1px solid var(--divider-strong); height: 48px; }
+.ot-qty button { width: 44px; height: 100%; border: 0; background: #fff; font: inherit; font-size: 18px; cursor: pointer; color: var(--ink); }
+.ot-qty button:disabled { color: var(--ink-5); cursor: not-allowed; }
+.ot-qty span { min-width: 40px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ot-accordion { border-top: 1px solid var(--divider-strong); }
+.ot-accordion details { border-bottom: 1px solid var(--divider-strong); }
+.ot-accordion summary { list-style: none; display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) 0; cursor: pointer; font-weight: 600; font-size: var(--fs-body); }
+.ot-accordion summary::-webkit-details-marker { display: none; }
+.ot-accordion summary::after { content: "+"; font-size: 20px; font-weight: 400; color: var(--ink-3); }
+.ot-accordion details[open] summary::after { content: "−"; }
+.ot-accordion details > div { padding: 0 0 var(--space-4); }
+.ot-breadcrumb { display: flex; flex-wrap: wrap; gap: var(--space-2); font-size: var(--fs-caption); color: var(--ink-3); }
+.ot-scope .ot-breadcrumb a { color: var(--ink-3); }
+
+/* Header basket link */
+.ot-scope a.ot-basket-link { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 var(--space-2); color: var(--ink); font-weight: 600; font-size: var(--fs-dense); }
+.ot-scope a.ot-basket-link:hover { color: var(--brand); text-decoration: none; }
+.ot-basket-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 12px; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }

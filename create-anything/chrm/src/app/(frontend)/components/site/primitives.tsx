@@ -127,7 +127,7 @@ export function FeatureBand({ title, children, id, spacing = "default" }: { titl
 
 /* ── Image frame with placeholder ─────────────────────────────────────── */
 
-type Aspect = "banner" | "wide" | "photo" | "portrait";
+type Aspect = "banner" | "wide" | "photo" | "portrait" | "square" | "hero";
 
 interface ImageFrameProps {
   aspect: Aspect;

@@ -2,6 +2,7 @@ import "./globals.css";
 import React from "react";
 import { AuthProvider } from "./(backend)/context/auth";
 import SessionWarning from "./(frontend)/components/SessionWarning";
+import { CartProvider } from "./(frontend)/lib/cart";
 import { Playfair_Display, Montserrat, Manrope } from "next/font/google";
 
 const playfair = Playfair_Display({
@@ -39,8 +40,10 @@ export default function RootLayout({
     <html lang="en" className={`${playfair.variable} ${montserrat.variable} ${manrope.variable}`}>
       <body className="bg-white text-[#1B3A6B] antialiased selection:bg-[#C9A84C] selection:text-[#1B3A6B]">
         <AuthProvider>
-          <SessionWarning />
-          <main className="min-h-screen">{children}</main>
+          <CartProvider>
+            <SessionWarning />
+            <main className="min-h-screen">{children}</main>
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

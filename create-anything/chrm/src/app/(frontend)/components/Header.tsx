@@ -8,6 +8,7 @@ import { MEMBER_NAV_ITEM, PUBLIC_NAV, ROUTES, SOCIETY, type NavItem } from "../c
 import NairobiClock from "./site/NairobiClock";
 import { ArrowRightIcon } from "./site/primitives";
 import { Dialog, Spinner } from "./ui";
+import { useCart } from "../lib/cart";
 
 type LogoutStep = "idle" | "logging" | "success";
 
@@ -18,6 +19,7 @@ function isActive(pathname: string | null, href: string) {
 
 export default function Header() {
   const { user, loading: authLoading, logout } = useAuth();
+  const { count: basketCount, ready: basketReady } = useCart();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutStep, setLogoutStep] = useState<LogoutStep>("idle");
@@ -97,6 +99,17 @@ export default function Header() {
           </nav>
 
           <div className="ot-header-actions" style={authHidden}>
+            <Link
+              href={ROUTES.storeBasket}
+              className="ot-basket-link"
+              aria-label={basketReady && basketCount > 0 ? `Basket, ${basketCount} ${basketCount === 1 ? "item" : "items"}` : "Basket"}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 7h12l-1 13H7L6 7z" />
+                <path d="M9 7a3 3 0 0 1 6 0" />
+              </svg>
+              {basketReady && basketCount > 0 && <span className="ot-basket-count">{basketCount}</span>}
+            </Link>
             {user ? (
               <button type="button" className="ot-header-text-btn ot-header-desktop-only" onClick={handleLogout}>
                 Log out

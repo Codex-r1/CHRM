@@ -18,7 +18,7 @@ export const PUBLIC_NAV: NavItem[] = [
   { label: "Alumni stories", href: "/stories", comingSoon: true },
   { label: "Membership", href: "/payments" },
   { label: "Events", href: "/events" },
-  { label: "Merchandise", href: "/merchandise" },
+  { label: "Shop", href: "/merchandise" },
   { label: "About us", href: "/about" },
   { label: "Get in touch", href: "/contact" },
 ];
@@ -32,6 +32,8 @@ export const ROUTES = {
   membership: "/payments",
   events: "/events",
   store: "/merchandise",
+  storeBasket: "/merchandise/basket",
+  storeCheckout: "/merchandise/checkout",
   about: "/about",
   contact: "/contact",
   directory: "/member/directory",
@@ -156,12 +158,25 @@ export const CONTACT_QUICK_LINKS = [
   { label: "About us", href: ROUTES.about },
 ] as const;
 
-export const STORE_CATEGORIES: ReadonlyArray<{ value: StoreCategory; label: string; keywords: string[] }> = [
-  { value: "all", label: "All", keywords: [] },
-  { value: "blazers", label: "Blazers", keywords: ["blazer", "jacket"] },
-  { value: "ties", label: "Ties", keywords: ["tie"] },
-  { value: "publications", label: "Publications", keywords: ["publication", "book", "archive", "magazine"] },
+/**
+ * Shop categories, keyed by the `products.category` database values.
+ * `key` is used in URLs: /merchandise/category/<key>.
+ */
+export const SHOP_CATEGORIES: ReadonlyArray<{ value: StoreCategory; label: string; blurb: string }> = [
+  { value: "all", label: "Shop all", blurb: "The full Old Turian collection." },
+  { value: "hoodie", label: "Hoodies & sweats", blurb: "Heavyweight hoodies and sweatshirts in school colours." },
+  { value: "tshirt", label: "T-shirts", blurb: "Everyday tees with the Turi crest." },
+  { value: "polo", label: "Polos", blurb: "Embroidered polos for reunions and the golf day." },
+  { value: "accessory", label: "Accessories", blurb: "Crest ties, caps, scarves and more." },
+  { value: "other", label: "Gifts & publications", blurb: "Archival publications, prints and gifts." },
 ];
+
+export const SHOP_POLICIES = {
+  delivery:
+    "Orders are dispatched worldwide via DHL. Express delivery takes 2-4 business days, Economy 5-8 business days. Pickup from the school is free and usually ready in 2-3 days.",
+  // TODO(client): confirm the returns policy wording (time limit, condition, refunds vs exchanges).
+  returns: "If something isn't right with your order, contact the alumni office and we'll help arrange an exchange or return.",
+} as const;
 
 export const SHIPPING_METHODS: ShippingOption[] = [
   { id: "dhl_express", label: "DHL Express Worldwide", price: 45, time: "2-4 business days" },

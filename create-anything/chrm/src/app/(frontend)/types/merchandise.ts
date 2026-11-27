@@ -10,12 +10,20 @@ export interface ProductVariant {
   image_url: string;
 }
 
+/** Values allowed by the `products.category` CHECK constraint. */
+export type ProductCategory = "tshirt" | "polo" | "hoodie" | "accessory" | "other";
+
 export interface Product {
   id: string;
   name: string;
   base_price: number;
   description: string;
+  category: ProductCategory | null;
   is_out_of_stock: boolean;
+  featured_image_url: string | null;
+  /** Extra gallery images from `product_images`, primary first. */
+  images: string[];
+  created_at?: string;
   variants: ProductVariant[];
 }
 
@@ -46,4 +54,6 @@ export interface ShippingOption {
   time: string;
 }
 
-export type StoreCategory = "all" | "blazers" | "ties" | "publications";
+export type StoreCategory = "all" | ProductCategory;
+
+export type ProductSort = "featured" | "newest" | "price-asc" | "price-desc" | "name";
