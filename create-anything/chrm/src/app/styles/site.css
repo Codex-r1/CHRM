@@ -253,3 +253,37 @@
 .ot-scope a.ot-basket-link { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 var(--space-2); color: var(--ink); font-weight: 600; font-size: var(--fs-dense); }
 .ot-scope a.ot-basket-link:hover { color: var(--brand); text-decoration: none; }
 .ot-basket-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 12px; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* ── Member area ────────────────────────────────────────── */
+/* Membership card: navy, crest, certificate-like typography */
+.ot-member-card { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-8); background: var(--brand-deep); color: #fff; min-width: 0; }
+.ot-member-card::after { content: ""; position: absolute; right: -60px; bottom: -60px; width: 220px; height: 220px; border-radius: 999px; border: 1px solid rgba(244, 201, 93, 0.25); box-shadow: 0 0 0 24px rgba(244, 201, 93, 0.06); }
+.ot-member-card-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.ot-member-card .ot-caption { color: rgba(255, 255, 255, 0.7); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; }
+.ot-member-card-number { font-weight: 800; font-size: var(--fs-display-sm); line-height: 1; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+.ot-member-card-rule { height: 1px; background: rgba(255, 255, 255, 0.18); }
+
+/* Big ruled stat row (homepage style) */
+.ot-stat-row { --ot-min: 180px; border-top: 1px solid var(--divider-strong); border-bottom: 1px solid var(--divider-strong); }
+.ot-stat-row > div { padding: var(--space-6) var(--space-6) var(--space-6) 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.ot-stat-row > div + div { padding-left: var(--space-6); border-left: 1px solid var(--divider-strong); }
+@media (max-width: 767px) { .ot-stat-row > div + div { border-left: 0; padding-left: 0; } .ot-stat-row > div { border-bottom: 1px solid var(--divider); } }
+
+/* Ledger: ruled rows with aligned columns */
+.ot-ledger { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--ink); }
+.ot-ledger-row { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto auto; gap: var(--space-4) var(--space-6); align-items: center; padding: var(--space-4) 0; border-bottom: 1px solid var(--divider-strong); }
+.ot-ledger-head { padding: var(--space-3) 0; font-size: var(--fs-caption); color: var(--ink-3); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.ot-ledger-amount { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+@media (max-width: 639px) {
+  .ot-ledger-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .ot-ledger-row { gap: var(--space-2) var(--space-4); }
+  .ot-ledger-row > :first-child, .ot-ledger-row > :nth-child(2) { grid-column: 1 / -1; }
+  .ot-ledger-row > :nth-child(3) { justify-self: start; }
+  .ot-ledger-head { display: none; }
+}
+
+/* Definition list (profile) */
+.ot-dl { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); column-gap: var(--space-12); }
+.ot-dl > div { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4) 0; border-bottom: 1px solid var(--divider-strong); }
+.ot-dl dt { font-size: var(--fs-caption); color: var(--ink-3); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.ot-dl dd { margin: 0; font-size: var(--fs-body); line-height: var(--lh-24); color: var(--ink); }

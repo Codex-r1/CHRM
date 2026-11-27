@@ -1,13 +1,16 @@
 import { Suspense } from "react";
 import MemberDashboard from "./MemberDashboardClient";
+import { Spinner } from "../../components/ui";
 
 export default function MemberDashboardPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-[100dvh] bg-[#F7F9FC] flex items-center justify-center">
-        <div className="text-[#2B4C73] text-xl font-montserrat">Loading Dashboard...</div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="ot-scope" style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--brand)" }}>
+          <Spinner size={32} label="Loading your account" />
+        </div>
+      }
+    >
       <MemberDashboard />
     </Suspense>
   );
