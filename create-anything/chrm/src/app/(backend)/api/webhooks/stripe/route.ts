@@ -5,7 +5,8 @@ import {
   sendEmail,
   getEventRegistrationEmail,
   getMerchandiseEmail,
-} from '../../../../../app/(backend)/lib/email/service';  
+} from '../../../../../app/(backend)/lib/email/service';
+import { completeRegistration } from '@/app/(backend)/lib/registration/service';
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -62,6 +63,12 @@ export async function POST(request: Request) {
         const paymentType =
           metadata.payment_type ||
           (metadata.event_id ? "event" : "merchandise");
+
+        // ─── Registration: complete the pending payment created by registration-intent ───
+        if (paymentType === "registration") {
+          await handleRegistrationSucceeded(admin, paymentIntent);
+          break;
+        }
 
         const record = {
           user_id: metadata.user_id || null,
@@ -204,6 +211,17 @@ export async function POST(request: Request) {
 
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        if (paymentIntent.metadata?.payment_type === "registration") {
+          await admin
+            .from("payments")
+            .update({
+              status: "failed",
+              error_message: paymentIntent.last_payment_error?.message || "Card payment failed",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("checkout_request_id", paymentIntent.id)
+            .eq("status", "pending");
+        }
         console.log(
           "Payment failed:",
           paymentIntent.id,
@@ -221,4 +239,49 @@ export async function POST(request: Request) {
     console.error("Webhook handler error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
+}
+
+/**
+ * Card registration succeeded: create the member account from the pending
+ * payment row (same handler as M-PESA), then confirm the payment. Throws on
+ * failure so the webhook returns 500 and Stripe retries.
+ */
+async function handleRegistrationSucceeded(
+  admin: ReturnType<typeof supabaseAdmin>,
+  paymentIntent: Stripe.PaymentIntent
+) {
+  const { data: payment, error } = await admin
+    .from("payments")
+    .select("*")
+    .eq("checkout_request_id", paymentIntent.id)
+    .maybeSingle();
+
+  if (error || !payment) {
+    throw new Error(`Pending registration payment not found for ${paymentIntent.id}`);
+  }
+  if (payment.status === "confirmed") {
+    console.log("Registration already processed:", paymentIntent.id);
+    return;
+  }
+
+  const result = await completeRegistration(payment);
+  if (!result?.userId) throw new Error("Registration handler did not return userId");
+
+  // Confirm the payment and drop the plaintext password now that the account exists.
+  const { password: _password, ...registrationData } = payment.metadata?.registration_data ?? {};
+  const { error: updateError } = await admin
+    .from("payments")
+    .update({
+      status: "confirmed",
+      user_id: result.userId,
+      receipt_number: (paymentIntent.latest_charge as string | null) ?? paymentIntent.id,
+      paid_at: new Date().toISOString(),
+      confirmed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata: { ...payment.metadata, registration_data: registrationData },
+    })
+    .eq("id", payment.id);
+
+  if (updateError) throw new Error("Failed to confirm registration payment: " + updateError.message);
+  console.log("Card registration completed:", result.userId, result.membershipNumber);
 }

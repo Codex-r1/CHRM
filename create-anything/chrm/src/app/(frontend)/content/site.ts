@@ -4,6 +4,7 @@
  * in one place.
  */
 import type { ShippingOption, StoreCategory } from "../types/merchandise";
+import { REGISTRATION_FEE_KES } from "../../(backend)/lib/registration/fees";
 
 export interface NavItem {
   label: string;
@@ -170,8 +171,8 @@ export const SHIPPING_METHODS: ShippingOption[] = [
 
 export const SHIPPING_COUNTRIES = ["Kenya", "United Kingdom", "United States", "Canada", "Australia", "South Africa", "Other"];
 
-/** Lifetime membership fee in KES. */
-export const REGISTRATION_FEE = 1;
+/** Lifetime membership fee in KES (single source of truth lives server-side). */
+export const REGISTRATION_FEE = REGISTRATION_FEE_KES;
 
 export const COUNTRIES = [
   "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia",

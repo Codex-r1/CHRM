@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import SiteShell from "../components/site/SiteShell";
 import { AutoGrid, Notice, PageIntro, Section } from "../components/site/primitives";
 import PaymentMethodSelector, { type CardDetails, type PaymentMethod } from "../components/PaymentMethodSelector";
+import StripeCheckout from "../components/StripeCheckout";
 import { Button, Dialog, Field, Input, NativeSelect, Spinner } from "../components/ui";
 import { COUNTRIES, REGISTRATION_FEE, ROUTES } from "../content/site";
 import type { MembershipFormData, STKPushStatus } from "../types/member";
@@ -55,7 +56,9 @@ export default function RegistrationPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa");
   const [cardDetails, setCardDetails] = useState<CardDetails>({ cardNumber: "", expiryDate: "", cvv: "", cardholderName: "" });
   const [showPassword, setShowPassword] = useState(false);
-  const [step, setStep] = useState<1 | 2>(1);
+  // 1 = form, "card" = Stripe card entry, 2 = waiting for confirmation
+  const [step, setStep] = useState<1 | "card" | 2>(1);
+  const [card, setCard] = useState<{ clientSecret: string; intentId: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [stkStatus, setStkStatus] = useState<STKPushStatus>("idle");
   const [alert, setAlert] = useState<AlertState | null>(null);
@@ -103,7 +106,33 @@ export default function RegistrationPage() {
     }, POLL_INTERVAL_MS);
   };
 
+  /** Card: the server creates the PaymentIntent and fixes the amount; Stripe collects the card. */
+  const startCardPayment = async () => {
+    const res = await fetch("/api/payments/stripe/registration-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ registrationData: form }),
+    });
+    const data = await res.json();
+    if (res.status === 409 && data.code === "account_exists") {
+      setAlert({
+        tone: "error",
+        title: "Account exists",
+        message: "This email is already registered.",
+        confirmText: "Log in",
+        onConfirm: () => router.push(ROUTES.login),
+      });
+      setLoading(false);
+      return;
+    }
+    if (!res.ok || !data.clientSecret) throw new Error(data.error || "Could not start card payment.");
+    setCard({ clientSecret: data.clientSecret, intentId: data.paymentIntentId });
+    setStep("card");
+    setLoading(false);
+  };
+
   const initiatePayment = async (amount: number) => {
+    if (paymentMethod === "visa") return startCardPayment();
     setStkStatus("initiating");
     const payload: Record<string, unknown> = {
       phoneNumber: form.phone,
@@ -115,10 +144,9 @@ export default function RegistrationPage() {
       registrationData: { ...form },
       metadata: { graduation_year: form.graduation_year, course: form.course, country: form.country },
     };
-    if (paymentMethod === "visa") payload.cardDetails = cardDetails;
-
-    const endpoint = paymentMethod === "mpesa" ? "/api/payments/stk-push" : "/api/payments/cards";
-    const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    // PayPal is disabled via FEATURES; only M-PESA reaches this point.
+    if (paymentMethod !== "mpesa") throw new Error("This payment method is not available yet.");
+    const res = await fetch("/api/payments/stk-push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Payment failed");
 
@@ -186,7 +214,10 @@ export default function RegistrationPage() {
   // ─── Step 2: waiting for M-PESA confirmation ───
   if (step === 2) {
     const copy = {
-      pending: { title: "Check your phone", body: `Enter your M-PESA PIN on ${form.phone} to complete payment.` },
+      pending:
+        paymentMethod === "visa"
+          ? { title: "Confirming your payment", body: "Your card payment went through. We're setting up your membership; this usually takes a few seconds." }
+          : { title: "Check your phone", body: `Enter your M-PESA PIN on ${form.phone} to complete payment.` },
       success: { title: "Registration complete", body: "Check your email to verify your account, then log in." },
       failed: { title: "Payment failed", body: "Please contact support if payment was deducted." },
     } as const;
@@ -218,6 +249,45 @@ export default function RegistrationPage() {
             {state === "success" && (
               <Button onClick={() => router.push(ROUTES.login)}>Log in</Button>
             )}
+          </div>
+        </Section>
+        {alertDialog}
+      </SiteShell>
+    );
+  }
+
+  // ─── Card step: Stripe Payment Element ───
+  if (step === "card" && card) {
+    return (
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-16)" }}>
+          <div className="ot-stack ot-fade-in" style={{ maxWidth: 520, margin: "0 auto", gap: "var(--space-6)" }}>
+            <div className="ot-stack" style={{ gap: "var(--space-2)" }}>
+              <span className="ot-caption">Secure card payment</span>
+              <h1 className="ot-h2">Pay KES {REGISTRATION_FEE.toLocaleString()}</h1>
+              <p className="ot-body ot-muted">
+                Lifetime membership for {form.full_name}. Your account is created as soon as the payment succeeds.
+              </p>
+            </div>
+            <StripeCheckout
+              clientSecret={card.clientSecret}
+              payLabel={`Pay KES ${REGISTRATION_FEE.toLocaleString()}`}
+              onSuccess={() => {
+                setStkStatus("pending");
+                setStep(2);
+                startPolling(card.intentId);
+              }}
+              onError={(message) => setAlert({ tone: "error", title: "Payment failed", message })}
+            />
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setCard(null);
+                setStep(1);
+              }}
+            >
+              Back to registration
+            </Button>
           </div>
         </Section>
         {alertDialog}
@@ -287,6 +357,7 @@ export default function RegistrationPage() {
                 currentFee={REGISTRATION_FEE}
                 isProcessing={loading}
                 showNotes={paymentMethod !== "mpesa"}
+                collectCardDetails={false}
               />
               {paymentMethod === "mpesa" && (
                 <Field
