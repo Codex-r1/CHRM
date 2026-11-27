@@ -125,6 +125,24 @@ export async function POST(request: Request) {
           if (fetchErr) {
             console.error("Failed to fetch event:", fetchErr.message);
           } else if (eventRow) {
+            // Record the registration (mirrors the M-PESA callback's event handler)
+            const { data: existingReg } = await admin
+              .from("event_registrations")
+              .select("id")
+              .eq("payment_id", inserted.id)
+              .maybeSingle();
+            if (!existingReg) {
+              const { error: regErr } = await admin.from("event_registrations").insert({
+                event_id: metadata.event_id,
+                payment_id: inserted.id,
+                attendee_name: metadata.attendee_name || "Valued Member",
+                attendee_email: metadata.attendee_email || "",
+                attendee_phone: metadata.attendee_phone || "",
+                ...(metadata.user_id ? { user_id: metadata.user_id } : {}),
+              });
+              if (regErr) console.error("Failed to create event registration:", regErr.message);
+            }
+
             // Increment attendee count
             const { error: updateErr } = await admin
               .from("events")

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase/admin';
+import { requireAdmin } from "@/app/(backend)/lib/auth/requireAdmin";
 
 export async function GET(request: NextRequest) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
+
   try {
     // Get today's date range
     const today = new Date();

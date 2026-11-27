@@ -1,8 +1,12 @@
 //api/admin/merchanside/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
+import { requireAdmin } from "@/app/(backend)/lib/auth/requireAdmin";
 
 export async function GET(request: Request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
+
   try {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) {
@@ -43,6 +47,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
+
   try {
     const authHeader = request.headers.get('Authorization');
     if (!authHeader) {
