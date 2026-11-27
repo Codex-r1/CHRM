@@ -3,6 +3,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { mpesaService } from '../../../lib/mpesa/service';
 import { supabaseAdmin } from '../../../lib/supabase/admin';
 import { hashRegistrationPassword } from '../../../lib/registration/password';
+import { randomBytes } from 'crypto';
+
+const REFERENCE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid misreading
+
+/** 12-character M-PESA account reference, unique per payment: e.g. "REG-7K2M9QXA". */
+function uniqueAccountReference(prefix: string): string {
+  const bytes = randomBytes(8);
+  let suffix = '';
+  for (const b of bytes) suffix += REFERENCE_ALPHABET[b % REFERENCE_ALPHABET.length];
+  return `${prefix.slice(0, 3)}-${suffix}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,47 +68,34 @@ export async function POST(request: NextRequest) {
       ? cleanPhone.substring(1)
       : cleanPhone;
 
-    // 3. Generate account reference and transaction description
-let accountReference = '';
-let description = '';
+    // 3. Generate a unique account reference and transaction description.
+    // `payments.account_reference` is UNIQUE in the database, and M-PESA allows at
+    // most 12 characters, so each payment gets "<PFX>-<8 random chars>"
+    // (e.g. REG-7K2M9QXA). This is also the reference the member sees on their phone.
+    let referencePrefix = 'PAY';
+    let description = 'Payment';
 
-switch (paymentType) {
-  case 'registration':
-    accountReference = 'REGISTRATION';
-    description = 'Member Reg';
-    break;
-
-  case 'renewal':
-    accountReference = metadata.membership_number
-      ? `REN-${metadata.membership_number}`.slice(0, 12)
-      : 'RENEWAL';
-    description = 'Mem Renewal';
-    break;
-
-  case 'event': {
-    // Handle both snake_case and camelCase event IDs
-    const rawEventId = metadata.event_id || metadata.eventId || 'REG';
-    
-    // Extract short ID if UUID is passed (e.g. "EVT-123e4567") to stay <= 12 chars
-    const shortId = String(rawEventId).replace(/-/g, '').slice(0, 8);
-    accountReference = `EVT-${shortId}`.slice(0, 12);
-    
-    // Ensure event_id is standardized inside metadata for the callback
-    metadata.event_id = rawEventId;
-    
-    description = 'Event Reg';
-    break;
-  }
-
-  case 'merchandise':
-    accountReference = `MERCH-${Date.now().toString().slice(-5)}`;
-    description = 'Merch Order';
-    break;
-
-  default:
-    accountReference = `PAY-${Date.now().toString().slice(-8)}`;
-    description = 'Payment';
-}
+    switch (paymentType) {
+      case 'registration':
+        referencePrefix = 'REG';
+        description = 'Member Reg';
+        break;
+      case 'renewal':
+        referencePrefix = 'REN';
+        description = 'Mem Renewal';
+        break;
+      case 'event':
+        referencePrefix = 'EVT';
+        // Handle both snake_case and camelCase event IDs, standardised for the callback
+        metadata.event_id = metadata.event_id || metadata.eventId || 'REG';
+        description = 'Event Reg';
+        break;
+      case 'merchandise':
+        referencePrefix = 'MER';
+        description = 'Merch Order';
+        break;
+    }
+    let accountReference = uniqueAccountReference(referencePrefix);
 
     let paymentRecord: any = null;
 
@@ -126,21 +124,28 @@ switch (paymentType) {
       });
     }
 
-    // Create payment record
-    const { data: newPayment, error: paymentError } = await supabaseAdmin()
-      .from('payments')
-      .insert({
-        user_id: userId || null,
-        amount: parseFloat(amount),
-        payment_type: paymentType,
-        phone: formattedPhone,
-        account_reference: accountReference,
-        description: description,
-        status: 'pending',
-        metadata: metadataWithRegistration,
-      })
-      .select()
-      .single();
+    // Create payment record (retry once with a fresh reference on the unlikely collision)
+    const insertPayment = () =>
+      supabaseAdmin()
+        .from('payments')
+        .insert({
+          user_id: userId || null,
+          amount: parseFloat(amount),
+          payment_type: paymentType,
+          phone: formattedPhone,
+          account_reference: accountReference,
+          description: description,
+          status: 'pending',
+          metadata: metadataWithRegistration,
+        })
+        .select()
+        .single();
+
+    let { data: newPayment, error: paymentError } = await insertPayment();
+    if (paymentError?.code === '23505') {
+      accountReference = uniqueAccountReference(referencePrefix);
+      ({ data: newPayment, error: paymentError } = await insertPayment());
+    }
 
     if (paymentError) {
       console.error('Error creating payment record:', paymentError);
@@ -148,7 +153,8 @@ switch (paymentType) {
         {
           success: false,
           error: 'Failed to create payment record',
-          message: paymentError.message,
+          // Shown to the member; database details stay in the server log above.
+          message: 'We could not start the payment. Please try again in a moment.',
         },
         { status: 500 }
       );
