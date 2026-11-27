@@ -153,6 +153,25 @@ export async function POST(request: Request) {
           }
         }
 
+        // ─── Merchandise-specific: mark order paid (mirrors the M-PESA handler) ───
+        if (paymentType === "merchandise" && metadata.order_id) {
+          const { error: orderUpdateErr } = await admin
+            .from("orders")
+            .update({
+              status: "processing",
+              payment_id: inserted.id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", metadata.order_id)
+            .eq("status", "pending");
+
+          if (orderUpdateErr) {
+            console.error("Failed to mark order paid:", orderUpdateErr.message);
+          } else {
+            console.log("Order marked processing:", metadata.order_id);
+          }
+        }
+
         // ─── Merchandise-specific: send order email ───
         if (paymentType === "merchandise" && metadata.order_id) {
           try {

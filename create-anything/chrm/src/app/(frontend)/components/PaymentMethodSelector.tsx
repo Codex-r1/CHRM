@@ -71,6 +71,11 @@ interface PaymentMethodSelectorProps {
   isProcessing: boolean;
   /** Show the explanatory note under M-PESA / PayPal. Set false when the parent renders its own. */
   showNotes?: boolean;
+  /**
+   * Render our own card number / expiry / CVV inputs. Set false when the card
+   * is collected afterwards by Stripe's Payment Element (preferred).
+   */
+  collectCardDetails?: boolean;
 }
 
 export default function PaymentMethodSelector({
@@ -81,6 +86,7 @@ export default function PaymentMethodSelector({
   currentFee,
   isProcessing,
   showNotes = true,
+  collectCardDetails = true,
 }: PaymentMethodSelectorProps) {
   const brand = detectCardType(cardDetails.cardNumber);
   const logo = brand !== "unknown" ? CARD_LOGOS[brand] : null;
@@ -109,7 +115,11 @@ export default function PaymentMethodSelector({
         <p className="ot-dense ot-muted">You will be redirected to PayPal to complete the payment of {fee}.</p>
       )}
 
-      {paymentMethod === "visa" && (
+      {paymentMethod === "visa" && !collectCardDetails && (
+        <p className="ot-dense ot-muted">You will enter your card details securely with Stripe on the next step.</p>
+      )}
+
+      {paymentMethod === "visa" && collectCardDetails && (
         <div className="ot-stack" style={{ gap: "var(--space-4)" }}>
           <Field label="Card number" htmlFor="card-number" required>
             <Input

@@ -43,6 +43,25 @@ export async function POST(request: Request) {
       if (event) {
         verifiedAmount = Math.round(Number(event.price) * 100);
       }
+    } else if (metadata.order_id) {
+      // Merchandise: charge the order total stored in the database, never the client's figure.
+      const { data: order, error: orderError } = await admin
+        .from("orders")
+        .select("total, status")
+        .eq("id", metadata.order_id)
+        .single();
+
+      if (orderError || !order) {
+        return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      }
+      if (order.status !== "pending") {
+        return NextResponse.json({ error: "This order has already been paid or closed" }, { status: 409 });
+      }
+      verifiedAmount = Math.round(Number(order.total) * 100);
+    }
+
+    if (!verifiedAmount || verifiedAmount <= 0) {
+      return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
     }
 
     const stripe = getStripe();

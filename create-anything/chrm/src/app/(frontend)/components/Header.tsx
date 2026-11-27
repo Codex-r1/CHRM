@@ -86,18 +86,15 @@ export default function Header() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/images/turi-crest.png" alt="St Andrew's Turi crest" width={32} height={56} />
             </span>
-            <span className="ot-brand-name">{SOCIETY.school}</span>
+            <span className="ot-brand-text">
+              <span className="ot-brand-name">{SOCIETY.school}</span>
+              <NairobiClock />
+            </span>
           </Link>
-
-          <div className="ot-clock-wrap">
-            <NairobiClock />
-          </div>
 
           <nav className="ot-nav" aria-label="Main">
             {navItems.map((item) => renderNavLink(item, "ot-nav-link"))}
           </nav>
-
-          <div className="ot-header-spacer" />
 
           <div className="ot-header-actions" style={authHidden}>
             {user ? (
@@ -109,6 +106,10 @@ export default function Header() {
                 Log in
               </Link>
             )}
+            <Link href={user ? dashboardHref : ROUTES.membership} className="ot-join">
+              {user ? "Dashboard" : "Join the society"}
+              <ArrowRightIcon size={16} strokeWidth={2} />
+            </Link>
             <button
               type="button"
               className="ot-menu-btn"
@@ -122,11 +123,6 @@ export default function Header() {
               </svg>
             </button>
           </div>
-
-          <Link href={user ? dashboardHref : ROUTES.membership} className="ot-join" style={authHidden}>
-            {user ? "Dashboard" : "Join the society"}
-            <ArrowRightIcon size={20} />
-          </Link>
         </div>
 
         {menuOpen && (

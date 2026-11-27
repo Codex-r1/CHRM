@@ -6,11 +6,12 @@ import { useAuth } from "../../(backend)/context/auth";
 import SiteShell from "../components/site/SiteShell";
 import { ArrowLink, AutoGrid, FeatureBand, ImageFrame, Notice, PageIntro, Section, Tile } from "../components/site/primitives";
 import PaymentMethodSelector, { type CardDetails, type PaymentMethod } from "../components/PaymentMethodSelector";
+import StripeCheckout from "../components/StripeCheckout";
 import { Button, ButtonLink, Empty, Field, Input, NativeSelect, RadioGroup, Spinner, ToggleGroup } from "../components/ui";
 import { ROUTES, SHIPPING_COUNTRIES, SHIPPING_METHODS, STORE_CATEGORIES } from "../content/site";
 import type { CartItem, Product, ShippingMethod, StoreCategory, VariantSelection } from "../types/merchandise";
 
-type Step = "shop" | "checkout" | "awaiting-pin" | "success";
+type Step = "shop" | "checkout" | "awaiting-pin" | "card-payment" | "success";
 
 const POLL_INTERVAL_MS = 3000;
 const POLL_MAX_ATTEMPTS = 40;
@@ -147,6 +148,7 @@ export default function MerchandisePage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("mpesa");
   const [cardDetails, setCardDetails] = useState<CardDetails>({ cardNumber: "", expiryDate: "", cvv: "", cardholderName: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [cardClientSecret, setCardClientSecret] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -227,6 +229,7 @@ export default function MerchandisePage() {
         const data = await res.json();
         if (data.status === "confirmed") {
           stopPolling();
+          setCart([]);
           setStep("success");
         } else if (data.status === "failed" || data.status === "cancelled") {
           stopPolling();
@@ -276,9 +279,32 @@ export default function MerchandisePage() {
         if (!mpesaRes.ok) throw new Error(mpesaData.message);
         setStep("awaiting-pin");
         startPolling(mpesaData.checkoutRequestID);
+      } else if (paymentMethod === "visa") {
+        // Card: create a PaymentIntent for this order. The server charges the order total from the
+        // database; the card itself is collected by Stripe's Payment Element on the next step.
+        const intentRes = await fetch("/api/payments/stripe/create-intent", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: Math.round(total * 100),
+            currency: "KES",
+            customerEmail: customer.email,
+            metadata: {
+              payment_type: "merchandise",
+              order_id: order.order.id,
+              user_id: user.id,
+              attendee_name: customer.name,
+              attendee_email: customer.email,
+              attendee_phone: customer.phone,
+            },
+          }),
+        });
+        const intent = await intentRes.json();
+        if (!intentRes.ok || !intent.clientSecret) throw new Error(intent.error || "Could not start card payment.");
+        setCardClientSecret(intent.clientSecret);
+        setStep("card-payment");
       } else {
-        // TODO: card payments are not charged here yet (unchanged from the previous implementation).
-        setStep("success");
+        throw new Error("This payment method is not available yet.");
       }
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "Checkout failed.");
@@ -292,6 +318,44 @@ export default function MerchandisePage() {
       <SiteShell>
         <Section spacing="last" style={{ paddingTop: "var(--space-24)", display: "flex", justifyContent: "center", color: "var(--brand)" }}>
           <Spinner size={32} label="Loading" />
+        </Section>
+      </SiteShell>
+    );
+  }
+
+  /* ── Card payment (Stripe Payment Element) ── */
+  if (step === "card-payment" && cardClientSecret) {
+    return (
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-16)" }}>
+          <div className="ot-stack ot-fade-in" style={{ maxWidth: 520, margin: "0 auto", gap: "var(--space-6)" }}>
+            <div className="ot-stack" style={{ gap: "var(--space-2)" }}>
+              <span className="ot-caption">Secure card payment</span>
+              <h1 className="ot-h2">Pay {kes(total)}</h1>
+              <p className="ot-body ot-muted">Your order has been created and will be confirmed as soon as the payment succeeds.</p>
+            </div>
+            {errorMsg && <Notice tone="danger">{errorMsg}</Notice>}
+            <StripeCheckout
+              clientSecret={cardClientSecret}
+              payLabel={`Pay ${kes(total)}`}
+              onSuccess={() => {
+                setErrorMsg("");
+                setCart([]);
+                setStep("success");
+              }}
+              onError={setErrorMsg}
+            />
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setCardClientSecret(null);
+                setErrorMsg("");
+                setStep("checkout");
+              }}
+            >
+              Back to checkout
+            </Button>
+          </div>
         </Section>
       </SiteShell>
     );
@@ -427,6 +491,7 @@ export default function MerchandisePage() {
                   setCardDetails={setCardDetails}
                   currentFee={total}
                   isProcessing={submitting}
+                  collectCardDetails={false}
                 />
               </fieldset>
             </form>

@@ -100,43 +100,56 @@
 
 /* ── Header ─────────────────────────────────────────────── */
 .ot-header { position: sticky; top: 0; z-index: 40; background: #fff; border-bottom: 1px solid var(--divider-strong); }
-.ot-header-row { display: flex; align-items: stretch; min-height: var(--header-h); }
-.ot-scope a.ot-brand { display: flex; align-items: center; gap: var(--space-4); flex-shrink: 0; color: var(--ink); text-decoration: none; }
-.ot-brand-crest { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.ot-brand-crest img { height: 56px; width: auto; display: block; }
-.ot-brand-name { font-weight: 600; font-size: var(--fs-body); line-height: var(--lh-24); white-space: nowrap; }
-.ot-clock-wrap { flex: 1 1 auto; display: flex; align-items: center; padding: 0 var(--space-12); min-width: 0; }
-.ot-clock { font-weight: 500; font-size: var(--fs-dense); line-height: var(--lh-20); color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ot-header-row { display: flex; align-items: center; gap: var(--space-6); min-height: var(--header-h); padding: 0 var(--space-6) 0 var(--space-2); }
+
+/* Brand: crest + name, with the Nairobi clock as a subtitle */
+.ot-scope a.ot-brand { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; color: var(--ink); text-decoration: none; }
+.ot-brand-crest { width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ot-brand-crest img { height: 52px; width: auto; display: block; }
+.ot-brand-text { display: flex; flex-direction: column; }
+.ot-brand-name { font-weight: 700; font-size: var(--fs-body); line-height: var(--lh-20); white-space: nowrap; }
+.ot-clock { font-weight: 500; font-size: var(--fs-caption); line-height: var(--lh-16); color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ot-clock-colon { transition: opacity 0.2s ease; }
-.ot-nav { display: flex; align-items: center; gap: var(--space-6); padding: 0 var(--space-6); border-left: 1px solid var(--divider-strong); }
-.ot-scope .ot-nav-link { font-weight: 500; font-size: var(--fs-dense); line-height: var(--lh-20); padding: var(--space-2) 0 var(--space-1); border-bottom: 2px solid transparent; color: var(--ink-3); white-space: nowrap; }
+
+/* Primary nav: items spread across the available width */
+.ot-nav { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; gap: clamp(16px, 2.2vw, 40px); }
+.ot-scope .ot-nav-link { font-weight: 500; font-size: var(--fs-dense); line-height: var(--lh-20); padding: 28px 0 26px; border-bottom: 2px solid transparent; color: var(--ink-3); white-space: nowrap; transition: color 0.15s ease, border-color 0.15s ease; }
 .ot-scope .ot-nav-link:hover { color: var(--ink); text-decoration: none; }
 .ot-scope .ot-nav-link[aria-current="page"] { font-weight: 600; color: var(--brand); border-bottom-color: var(--brand); }
 .ot-nav-link[aria-disabled="true"] { cursor: default; opacity: 0.6; }
-.ot-header-spacer { display: none; flex: 1 1 auto; }
-.ot-header-actions { display: flex; align-items: center; gap: var(--space-6); padding: 0 var(--space-6); }
-.ot-scope .ot-header-text-btn { font-weight: 500; font-size: var(--fs-dense); line-height: var(--lh-20); color: var(--ink); white-space: nowrap; background: none; border: 0; padding: 0; cursor: pointer; font-family: inherit; }
-.ot-menu-btn { display: none; width: 48px; height: 48px; align-items: center; justify-content: center; cursor: pointer; color: var(--ink); background: #fff; border: 1px solid var(--divider-strong); }
-.ot-menu-panel { position: absolute; left: 0; right: 0; top: 100%; z-index: 50; background: #fff; padding: var(--space-2) var(--space-6) var(--space-6); display: flex; flex-direction: column; border-top: 1px solid var(--divider-strong); border-bottom: 1px solid var(--divider-strong); box-shadow: 0 16px 24px rgba(13, 13, 26, 0.06); }
-.ot-scope .ot-menu-link { font-weight: 500; font-size: var(--fs-body); line-height: var(--lh-24); padding: var(--space-3) 0; color: var(--ink-3); background: none; border: 0; text-align: left; font-family: inherit; cursor: pointer; }
+
+/* Right-hand actions */
+.ot-header-actions { display: flex; align-items: center; gap: var(--space-4); flex-shrink: 0; margin-left: auto; }
+.ot-scope .ot-header-text-btn { font-weight: 600; font-size: var(--fs-dense); line-height: var(--lh-20); color: var(--ink); white-space: nowrap; background: none; border: 0; padding: var(--space-2) var(--space-2); cursor: pointer; font-family: inherit; }
+.ot-scope .ot-header-text-btn:hover { color: var(--brand); text-decoration: none; }
+.ot-scope a.ot-join { display: inline-flex; align-items: center; gap: var(--space-2); height: 44px; padding: 0 var(--space-5); background: #0a0a0a; color: #fff; font-weight: 600; font-size: var(--fs-dense); line-height: var(--lh-20); text-decoration: none; white-space: nowrap; transition: background 0.15s ease, color 0.15s ease; }
+.ot-scope a.ot-join:hover { background: var(--accent-soft); color: #0a0a0a; text-decoration: none; }
+.ot-scope a.ot-join svg { transition: transform 0.15s ease; }
+.ot-scope a.ot-join:hover svg { transform: translateX(2px); }
+.ot-menu-btn { display: none; width: 44px; height: 44px; align-items: center; justify-content: center; cursor: pointer; color: var(--ink); background: #fff; border: 1px solid var(--divider-strong); }
+
+/* Collapsed menu panel (tablet / phone) */
+.ot-menu-panel { position: absolute; left: 0; right: 0; top: 100%; z-index: 50; background: #fff; padding: var(--space-2) var(--space-6) var(--space-6); display: flex; flex-direction: column; border-top: 1px solid var(--divider-strong); border-bottom: 1px solid var(--divider-strong); box-shadow: 0 16px 24px rgba(13, 13, 26, 0.06); max-height: calc(100vh - var(--header-h)); overflow-y: auto; }
+.ot-scope .ot-menu-link { font-weight: 500; font-size: var(--fs-body); line-height: var(--lh-24); padding: var(--space-3) 0; color: var(--ink-3); background: none; border: 0; text-align: left; font-family: inherit; cursor: pointer; border-bottom: 1px solid var(--divider); }
 .ot-scope .ot-menu-link[aria-current="page"] { font-weight: 600; color: var(--brand); }
 .ot-scope .ot-menu-link--strong { font-weight: 700; color: var(--ink); }
-.ot-scope a.ot-join { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); min-width: 240px; padding: 0 var(--space-8); background: #0a0a0a; color: #fff; font-weight: 500; font-size: var(--fs-body); line-height: var(--lh-24); text-decoration: none; white-space: nowrap; transition: background 0.15s ease, color 0.15s ease; }
-.ot-scope a.ot-join:hover { background: var(--accent-soft); color: #0a0a0a; text-decoration: none; }
+.ot-menu-only { display: none; }
 
-@media (max-width: 1439px) { .ot-clock-wrap { padding: 0 var(--space-6); } }
+/* Responsive */
 @media (max-width: 1319px) {
+  .ot-header-row { gap: var(--space-4); }
+  .ot-nav { gap: 18px; }
+}
+@media (max-width: 1151px) {
   .ot-nav, .ot-header-desktop-only { display: none !important; }
   .ot-menu-btn { display: flex; }
+  .ot-menu-only { display: flex; }
 }
-@media (max-width: 767px) {
-  .ot-clock-wrap { display: none; }
-  .ot-header-spacer { display: block; }
-}
-@media (max-width: 599px) {
+@media (max-width: 479px) {
+  .ot-header-row { padding-right: var(--space-4); gap: var(--space-2); }
   .ot-scope a.ot-join { display: none; }
-  .ot-brand-crest { width: 64px; }
-  .ot-header-actions { padding: 0 var(--space-4); }
+  .ot-brand-crest { width: 56px; }
+  .ot-brand-crest img { height: 44px; }
 }
 
 /* ── Footer ─────────────────────────────────────────────── */
