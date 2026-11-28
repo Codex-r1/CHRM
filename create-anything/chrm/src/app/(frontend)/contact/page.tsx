@@ -25,9 +25,10 @@ export default function ContactPage() {
   const update = (key: keyof ContactForm) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFeedback(null);
+    const website = (e.currentTarget.elements.namedItem("website") as HTMLInputElement | null)?.value ?? "";
 
     if (!form.name.trim() || !form.email.trim() || !form.subject.trim() || !form.message.trim()) {
       setFeedback({ tone: "danger", text: "Please fill in name, email, subject and message." });
@@ -39,7 +40,7 @@ export default function ContactPage() {
       const res = await fetch("/api/contact-messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, website }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Failed to send message");
@@ -87,6 +88,11 @@ export default function ContactPage() {
       <Section>
         <AutoGrid min={340} gap="var(--space-12)" style={{ alignItems: "start" }}>
           <form onSubmit={handleSubmit} className="ot-stack ot-span-2 ot-rule-top" style={{ gap: "var(--space-6)", minWidth: 0 }} noValidate>
+            {/* Spam trap: hidden from people, filled in by bots. */}
+            <div aria-hidden="true" style={{ position: "absolute", left: -10000, width: 1, height: 1, overflow: "hidden" }}>
+              <label htmlFor="c-website">Website</label>
+              <input id="c-website" name="website" type="text" tabIndex={-1} autoComplete="off" defaultValue="" />
+            </div>
             <div className="ot-stack" style={{ gap: "var(--space-1)" }}>
               <h2 className="ot-h2">Send a message</h2>
               <span className="ot-dense ot-muted">Reach out to the alumni office directly</span>

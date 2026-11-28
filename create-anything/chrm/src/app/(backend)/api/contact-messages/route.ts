@@ -32,6 +32,17 @@ export async function POST(req: Request) {
     const subject = String(body?.subject ?? "").trim();
     const message = String(body?.message ?? "").trim();
 
+    if (name.length > 120 || email.length > 254 || phone.length > 30 || subject.length > 200 || message.length > 5000) {
+      return NextResponse.json({ error: "Your message is too long." }, { status: 400 });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "Please enter a valid email address." }, { status: 400 });
+    }
+    // Honeypot: the form has a hidden "website" field that people never fill in.
+    if (String(body?.website ?? "").trim()) {
+      return NextResponse.json({ success: true });
+    }
+
     if (!name || !email || !subject || !message) {
       return NextResponse.json(
         { error: "Missing required fields: name, email, subject, message" },
@@ -70,11 +81,7 @@ export async function POST(req: Request) {
         code: error.code,
       });
       return NextResponse.json(
-        {
-          error: error.message,
-          code: error.code,
-          hint: error.hint,
-        },
+        { error: "We couldn't send your message. Please try again." },
         { status: 500 }
       );
     }

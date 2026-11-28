@@ -5,6 +5,7 @@
  */
 import type { ShippingOption, StoreCategory } from "../types/merchandise";
 import { REGISTRATION_FEE_KES } from "../../(backend)/lib/registration/fees";
+import { SHIPPING_PRICES_KES } from "../../(backend)/lib/shop/pricing";
 
 export interface NavItem {
   label: string;
@@ -179,9 +180,9 @@ export const SHOP_POLICIES = {
 } as const;
 
 export const SHIPPING_METHODS: ShippingOption[] = [
-  { id: "dhl_express", label: "DHL Express Worldwide", price: 45, time: "2-4 business days" },
-  { id: "dhl_economy", label: "DHL Economy Select", price: 25, time: "5-8 business days" },
-  { id: "pickup", label: "Pickup from School", price: 0, time: "Ready in 2-3 days" },
+  { id: "dhl_express", label: "DHL Express Worldwide", price: SHIPPING_PRICES_KES.dhl_express, time: "2-4 business days" },
+  { id: "dhl_economy", label: "DHL Economy Select", price: SHIPPING_PRICES_KES.dhl_economy, time: "5-8 business days" },
+  { id: "pickup", label: "Pickup from School", price: SHIPPING_PRICES_KES.pickup, time: "Ready in 2-3 days" },
 ];
 
 export const SHIPPING_COUNTRIES = ["Kenya", "United Kingdom", "United States", "Canada", "Australia", "South Africa", "Other"];

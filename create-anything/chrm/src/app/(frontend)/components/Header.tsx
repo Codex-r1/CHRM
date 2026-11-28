@@ -56,11 +56,16 @@ export default function Header() {
     }
   };
 
-  const navItems: NavItem[] = user
-    ? [...PUBLIC_NAV.slice(0, 3), MEMBER_NAV_ITEM, ...PUBLIC_NAV.slice(3)]
-    : PUBLIC_NAV;
+  const isAdmin = user?.role === "admin";
+  // Admins don't join, shop or write to the office, so those links are hidden for them.
+  const ADMIN_HIDDEN = new Set<string>([ROUTES.membership, ROUTES.store, ROUTES.contact]);
+  const navItems: NavItem[] = !user
+    ? PUBLIC_NAV
+    : [...PUBLIC_NAV.slice(0, 3), MEMBER_NAV_ITEM, ...PUBLIC_NAV.slice(3)].filter((item) => !isAdmin || !ADMIN_HIDDEN.has(item.href));
 
-  const dashboardHref = user?.role === "admin" ? ROUTES.adminDashboard : ROUTES.memberDashboard;
+  const dashboardHref = isAdmin ? ROUTES.adminDashboard : ROUTES.memberDashboard;
+  // The dashboard button is a way back; it isn't needed on the dashboard itself.
+  const onDashboard = pathname === dashboardHref;
   // While auth resolves, render the signed-out actions invisibly so the layout doesn't jump.
   const authHidden = authLoading ? { visibility: "hidden" as const } : undefined;
 
@@ -99,17 +104,29 @@ export default function Header() {
           </nav>
 
           <div className="ot-header-actions" style={authHidden}>
-            <Link
-              href={ROUTES.storeBasket}
-              className="ot-basket-link"
-              aria-label={basketReady && basketCount > 0 ? `Basket, ${basketCount} ${basketCount === 1 ? "item" : "items"}` : "Basket"}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 7h12l-1 13H7L6 7z" />
-                <path d="M9 7a3 3 0 0 1 6 0" />
-              </svg>
-              {basketReady && basketCount > 0 && <span className="ot-basket-count">{basketCount}</span>}
-            </Link>
+            {!isAdmin && (
+              <Link
+                href={ROUTES.storeBasket}
+                className="ot-basket-link"
+                aria-label={basketReady && basketCount > 0 ? `Basket, ${basketCount} ${basketCount === 1 ? "item" : "items"}` : "Basket"}
+              >
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 7h12l-1 13H7L6 7z" />
+                  <path d="M9 7a3 3 0 0 1 6 0" />
+                </svg>
+                {basketReady && basketCount > 0 && <span className="ot-basket-count">{basketCount}</span>}
+              </Link>
+            )}
             {user ? (
               <button type="button" className="ot-header-text-btn ot-header-desktop-only" onClick={handleLogout}>
                 Log out
@@ -119,10 +136,12 @@ export default function Header() {
                 Log in
               </Link>
             )}
-            <Link href={user ? dashboardHref : ROUTES.membership} className="ot-join">
-              {user ? "Dashboard" : "Join the society"}
-              <ArrowRightIcon size={16} strokeWidth={2} />
-            </Link>
+            {!(user && onDashboard) && (
+              <Link href={user ? dashboardHref : ROUTES.membership} className="ot-join">
+                {user ? "Dashboard" : "Join the society"}
+                <ArrowRightIcon size={16} strokeWidth={2} />
+              </Link>
+            )}
             <button
               type="button"
               className="ot-menu-btn"
@@ -143,9 +162,11 @@ export default function Header() {
             {navItems.map((item) => renderNavLink(item, "ot-menu-link"))}
             {user ? (
               <>
-                <Link href={dashboardHref} className="ot-menu-link ot-menu-link--strong">
-                  Dashboard
-                </Link>
+                {!onDashboard && (
+                  <Link href={dashboardHref} className="ot-menu-link ot-menu-link--strong">
+                    Dashboard
+                  </Link>
+                )}
                 <button type="button" className="ot-menu-link ot-menu-link--strong" onClick={handleLogout}>
                   Log out
                 </button>

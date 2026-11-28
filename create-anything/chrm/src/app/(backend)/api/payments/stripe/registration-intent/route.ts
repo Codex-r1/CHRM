@@ -45,8 +45,8 @@ export async function POST(request: Request) {
     if (!data.full_name?.trim() || !email || !data.password || !data.graduation_year || !data.country) {
       return NextResponse.json({ error: "Please fill in all required fields." }, { status: 400 });
     }
-    if (data.password.length < 6) {
-      return NextResponse.json({ error: "Password must be at least 6 characters." }, { status: 400 });
+    if (data.password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
     }
 
     const admin = supabaseAdmin();

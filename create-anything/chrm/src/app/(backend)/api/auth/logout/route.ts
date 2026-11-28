@@ -1,20 +1,19 @@
 // app/api/auth/logout/route.ts
 import { NextResponse } from "next/server";
+import { clearSessionCookies } from "@/app/(backend)/lib/auth/session";
+import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 import { cookies } from "next/headers";
 
 export async function POST() {
   try {
-    // Clear the session cookie
-    const cookieStore = cookies();
-    cookieStore.delete("session_user_id");
-  cookieStore.delete('sb-access-token');   // ← ADD
-  cookieStore.delete('sb-refresh-token');  // ← ADD
+    // Revoke the refresh token server-side too, so a copied cookie stops working.
+    const token = cookies().get("sb-access-token")?.value;
+    if (token) await supabaseAdmin().auth.admin.signOut(token).catch(() => undefined);
+    clearSessionCookies();
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Logout error:", error);
-    return NextResponse.json(
-      { error: "Logout failed" },
-      { status: 500 }
-    );
+    clearSessionCookies();
+    return NextResponse.json({ success: true });
   }
 }

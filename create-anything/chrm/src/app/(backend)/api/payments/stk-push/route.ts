@@ -4,6 +4,51 @@ import { mpesaService } from '../../../lib/mpesa/service';
 import { supabaseAdmin } from '../../../lib/supabase/admin';
 import { hashRegistrationPassword } from '../../../lib/registration/password';
 import { randomBytes } from 'crypto';
+import { REGISTRATION_FEE_KES } from '../../../lib/registration/fees';
+import { getSessionUser } from '../../../lib/auth/session';
+
+/**
+ * Works out what to charge from the database, never from the request body.
+ * Returns the amount in KES plus the user the payment belongs to, or an error message.
+ */
+async function resolveCharge(
+  paymentType: string,
+  metadata: Record<string, any>,
+  request: NextRequest
+): Promise<{ amount: number; userId: string | null } | { error: string; status: number }> {
+  const admin = supabaseAdmin();
+  switch (paymentType) {
+    case 'registration':
+      return { amount: REGISTRATION_FEE_KES, userId: null };
+    case 'event': {
+      const eventId = metadata.event_id || metadata.eventId;
+      if (!eventId) return { error: 'Missing event.', status: 400 };
+      const { data: event } = await admin
+        .from('events')
+        .select('id, price, is_active, max_attendees, current_attendees')
+        .eq('id', eventId)
+        .maybeSingle();
+      if (!event || event.is_active === false) return { error: 'This event is not open for registration.', status: 404 };
+      if (!(Number(event.price) > 0)) return { error: 'This event is free; no payment is needed.', status: 400 };
+      if (event.max_attendees && event.current_attendees >= event.max_attendees) return { error: 'This event is fully booked.', status: 409 };
+      const session = await getSessionUser(request);
+      return { amount: Number(event.price), userId: session?.user.id ?? null };
+    }
+    case 'merchandise': {
+      if (!metadata.order_id) return { error: 'Missing order.', status: 400 };
+      const { data: order } = await admin
+        .from('orders')
+        .select('id, total, status, user_id')
+        .eq('id', metadata.order_id)
+        .maybeSingle();
+      if (!order) return { error: 'Order not found.', status: 404 };
+      if (order.status !== 'pending') return { error: 'This order has already been paid or closed.', status: 409 };
+      return { amount: Number(order.total), userId: order.user_id ?? null };
+    }
+    default:
+      return { error: 'This payment type is not supported.', status: 400 };
+  }
+}
 
 const REFERENCE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid misreading
 
@@ -19,13 +64,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     // Never log the raw body: registration requests contain the member's password.
-    console.log('STK Push request:', { paymentType: body?.paymentType, amount: body?.amount });
+    console.log('STK Push request:', { paymentType: body?.paymentType });
     
     const {
       phoneNumber,
-      amount,
       paymentType,
-      userId,
       userEmail,
       userName,
       metadata = {},
@@ -34,12 +77,12 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // 1. Validate required input parameters
-    if (!phoneNumber || !amount || !paymentType) {
+    if (!phoneNumber || !paymentType) {
       return NextResponse.json(
         {
           success: false,
           error: 'Missing required fields',
-          message: 'Phone number, amount, and payment type are required.',
+          message: 'Phone number and payment type are required.',
         },
         { status: 400 }
       );
@@ -58,15 +101,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (paymentType === 'registration') {
+      const email = String(registrationData?.email || '').toLowerCase().trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || String(registrationData?.password || '').length < 8) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid registration details', message: 'Please check your email address and use a password of at least 8 characters.' },
+          { status: 400 }
+        );
+      }
+      const { data: existing } = await supabaseAdmin().from('profiles').select('id').eq('email', email).maybeSingle();
+      if (existing) {
+        return NextResponse.json(
+          { success: false, error: 'account_exists', message: 'This email is already registered. Please log in instead.' },
+          { status: 409 }
+        );
+      }
+    }
+
+    // The amount and owner come from the database; the request's `amount`/`userId` are ignored.
+    const charge = await resolveCharge(String(paymentType), metadata || {}, request);
+    if ('error' in charge) {
+      return NextResponse.json({ success: false, error: charge.error, message: charge.error }, { status: charge.status });
+    }
+    const chargeAmount = Math.round(charge.amount);
+    if (!(chargeAmount > 0)) {
+      return NextResponse.json({ success: false, error: 'Invalid amount', message: 'Invalid amount.' }, { status: 400 });
+    }
+
     // 2. Format phone number
     const cleanPhone = phoneNumber.replace(/\s+/g, '');
-    const formattedPhone = cleanPhone.startsWith('0')
+    const formattedPhone: string = cleanPhone.startsWith('0')
       ? `254${cleanPhone.substring(1)}`
       : cleanPhone.startsWith('7') || cleanPhone.startsWith('1')
       ? `254${cleanPhone}`
       : cleanPhone.startsWith('+254')
       ? cleanPhone.substring(1)
       : cleanPhone;
+
+    if (!/^254\d{9}$/.test(formattedPhone)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid phone number', message: 'Enter a Safaricom number such as 0712 345 678.' },
+        { status: 400 }
+      );
+    }
 
     // 3. Generate a unique account reference and transaction description.
     // `payments.account_reference` is UNIQUE in the database, and M-PESA allows at
@@ -129,8 +206,8 @@ export async function POST(request: NextRequest) {
       supabaseAdmin()
         .from('payments')
         .insert({
-          user_id: userId || null,
-          amount: parseFloat(amount),
+          user_id: charge.userId,
+          amount: chargeAmount,
           payment_type: paymentType,
           phone: formattedPhone,
           account_reference: accountReference,
@@ -166,7 +243,7 @@ export async function POST(request: NextRequest) {
     // 5. Trigger STK Push
     const stkResponse = await mpesaService.initiateSTKPush({
       phoneNumber: formattedPhone,
-      amount: Math.round(parseFloat(amount)),
+      amount: chargeAmount,
       accountReference,
       transactionDesc: description,
     });
@@ -210,7 +287,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to initiate payment',
+        error: 'Failed to initiate payment',
         message: 'Please try again later',
       },
       { status: 500 }

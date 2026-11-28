@@ -1,23 +1,15 @@
 // lib/auth/requireAdmin.ts
-// Shared guard for /api/admin/* routes: the request must carry a valid
-// Supabase access token (Authorization: Bearer …) for a profile with role "admin".
+// Shared guard for /api/admin/* routes: the caller must be signed in (Bearer token or the
+// httpOnly session cookies) with a profile whose role is "admin".
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
+import { getSessionUser } from "@/app/(backend)/lib/auth/session";
 
 /** Returns an error response to send back, or null when the caller is an admin. */
 export async function requireAdmin(request: Request): Promise<NextResponse | null> {
-  const header = request.headers.get("authorization") || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   try {
-    const admin = supabaseAdmin();
-    const { data: { user }, error } = await admin.auth.getUser(token);
-    if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { data: profile } = await admin.from("profiles").select("role").eq("id", user.id).maybeSingle();
-    if (profile?.role !== "admin") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
-
+    const session = await getSessionUser(request);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (session.user.role !== "admin") return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     return null;
   } catch (err) {
     console.error("requireAdmin failed:", err);

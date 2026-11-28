@@ -2,6 +2,7 @@
 // Creates the member account after a registration payment is confirmed.
 // Shared by the M-PESA callback and the Stripe webhook. Moved verbatim from
 // api/mpesa/callback/route.ts (behaviour unchanged).
+import { escapeHtml } from '@/app/(backend)/lib/security/html';
 import { supabaseAdmin } from '@/app/(backend)/lib/supabase/admin';
 import { sendEmail } from '@/app/(backend)/lib/email/service';
 
@@ -74,9 +75,9 @@ export function getWelcomeEmail(name: string, membershipNumber: string, email: s
             <h1 style="font-family: 'Georgia', serif; color: #1B3A6B;">Welcome to the Old Turians Society</h1>
           </div>
           <div class="content">
-            <h2>Dear ${name},</h2>
+            <h2>Dear ${escapeHtml(name)},</h2>
             <p>Welcome to the Old Turians Society! Your membership has been successfully activated.</p>
-            <p><strong>Membership Number:</strong> ${membershipNumber}</p>
+            <p><strong>Membership Number:</strong> ${escapeHtml(membershipNumber)}</p>
             <p>You can now log in to your account and access all member benefits.</p>
             <p>
               <a href="${process.env.NEXT_PUBLIC_APP_URL}/login" class="button">

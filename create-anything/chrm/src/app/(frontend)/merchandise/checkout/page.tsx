@@ -115,12 +115,14 @@ export default function CheckoutPage() {
       });
       const order = await res.json();
       if (!res.ok) throw new Error(order.error);
+      // Show the total the server priced the order at.
+      if (typeof order.order?.total === "number") setChargedTotal(order.order.total);
 
       if (paymentMethod === "mpesa") {
         const mpesaRes = await fetch("/api/payments/stk-push", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: customer.phone, amount: total, paymentType: "merchandise", userId: user.id, metadata: { order_id: order.order.id, items: cart } }),
+          body: JSON.stringify({ phoneNumber: customer.phone, paymentType: "merchandise", metadata: { order_id: order.order.id } }),
         });
         const mpesaData = await mpesaRes.json();
         if (!mpesaRes.ok) throw new Error(mpesaData.message);
@@ -165,6 +167,21 @@ export default function CheckoutPage() {
       <SiteShell>
         <Section spacing="last" style={{ paddingTop: "var(--space-24)", display: "flex", justifyContent: "center", color: "var(--brand)" }}>
           <Spinner size={32} label="Loading" />
+        </Section>
+      </SiteShell>
+    );
+  }
+
+  /* ── Admin accounts don't shop ── */
+  if (user?.role === "admin") {
+    return (
+      <SiteShell>
+        <Section spacing="last" style={{ paddingTop: "var(--space-16)" }}>
+          <Empty
+            title="Shop checkout is for members"
+            description="Admin accounts can't place orders. Log in with a member account to buy from the shop."
+            actions={<ButtonLink href={ROUTES.adminDashboard}>Back to the society office</ButtonLink>}
+          />
         </Section>
       </SiteShell>
     );

@@ -20,10 +20,14 @@ export async function GET(request: Request) {
       );
     }
 
+    if (email.length > 254) {
+      return NextResponse.json({ error: 'Invalid email' }, { status: 400 });
+    }
+
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('id, email, status, is_active')
-      .eq('email', email.toLowerCase())
+      .select('id')
+      .eq('email', email.toLowerCase().trim())
       .maybeSingle();
 
     if (error) {
@@ -34,10 +38,8 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({
-      exists: !!profile,
-      user: profile || null
-    });
+    // Only a yes/no: never return ids or account status to anonymous callers.
+    return NextResponse.json({ exists: !!profile });
 
   } catch (error) {
     console.error('User check error:', error);

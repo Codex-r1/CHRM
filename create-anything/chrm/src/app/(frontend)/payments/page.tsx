@@ -310,12 +310,12 @@ export default function RegistrationPage() {
               <Field label="Email address" htmlFor="m-email" required>
                 <Input id="m-email" type="email" autoComplete="email" required value={form.email} onChange={update("email")} />
               </Field>
-              <Field label="Password" htmlFor="m-pass" required description="At least 6 characters.">
+              <Field label="Password" htmlFor="m-pass" required description="At least 8 characters.">
                 <Input
                   id="m-pass"
                   type={showPassword ? "text" : "password"}
                   autoComplete="new-password"
-                  minLength={6}
+                  minLength={8}
                   required
                   value={form.password}
                   onChange={update("password")}

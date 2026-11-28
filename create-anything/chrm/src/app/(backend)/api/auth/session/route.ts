@@ -1,40 +1,24 @@
 // app/api/auth/session/route.ts
+// Who is signed in, verified from the httpOnly Supabase token cookies (renewed if expired).
 import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
-import { cookies } from "next/headers";
+import { getSessionUser } from "@/app/(backend)/lib/auth/session";
 
-export async function GET() {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
   try {
-    const cookieStore = cookies();
-    const userId = cookieStore.get("session_user_id")?.value;
-    const accessToken = cookieStore.get("sb-access-token")?.value;
-
-    if (!userId) {
-      return NextResponse.json({ user: null }, { status: 401 });
-    }
-
-    const { data: profile } = await supabaseAdmin()
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .maybeSingle();
-
-    if (!profile) {
-      return NextResponse.json({ user: null }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      user: {
-        id: userId,
-        email: profile.email,
-        full_name: profile.full_name,
-        membership_number: profile.membership_number,
-        role: profile.role,
+    const session = await getSessionUser(request);
+    if (!session) return NextResponse.json({ user: null }, { status: 401, headers: { "Cache-Control": "no-store" } });
+    const { user } = session;
+    return NextResponse.json(
+      {
+        user: { id: user.id, email: user.email, full_name: user.full_name, membership_number: user.membership_number, role: user.role },
+        access_token: session.accessToken,
       },
-      // ← ADD: return the token so the dashboard can pick it up
-      access_token: accessToken || null,
-    });
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (err) {
+    console.error("Session check failed:", err);
     return NextResponse.json({ user: null }, { status: 500 });
   }
 }

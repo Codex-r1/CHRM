@@ -8,6 +8,28 @@ import {
   formatDate,
 } from '@/app/(backend)/lib/registration/service';
 import { stripRegistrationSecrets } from '@/app/(backend)/lib/registration/password';
+import { escapeHtml } from '@/app/(backend)/lib/security/html';
+import { mpesaService } from '@/app/(backend)/lib/mpesa/service';
+import { timingSafeEqual } from 'crypto';
+
+/**
+ * The callback URL carries a shared secret (?token=MPESA_CALLBACK_SECRET, added by the STK push).
+ * Without it anyone who knows a CheckoutRequestID could post a fake "paid" callback.
+ */
+function hasValidCallbackToken(req: NextRequest): boolean {
+  const secret = process.env.MPESA_CALLBACK_SECRET;
+  if (!secret) return false;
+  const given = req.nextUrl.searchParams.get('token') || '';
+  const a = Buffer.from(given);
+  const b = Buffer.from(secret);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function callbackAmount(CallbackMetadata: any): number | null {
+  const item = CallbackMetadata?.Item?.find((i: any) => i?.Name === 'Amount');
+  const n = Number(item?.Value);
+  return Number.isFinite(n) ? n : null;
+}
 
 function calculateRenewalDates(currentExpiryDate: string | Date) {
   const expiryDate = new Date(currentExpiryDate);
@@ -62,13 +84,13 @@ function getEventRegistrationEmail(name: string, eventName: string, eventDate: s
             <h1 style="font-family: 'Georgia', serif; color: #1B3A6B;">Event Registration Confirmed</h1>
           </div>
           <div class="content">
-            <h2>Dear ${name},</h2>
+            <h2>Dear ${escapeHtml(name)},</h2>
             <p>Your registration for the following event has been confirmed:</p>
             
             <div class="event-details">
-              <h3 style="margin-top: 0;">${eventName}</h3>
-              <p><strong>Date:</strong> ${eventDate}</p>
-              <p><strong>Location:</strong> ${eventLocation}</p>
+              <h3 style="margin-top: 0;">${escapeHtml(eventName)}</h3>
+              <p><strong>Date:</strong> ${escapeHtml(eventDate)}</p>
+              <p><strong>Location:</strong> ${escapeHtml(eventLocation)}</p>
             </div>
             
             <p>We look forward to seeing you there!</p>
@@ -124,12 +146,12 @@ function getMerchandiseOrderEmail(name: string, totalAmount: string, shippingAdd
             <h1 style="font-family: 'Georgia', serif; color: #1B3A6B;">Order Confirmation</h1>
           </div>
           <div class="content">
-            <h2>Dear ${name},</h2>
+            <h2>Dear ${escapeHtml(name)},</h2>
             <p>Thank you for your merchandise order! Your order has been confirmed and is being processed.</p>
             
             <div class="order-details">
-              <p><strong>Total Amount:</strong> KES ${totalAmount}</p>
-              <p><strong>Shipping Address:</strong> ${shippingAddress}</p>
+              <p><strong>Total Amount:</strong> KES ${escapeHtml(totalAmount)}</p>
+              <p><strong>Shipping Address:</strong> ${escapeHtml(shippingAddress)}</p>
             </div>
             
             <p>You will receive a shipping confirmation with tracking details once your order ships.</p>
@@ -160,11 +182,17 @@ export async function POST(req: NextRequest) {
   console.log(' M-PESA CALLBACK RECEIVED AT:', new Date().toISOString());
   console.log('========================================');
   
+  // When a secret is configured, callbacks without it are rejected outright.
+  // When it isn't, every "paid" callback is double-checked with Safaricom below.
+  const tokenConfigured = !!process.env.MPESA_CALLBACK_SECRET;
+  const tokenValid = hasValidCallbackToken(req);
+  if (tokenConfigured && !tokenValid) {
+    console.warn('M-PESA callback rejected: missing or wrong token');
+    return NextResponse.json({ ResultCode: 1, ResultDesc: 'Rejected' }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
-    
-    console.log(' RAW CALLBACK BODY:');
-    console.log(JSON.stringify(body, null, 2));
     
     const { Body } = body;
     const stkCallback = Body?.stkCallback;
@@ -204,8 +232,7 @@ export async function POST(req: NextRequest) {
       
       return NextResponse.json({ 
         ResultCode: 1,
-        ResultDesc: 'Payment not found',
-        searched_id: CheckoutRequestID
+        ResultDesc: 'Payment not found'
       });
     }
     
@@ -228,6 +255,34 @@ export async function POST(req: NextRequest) {
     
     // Process based on ResultCode
     if (Number(ResultCode) === 0) {
+      // Paid amount must match what we asked for.
+      const paidAmount = callbackAmount(CallbackMetadata);
+      if (paidAmount === null || Math.round(paidAmount) !== Math.round(Number(payment.amount))) {
+        console.error('M-PESA amount mismatch', { expected: payment.amount, paid: paidAmount, payment: payment.id });
+        await supabaseAdmin()
+          .from('payments')
+          .update({ status: 'failed', error_message: 'Amount mismatch on callback', callback_data: body, updated_at: new Date().toISOString() })
+          .eq('id', payment.id);
+        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Amount mismatch recorded' });
+      }
+      if (payment.merchant_request_id && MerchantRequestID && payment.merchant_request_id !== MerchantRequestID) {
+        console.error('M-PESA MerchantRequestID mismatch for payment', payment.id);
+        return NextResponse.json({ ResultCode: 1, ResultDesc: 'Rejected' }, { status: 400 });
+      }
+      // No shared secret configured: confirm the payment with Safaricom before trusting it.
+      if (!tokenValid) {
+        try {
+          const query = await mpesaService.checkTransactionStatus(CheckoutRequestID);
+          if (String(query?.ResultCode) !== '0') {
+            console.error('M-PESA status query did not confirm payment', payment.id, query?.ResultCode);
+            return NextResponse.json({ ResultCode: 1, ResultDesc: 'Not confirmed' }, { status: 400 });
+          }
+        } catch (queryError: any) {
+          console.error('M-PESA status query failed; payment left pending', payment.id, queryError?.message);
+          return NextResponse.json({ ResultCode: 1, ResultDesc: 'Verification unavailable' }, { status: 503 });
+        }
+      }
+
       console.log('✅ PAYMENT SUCCESSFUL - PROCESSING...');
       console.log('========================================');
       
@@ -379,7 +434,7 @@ if (updateError) {
     
     return NextResponse.json({ 
       ResultCode: 1,
-      ResultDesc: 'Internal server error: ' + error.message 
+      ResultDesc: 'Internal server error'
     }, { status: 500 });
   }
 }
