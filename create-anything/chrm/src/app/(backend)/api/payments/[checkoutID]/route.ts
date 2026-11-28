@@ -3,6 +3,7 @@
 // Anyone holding the checkout id can call this, so it returns the status only:
 // no names, emails, phone numbers or account ids.
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from '@/app/(backend)/lib/supabase/admin';
 
 export async function GET(_request: NextRequest, { params }: { params: { checkoutID: string } }) {

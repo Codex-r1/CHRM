@@ -1,5 +1,6 @@
 // app/api/auth/logout/route.ts
 import { NextResponse } from "next/server";
+export const dynamic = 'force-dynamic';
 import { clearSessionCookies } from "@/app/(backend)/lib/auth/session";
 import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 import { cookies } from "next/headers";

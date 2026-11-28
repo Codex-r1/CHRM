@@ -1,5 +1,6 @@
 // app/api/payments/stk-push/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { mpesaService } from '../../../lib/mpesa/service';
 import { supabaseAdmin } from '../../../lib/supabase/admin';
 import { hashRegistrationPassword } from '../../../lib/registration/password';

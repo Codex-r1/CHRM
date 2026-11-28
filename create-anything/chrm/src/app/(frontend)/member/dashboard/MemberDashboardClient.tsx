@@ -14,7 +14,7 @@ import { kes } from "../../lib/products";
 // ─── Types (rows as stored in Supabase) ─────────────────────────────────────
 type MemberDetailsType = {
   id: string; email: string; full_name: string; membership_number: string;
-  phone_number: string; graduation_year: number; course: string; county: string; country?: string;
+  phone_number: string; graduation_year: number; course: string; county: string; country?: string; show_in_directory?: boolean;
   status: "pending" | "active" | "expired" | "inactive"; role: "admin" | "member";
   created_at: string; updated_at: string; avatar_url?: string;
   registration_source?: "online" | "manual"; needs_password_setup?: boolean;
@@ -417,6 +417,7 @@ export default function MemberDashboard() {
                 { label: "Graduation year", value: memberDetails?.graduation_year ? String(memberDetails.graduation_year) : "" },
                 { label: "Course", value: memberDetails?.course },
                 { label: "Country", value: memberDetails?.country },
+                { label: "Directory", value: memberDetails ? (memberDetails.show_in_directory === false ? "Hidden" : "Listed") : undefined },
                 { label: "County", value: memberDetails?.county },
                 { label: "Membership", value: membershipActive ? `Active until ${longDate(membership?.expiry_date)}` : membershipLabel },
                 { label: "Member since", value: longDate(memberDetails?.created_at) },

@@ -6,6 +6,8 @@ import { getSessionUser } from "@/app/(backend)/lib/auth/session";
 
 /** Returns an error response to send back, or null when the caller is an admin. */
 export async function requireAdmin(request: Request): Promise<NextResponse | null> {
+  // Read the header outside the try so Next.js always treats the route as dynamic.
+  request.headers.get("authorization");
   try {
     const session = await getSessionUser(request);
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

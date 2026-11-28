@@ -102,15 +102,12 @@ export default function DirectoryPage() {
         </form>
 
         <p className="ot-caption" style={{ marginBottom: "var(--space-8)" }}>
-          All active members are listed by name, class year, course and country. To change how you appear, or to be removed,{" "}
+          Only signed-in members can see this directory, and it never shows email addresses or phone numbers. If you don&rsquo;t want to be
+          listed, choose{" "}
           <Link href={ROUTES.profileEdit} className="ot-underline">
-            update your profile
+            Hide me from the directory
           </Link>{" "}
-          or{" "}
-          <Link href={ROUTES.contact} className="ot-underline">
-            contact the alumni office
-          </Link>
-          .
+          on your profile.
         </p>
 
         <div className="ot-rule-top" style={{ display: "flex", justifyContent: "space-between", marginBottom: "var(--space-6)" }}>

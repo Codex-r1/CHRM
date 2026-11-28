@@ -1,5 +1,6 @@
 // app/api/mpesa/callback/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from '@/app/(backend)/lib/supabase/admin';
 import { sendEmail } from '@/app/(backend)/lib/email/service';
 import {

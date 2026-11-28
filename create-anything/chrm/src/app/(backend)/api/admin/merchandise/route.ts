@@ -1,5 +1,6 @@
 //api/admin/merchanside/route.ts
 import { NextResponse } from "next/server";
+export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 import { requireAdmin } from "@/app/(backend)/lib/auth/requireAdmin";
 

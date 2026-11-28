@@ -18,17 +18,23 @@ export async function GET(request: Request) {
     const yearParam = searchParams.get("year");
     const year = yearParam && /^\d{4}$/.test(yearParam) ? Number(yearParam) : null;
 
-    let dbQuery = supabaseAdmin()
-      .from("profiles")
-      .select("id, full_name, graduation_year, course, country, bio, linkedin_url")
-      .eq("status", "active")
-      .eq("is_active", true)
-      .order("full_name", { ascending: true });
+    const search = (respectOptOut: boolean) => {
+      let q = supabaseAdmin()
+        .from("profiles")
+        .select("id, full_name, graduation_year, course, country, bio, linkedin_url")
+        .eq("status", "active")
+        .eq("is_active", true)
+        .order("full_name", { ascending: true });
+      // Members who chose "Hide me from the directory" are never returned.
+      if (respectOptOut) q = q.eq("show_in_directory", true);
+      if (query) q = q.ilike("full_name", `%${query}%`);
+      if (year) q = q.eq("graduation_year", year);
+      return q.limit(50);
+    };
 
-    if (query) dbQuery = dbQuery.ilike("full_name", `%${query}%`);
-    if (year) dbQuery = dbQuery.eq("graduation_year", year);
-
-    const { data: alumni, error } = await dbQuery.limit(50);
+    let { data: alumni, error } = await search(true);
+    // Before migration 002 adds show_in_directory nobody can have opted out yet.
+    if (error?.code === "42703") ({ data: alumni, error } = await search(false));
     if (error) {
       console.error("Directory search failed:", error);
       return NextResponse.json({ error: "Search failed" }, { status: 500 });

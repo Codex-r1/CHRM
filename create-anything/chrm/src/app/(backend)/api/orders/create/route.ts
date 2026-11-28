@@ -2,6 +2,7 @@
 // Creates a pending shop order for the signed-in member. Prices, the order total and the
 // customer's identity all come from the server: the browser only says what it wants.
 import { NextResponse } from "next/server";
+export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 import { getSessionUser } from "@/app/(backend)/lib/auth/session";
 import {

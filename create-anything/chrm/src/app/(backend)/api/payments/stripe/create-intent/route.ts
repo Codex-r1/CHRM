@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+export const dynamic = 'force-dynamic';
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import { getSessionUser } from "@/app/(backend)/lib/auth/session";

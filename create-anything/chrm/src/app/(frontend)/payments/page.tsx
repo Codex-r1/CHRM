@@ -144,8 +144,6 @@ export default function RegistrationPage() {
       registrationData: { ...form },
       metadata: { graduation_year: form.graduation_year, course: form.course, country: form.country },
     };
-    // PayPal is disabled via FEATURES; only M-PESA reaches this point.
-    if (paymentMethod !== "mpesa") throw new Error("This payment method is not available yet.");
     const res = await fetch("/api/payments/stk-push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Payment failed");

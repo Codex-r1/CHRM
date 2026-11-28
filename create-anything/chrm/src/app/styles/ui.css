@@ -111,6 +111,7 @@
 .ui-radio-group--horizontal { flex-wrap: wrap; }
 .ui-radio-group--card .ui-radio { flex: 1 1 160px; padding: 16px; border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); background: var(--ui-surface); transition: background 0.15s, border-color 0.15s; }
 .ui-radio-group--card .ui-radio.is-checked { border-color: var(--ui-brand); background: var(--ui-brand-tint); }
+.ui-radio-group--vertical.ui-radio-group--card .ui-radio { flex: none; }
 
 /* Alert */
 .ui-alert { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; border-radius: var(--ui-radius-md); font: 500 14px/20px var(--ui-font); }

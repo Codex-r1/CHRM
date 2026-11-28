@@ -4,7 +4,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { FEATURES } from "../../(backend)/lib/features/features";
 import { Field, Input, RadioGroup, type RadioOption } from "./ui";
 
-export type PaymentMethod = "mpesa" | "visa" | "paypal";
+export type PaymentMethod = "mpesa" | "visa";
 
 export interface CardDetails {
   cardNumber: string;
@@ -45,14 +45,12 @@ const CARD_LOGOS: Record<Exclude<CardBrand, "unknown">, { src: string; alt: stri
 const METHOD_ENABLED: Record<PaymentMethod, boolean> = {
   mpesa: FEATURES.mpesa.enabled,
   visa: FEATURES.card.enabled,
-  paypal: FEATURES.paypal.enabled,
 };
 
 function methodOptions(): RadioOption<PaymentMethod>[] {
   const base: Array<{ value: PaymentMethod; label: string; description: string }> = [
     { value: "mpesa", label: "M-PESA", description: "Kenya" },
     { value: "visa", label: "Card", description: "Visa / Mastercard" },
-    { value: "paypal", label: "PayPal", description: "Global" },
   ];
   return base.map((m) => ({
     ...m,
@@ -69,7 +67,7 @@ interface PaymentMethodSelectorProps {
   /** Amount in KES shown in the method notes. */
   currentFee: number;
   isProcessing: boolean;
-  /** Show the explanatory note under M-PESA / PayPal. Set false when the parent renders its own. */
+  /** Show the explanatory note under M-PESA. Set false when the parent renders its own. */
   showNotes?: boolean;
   /**
    * Render our own card number / expiry / CVV inputs. Set false when the card
@@ -109,10 +107,6 @@ export default function PaymentMethodSelector({
         <p className="ot-dense ot-muted">
           You will receive an STK push on your phone. Enter your M-PESA PIN to authorize the payment of {fee}.
         </p>
-      )}
-
-      {showNotes && paymentMethod === "paypal" && (
-        <p className="ot-dense ot-muted">You will be redirected to PayPal to complete the payment of {fee}.</p>
       )}
 
       {paymentMethod === "visa" && !collectCardDetails && (

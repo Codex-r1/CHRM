@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../../../../(backend)/lib/supabase/client";
 import { useAuth } from "../../../../../(backend)/context/auth";
 import SiteShell from "../../../../components/site/SiteShell";
 import { AutoGrid, Notice, Section } from "../../../../components/site/primitives";
-import { Button, ButtonLink, Field, Input, NativeSelect, Spinner } from "../../../../components/ui";
+import { Button, ButtonLink, Field, Input, NativeSelect, RadioGroup, Spinner } from "../../../../components/ui";
 import { COUNTRIES, ROUTES } from "../../../../content/site";
 
 const KENYAN_COUNTIES = [
@@ -29,9 +28,10 @@ type ProfileForm = {
   course: string;
   country: string;
   county: string;
+  show_in_directory: boolean;
 };
 
-const EMPTY: ProfileForm = { full_name: "", phone_number: "", graduation_year: "", course: "", country: "", county: "" };
+const EMPTY: ProfileForm = { full_name: "", phone_number: "", graduation_year: "", course: "", country: "", county: "", show_in_directory: true };
 
 /** Accepts Kenyan local formats (07…, 01…) and international numbers (+44…, 254…). */
 const isValidPhone = (raw: string) => /^(\+?\d{9,15}|0\d{9})$/.test(raw.replace(/[\s()-]/g, ""));
@@ -53,12 +53,14 @@ export default function EditProfilePage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarRemoved, setAvatarRemoved] = useState(false);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async () => {
     try {
-      const { data, error: fetchError } = await supabase.from("profiles").select("*").eq("id", userId).single();
-      if (fetchError) {
+      const res = await fetch("/api/members/me", { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+      const data = json.profile;
+      if (!res.ok || !data) {
         setError("We couldn't load your profile. Please refresh the page.");
-      } else if (data) {
+      } else {
         setForm({
           full_name: data.full_name || "",
           phone_number: data.phone_number || "",
@@ -66,6 +68,7 @@ export default function EditProfilePage() {
           course: data.course || "",
           country: data.country || "",
           county: data.county || "",
+          show_in_directory: data.show_in_directory !== false,
         });
         setAvatarUrl(data.avatar_url || null);
       }
@@ -79,7 +82,7 @@ export default function EditProfilePage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) router.push(`${ROUTES.login}?redirect=${encodeURIComponent(ROUTES.profileEdit)}`);
-    else fetchProfile(user.id);
+    else fetchProfile();
   }, [user, authLoading, router, fetchProfile]);
 
   const update = (key: keyof ProfileForm) => (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -110,20 +113,15 @@ export default function EditProfilePage() {
     setAvatarRemoved(true);
   };
 
-  const deleteStoredAvatar = async (userId: string, url: string) => {
-    const name = url.split("/").pop();
-    if (name) await supabase.storage.from("avatars").remove([`${userId}/${name}`]);
-  };
-
-  const uploadAvatar = async (userId: string): Promise<string> => {
+  const uploadAvatar = async (): Promise<string> => {
     setUploadingAvatar(true);
     try {
-      if (avatarUrl) await deleteStoredAvatar(userId, avatarUrl);
-      const ext = avatarFile!.name.split(".").pop();
-      const filePath = `${userId}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, avatarFile!, { cacheControl: "3600", upsert: true });
-      if (uploadError) throw new Error("Your photo couldn't be uploaded. Please try a different image.");
-      return supabase.storage.from("avatars").getPublicUrl(filePath).data.publicUrl;
+      const body = new FormData();
+      body.append("file", avatarFile!);
+      const res = await fetch("/api/members/me/avatar", { method: "POST", body });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.avatar_url) throw new Error(json.error || "Your photo couldn't be uploaded. Please try a different image.");
+      return json.avatar_url;
     } finally {
       setUploadingAvatar(false);
     }
@@ -152,30 +150,28 @@ export default function EditProfilePage() {
     try {
       let newAvatarUrl = avatarUrl;
       if (avatarFile) {
-        newAvatarUrl = await uploadAvatar(user.id);
+        newAvatarUrl = await uploadAvatar();
       } else if (avatarRemoved && avatarUrl) {
-        await deleteStoredAvatar(user.id, avatarUrl);
+        await fetch("/api/members/me/avatar", { method: "DELETE" });
         newAvatarUrl = null;
       }
 
-      const updateData: Record<string, unknown> = {
-        full_name: form.full_name.trim(),
-        phone_number: form.phone_number.trim(),
-        graduation_year: parseInt(form.graduation_year, 10),
-        course: form.course.trim() || null,
-        country: form.country,
-        county: form.country === "Kenya" ? form.county || null : null,
-        updated_at: new Date().toISOString(),
-      };
-      if (newAvatarUrl !== avatarUrl) updateData.avatar_url = newAvatarUrl;
-
-      const { error: updateError } = await supabase.from("profiles").update(updateData).eq("id", user.id);
-      if (updateError) {
-        setError(
-          updateError.message.includes("duplicate key") && updateError.message.includes("phone")
-            ? "This phone number is already registered to another member."
-            : "Your profile couldn't be saved. Please try again.",
-        );
+      const res = await fetch("/api/members/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: form.full_name.trim(),
+          phone_number: form.phone_number.trim(),
+          graduation_year: parseInt(form.graduation_year, 10),
+          course: form.course.trim(),
+          country: form.country,
+          county: form.county,
+          show_in_directory: form.show_in_directory,
+        }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setError(json.error || "Your profile couldn't be saved. Please try again.");
         return;
       }
 
@@ -316,11 +312,40 @@ export default function EditProfilePage() {
                 </AutoGrid>
               </div>
             </AutoGrid>
+
+            {/* 04 Directory */}
+            <AutoGrid min={200} gap="var(--space-6)" className="ot-rule-top">
+              <div className="ot-stack" style={{ gap: "var(--space-1)" }}>
+                <span className="ot-caption">04</span>
+                <h2 className="ot-h3">Directory listing</h2>
+              </div>
+              <div className="ot-stack ot-span-2" style={{ gap: "var(--space-4)", minWidth: 0 }}>
+                <p className="ot-body" style={{ margin: 0 }}>
+                  &ldquo;Find old friends&rdquo; is only open to signed-in members. It shows your name, class year, course, country and LinkedIn
+                  link. Your email and phone number are never shown.
+                </p>
+                <RadioGroup
+                  name="directory"
+                  aria-label="Directory listing"
+                  variant="card"
+                  value={form.show_in_directory ? "listed" : "hidden"}
+                  onValueChange={(v) => setForm((p) => ({ ...p, show_in_directory: v === "listed" }))}
+                  options={[
+                    { value: "listed", label: "Show me in the directory", description: "Classmates can find you by name or class year." },
+                    { value: "hidden", label: "Hide me from the directory", description: "You can still search for others. Change this at any time." },
+                  ]}
+                />
+              </div>
+            </AutoGrid>
           </form>
 
           <aside className="ot-panel ot-panel--lg ot-sticky">
             <h2 className="ot-title">Save your changes</h2>
-            <p className="ot-dense ot-muted">Your name, class year, course and country appear in the alumni directory.</p>
+            <p className="ot-dense ot-muted">
+              {form.show_in_directory
+                ? "You are listed in the members-only directory. You can hide yourself under Directory listing."
+                : "You are hidden from the directory."}
+            </p>
             <Button type="submit" form="profile-form" size="lg" block loading={saving || uploadingAvatar} disabled={success}>
               {uploadingAvatar ? "Uploading photo" : saving ? "Saving" : "Save changes"}
             </Button>
