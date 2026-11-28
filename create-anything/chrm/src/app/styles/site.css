@@ -1,0 +1,305 @@
+/*
+ * Public-site layout and typography.
+ * Scoped under .ot-scope so the admin and member dashboards keep their
+ * existing Tailwind styling untouched.
+ */
+.ot-site {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg-page);
+}
+/* Typography + link styling. Applied by the site shell, and by Header/Footer
+   on their own so they render correctly inside the dashboards too. */
+.ot-scope {
+  color: var(--ink);
+  font-family: var(--font-manrope), "Manrope", -apple-system, system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+}
+.ot-scope *, .ot-scope *::before, .ot-scope *::after { box-sizing: border-box; }
+/* Zero-specificity link defaults: any component class (buttons, nav, tiles) overrides them. */
+:where(.ot-scope a:not(.ui-btn)) { color: var(--brand); text-decoration: none; }
+:where(.ot-scope a:not(.ui-btn):hover) { color: var(--brand-deep); text-decoration: underline; text-underline-offset: 4px; }
+.ot-scope :where(h1, h2, h3, h4, p) { margin: 0; font-family: inherit; }
+.ot-main { flex: 1 0 auto; }
+
+/* ── Containers & sections ─────────────────────────────── */
+.ot-container { width: 100%; max-width: var(--container); margin: 0 auto; padding-left: var(--space-6); padding-right: var(--space-6); }
+.ot-section-intro { padding-top: var(--space-16); padding-bottom: var(--space-12); }
+.ot-section { padding-bottom: var(--space-20); }
+.ot-section--last { padding-bottom: var(--space-24); }
+.ot-stack { display: flex; flex-direction: column; }
+.ot-rule-top { padding-top: var(--space-6); border-top: 1px solid var(--divider-strong); }
+
+/* Auto-fit grid. Column minimum is set per instance through --ot-min. */
+.ot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(var(--ot-min, 280px), 100%), 1fr));
+}
+.ot-grid--fill { grid-template-columns: repeat(auto-fill, minmax(min(var(--ot-min, 240px), 100%), 1fr)); }
+.ot-span-2 { grid-column: span 2; }
+@media (max-width: 767px) { .ot-span-2 { grid-column: auto; } }
+
+/* ── Typography ────────────────────────────────────────── */
+.ot-hero { font-weight: 800; letter-spacing: -0.02em; font-size: clamp(40px, 7vw, var(--fs-hero)); line-height: 1; color: var(--ink); text-wrap: balance; }
+.ot-display-lg { font-weight: 800; letter-spacing: -0.01em; font-size: clamp(36px, 6vw, var(--fs-display-lg)); line-height: 1.14; }
+.ot-display-sm { font-weight: 800; letter-spacing: -0.02em; font-size: clamp(32px, 5vw, var(--fs-display-sm)); line-height: 1.2; }
+.ot-stat { font-weight: 800; letter-spacing: -0.02em; font-size: var(--fs-display); line-height: var(--lh-56); color: var(--brand); font-variant-numeric: tabular-nums; }
+.ot-h2 { font-weight: 800; letter-spacing: -0.02em; font-size: var(--fs-h2); line-height: var(--lh-32); }
+.ot-h3 { font-weight: 800; letter-spacing: -0.02em; font-size: var(--fs-h3); line-height: var(--lh-28); color: var(--brand); }
+.ot-title { font-weight: 800; letter-spacing: -0.01em; font-size: var(--fs-title); line-height: var(--lh-24); }
+.ot-lede { font-size: var(--fs-title); line-height: var(--lh-32); color: var(--ink-2); text-wrap: pretty; }
+.ot-body { font-size: var(--fs-body); line-height: var(--lh-24); color: var(--ink-2); text-wrap: pretty; }
+.ot-body-relaxed { font-size: var(--fs-body); line-height: var(--lh-28); color: var(--ink-2); text-wrap: pretty; }
+.ot-dense { font-size: var(--fs-dense); line-height: var(--lh-20); }
+.ot-caption { font-size: var(--fs-caption); line-height: var(--lh-16); color: var(--ink-3); }
+.ot-muted { color: var(--ink-3); }
+.ot-underline { text-decoration: underline; text-underline-offset: 4px; }
+
+/* ── Page intro (title + lede split, ruled below) ──────── */
+.ot-intro { --ot-min: 320px; gap: var(--space-8); align-items: end; padding-bottom: var(--space-10); border-bottom: 1px solid var(--divider-strong); }
+.ot-intro .ot-lede { max-width: 520px; }
+
+/* ── Arrow link ─────────────────────────────────────────── */
+.ot-arrow-link { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-dense); line-height: var(--lh-20); }
+.ot-arrow-link svg { flex: none; }
+
+/* ── Media frames ───────────────────────────────────────── */
+.ot-media { position: relative; width: 100%; overflow: hidden; background: var(--bg-sunken); }
+.ot-media > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.ot-media--banner { aspect-ratio: 2.4 / 1; min-height: 280px; }
+.ot-media--wide { aspect-ratio: 2 / 1; }
+.ot-media--photo { aspect-ratio: 4 / 3; }
+.ot-media--portrait { aspect-ratio: 4 / 5; }
+.ot-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-4); text-align: center; color: var(--ink-4); font-size: var(--fs-caption); line-height: var(--lh-16); background: repeating-linear-gradient(135deg, var(--bg-sunken) 0 12px, #ecebf5 12px 24px); }
+
+/* ── Title-bar card (image + navy bar) ──────────────────── */
+.ot-tile { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.ot-tile-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 56px; padding: var(--space-3) var(--space-4); background: var(--brand-2); color: #fff; transition: background 0.15s ease; }
+.ot-scope a.ot-tile-bar, .ot-scope a.ot-tile-bar:hover { color: #fff; text-decoration: none; }
+.ot-scope a.ot-tile-bar:hover, .ot-scope button.ot-tile-bar:hover { background: var(--brand); }
+.ot-scope button.ot-tile-bar { width: 100%; border: 0; cursor: pointer; font: inherit; text-align: left; }
+
+/* ── Feature band (navy, two columns) ───────────────────── */
+.ot-band { --ot-min: 320px; background: var(--brand-2); color: #fff; }
+.ot-band-head { padding: var(--space-12) var(--space-10) 0; }
+.ot-band-body { padding: var(--space-12) var(--space-10); display: flex; flex-direction: column; gap: var(--space-6); align-items: flex-start; }
+.ot-band-body p { max-width: 480px; color: #fff; }
+.ot-scope .ot-band a.ot-arrow-link, .ot-scope .ot-band a.ot-arrow-link:hover { color: #fff; }
+@media (max-width: 599px) {
+  .ot-band-head { padding: var(--space-10) var(--space-6) 0; }
+  .ot-band-body { padding: var(--space-8) var(--space-6) var(--space-10); }
+}
+
+/* ── Panels ─────────────────────────────────────────────── */
+.ot-panel { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6); background: var(--bg-sunken); }
+.ot-panel--lg { gap: var(--space-6); padding: var(--space-8); }
+.ot-sticky { position: sticky; top: var(--space-6); }
+
+/* ── Header ─────────────────────────────────────────────── */
+.ot-header { position: sticky; top: 0; z-index: 40; background: #fff; border-bottom: 1px solid var(--divider-strong); }
+.ot-header-row { display: flex; align-items: center; gap: var(--space-6); min-height: var(--header-h); padding: 0 var(--space-6) 0 var(--space-2); }
+
+/* Brand: crest + name, with the Nairobi clock as a subtitle */
+.ot-scope a.ot-brand { display: flex; align-items: center; gap: var(--space-3); flex-shrink: 0; color: var(--ink); text-decoration: none; }
+.ot-brand-crest { width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ot-brand-crest img { height: 52px; width: auto; display: block; }
+.ot-brand-text { display: flex; flex-direction: column; }
+.ot-brand-name { font-weight: 700; font-size: var(--fs-body); line-height: var(--lh-20); white-space: nowrap; }
+.ot-clock { font-weight: 500; font-size: var(--fs-caption); line-height: var(--lh-16); color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ot-clock-colon { transition: opacity 0.2s ease; }
+
+/* Primary nav: items spread across the available width */
+.ot-nav { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; justify-content: center; gap: clamp(16px, 2.2vw, 40px); }
+.ot-scope .ot-nav-link { font-weight: 500; font-size: var(--fs-dense); line-height: var(--lh-20); padding: 28px 0 26px; border-bottom: 2px solid transparent; color: var(--ink-3); white-space: nowrap; transition: color 0.15s ease, border-color 0.15s ease; }
+.ot-scope .ot-nav-link:hover { color: var(--ink); text-decoration: none; }
+.ot-scope .ot-nav-link[aria-current="page"] { font-weight: 600; color: var(--brand); border-bottom-color: var(--brand); }
+.ot-nav-link[aria-disabled="true"] { cursor: default; opacity: 0.6; }
+
+/* Right-hand actions */
+.ot-header-actions { display: flex; align-items: center; gap: var(--space-4); flex-shrink: 0; margin-left: auto; }
+.ot-scope .ot-header-text-btn { font-weight: 600; font-size: var(--fs-dense); line-height: var(--lh-20); color: var(--ink); white-space: nowrap; background: none; border: 0; padding: var(--space-2) var(--space-2); cursor: pointer; font-family: inherit; }
+.ot-scope .ot-header-text-btn:hover { color: var(--brand); text-decoration: none; }
+.ot-scope a.ot-join { display: inline-flex; align-items: center; gap: var(--space-2); height: 44px; padding: 0 var(--space-5); background: #0a0a0a; color: #fff; font-weight: 600; font-size: var(--fs-dense); line-height: var(--lh-20); text-decoration: none; white-space: nowrap; transition: background 0.15s ease, color 0.15s ease; }
+.ot-scope a.ot-join:hover { background: var(--accent-soft); color: #0a0a0a; text-decoration: none; }
+.ot-scope a.ot-join svg { transition: transform 0.15s ease; }
+.ot-scope a.ot-join:hover svg { transform: translateX(2px); }
+.ot-menu-btn { display: none; width: 44px; height: 44px; align-items: center; justify-content: center; cursor: pointer; color: var(--ink); background: #fff; border: 1px solid var(--divider-strong); }
+
+/* Collapsed menu panel (tablet / phone) */
+.ot-menu-panel { position: absolute; left: 0; right: 0; top: 100%; z-index: 50; background: #fff; padding: var(--space-2) var(--space-6) var(--space-6); display: flex; flex-direction: column; border-top: 1px solid var(--divider-strong); border-bottom: 1px solid var(--divider-strong); box-shadow: 0 16px 24px rgba(13, 13, 26, 0.06); max-height: calc(100vh - var(--header-h)); overflow-y: auto; }
+.ot-scope .ot-menu-link { font-weight: 500; font-size: var(--fs-body); line-height: var(--lh-24); padding: var(--space-3) 0; color: var(--ink-3); background: none; border: 0; text-align: left; font-family: inherit; cursor: pointer; border-bottom: 1px solid var(--divider); }
+.ot-scope .ot-menu-link[aria-current="page"] { font-weight: 600; color: var(--brand); }
+.ot-scope .ot-menu-link--strong { font-weight: 700; color: var(--ink); }
+.ot-menu-only { display: none; }
+
+/* Responsive */
+@media (max-width: 1319px) {
+  .ot-header-row { gap: var(--space-4); }
+  .ot-nav { gap: 18px; }
+}
+@media (max-width: 1151px) {
+  .ot-nav, .ot-header-desktop-only { display: none !important; }
+  .ot-menu-btn { display: flex; }
+  .ot-menu-only { display: flex; }
+}
+@media (max-width: 479px) {
+  .ot-header-row { padding-right: var(--space-4); gap: var(--space-2); }
+  .ot-scope a.ot-join { display: none; }
+  .ot-brand-crest { width: 56px; }
+  .ot-brand-crest img { height: 44px; }
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
+.ot-contact-strip { border-top: 1px solid var(--divider-strong); }
+.ot-contact-strip-inner { --ot-min: 240px; padding-top: var(--space-10); padding-bottom: var(--space-10); gap: var(--space-8); align-items: start; }
+.ot-footer { background: var(--ink); color: #fff; }
+.ot-footer-inner { padding-top: var(--space-12); padding-bottom: var(--space-8); }
+.ot-footer-grid { --ot-min: 220px; gap: var(--space-8); padding-bottom: var(--space-10); }
+.ot-scope .ot-footer a { color: #fff; font-size: var(--fs-dense); }
+.ot-footer-label { font-size: var(--fs-caption); color: var(--ink-4); }
+.ot-footer-base { display: flex; align-items: center; justify-content: space-between; gap: var(--space-6); flex-wrap: wrap; border-top: 1px solid var(--ink-2); padding-top: var(--space-6); }
+
+/* ── Misc ───────────────────────────────────────────────── */
+.ot-hours-row { display: flex; justify-content: space-between; gap: var(--space-4); padding: var(--space-3) 0; border-bottom: 1px solid var(--divider-strong); font-size: var(--fs-dense); }
+.ot-swatch { width: 28px; height: 28px; border-radius: 999px; border: 2px solid var(--divider-strong); cursor: pointer; padding: 0; transition: transform 0.15s, border-color 0.15s; }
+.ot-swatch[aria-pressed="true"] { border-color: var(--accent); transform: scale(1.1); }
+.ot-size { min-width: 40px; height: 32px; padding: 0 10px; border: 1px solid var(--divider-strong); background: #fff; color: var(--ink); font-family: inherit; font-weight: 600; font-size: 14px; line-height: 20px; cursor: pointer; }
+.ot-size[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ot-size:disabled { color: var(--ink-5); cursor: not-allowed; }
+.ot-cart-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: #fff; border-top: 1px solid var(--divider-strong); box-shadow: 0 -8px 24px rgba(13, 13, 26, 0.06); }
+.ot-cart-bar-inner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; padding-top: var(--space-4); padding-bottom: var(--space-4); }
+.ot-dots { display: flex; justify-content: center; gap: var(--space-2); }
+.ot-dots span { width: 8px; height: 8px; border-radius: 999px; background: var(--accent); animation: ot-bounce 1s ease-in-out infinite; }
+.ot-dots span:nth-child(2) { animation-delay: 0.15s; }
+.ot-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes ot-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.ot-fade-in { animation: ot-fade-in 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes ot-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .ot-fade-in, .ot-dots span, .ui-spin { animation: none; }
+}
+.ot-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* ── Shop ───────────────────────────────────────────────── */
+.ot-media--square { aspect-ratio: 1 / 1; }
+.ot-media--hero { aspect-ratio: 3 / 1; min-height: 280px; }
+
+/* Category bar under the shop intro (scrolls sideways on phones) */
+.ot-shop-nav { border-top: 1px solid var(--divider-strong); border-bottom: 1px solid var(--divider-strong); background: #fff; }
+.ot-shop-nav-inner { display: flex; align-items: center; gap: var(--space-8); overflow-x: auto; scrollbar-width: none; }
+.ot-shop-nav-inner::-webkit-scrollbar { display: none; }
+.ot-scope .ot-shop-nav-link { flex: none; padding: var(--space-4) 0 calc(var(--space-4) - 2px); border-bottom: 2px solid transparent; font-weight: 600; font-size: var(--fs-dense); line-height: var(--lh-20); color: var(--ink-3); white-space: nowrap; }
+.ot-scope .ot-shop-nav-link:hover { color: var(--ink); text-decoration: none; }
+.ot-scope .ot-shop-nav-link[aria-current="page"] { color: var(--brand); border-bottom-color: var(--brand); }
+
+/* Category tiles: square image, label underneath (centred) */
+.ot-scope a.ot-cat-tile { display: flex; flex-direction: column; gap: var(--space-3); color: var(--ink); text-align: center; }
+.ot-scope a.ot-cat-tile:hover { text-decoration: none; }
+.ot-cat-tile .ot-media { background: #f7f7fa; }
+.ot-cat-tile .ot-media > img { object-fit: contain; padding: 8%; transition: transform 0.3s ease; }
+.ot-cat-tile:hover .ot-media > img { transform: scale(1.04); }
+.ot-cat-tile-label { font-weight: 600; font-size: var(--fs-dense); line-height: var(--lh-20); }
+
+/* Product card */
+.ot-scope a.ot-product-card { display: flex; flex-direction: column; gap: var(--space-3); color: var(--ink); min-width: 0; }
+.ot-scope a.ot-product-card:hover { text-decoration: none; }
+.ot-product-card .ot-media { background: #f7f7fa; }
+.ot-product-card .ot-media > img { transition: transform 0.35s ease; }
+.ot-product-card:hover .ot-media > img { transform: scale(1.04); }
+.ot-product-card-name { font-weight: 600; font-size: var(--fs-body); line-height: var(--lh-24); }
+.ot-product-card:hover .ot-product-card-name { text-decoration: underline; text-underline-offset: 4px; }
+.ot-product-card-badge { position: absolute; top: var(--space-3); left: var(--space-3); }
+.ot-dots-row { display: flex; gap: 4px; align-items: center; }
+.ot-dots-row i { width: 10px; height: 10px; border-radius: 999px; border: 1px solid rgba(13, 13, 26, 0.15); display: inline-block; }
+
+/* Pill button (Imperial-style "View all") */
+.ot-scope a.ot-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 280px; height: 56px; padding: 0 var(--space-8); border: 1.5px solid var(--ink); border-radius: 999px; color: var(--ink); font-weight: 600; font-size: var(--fs-dense); letter-spacing: 0.12em; text-transform: uppercase; transition: background 0.15s, color 0.15s; }
+.ot-scope a.ot-pill:hover { background: var(--ink); color: #fff; text-decoration: none; }
+
+/* Featured banner (image with gradient and overlaid copy) */
+.ot-feature { position: relative; overflow: hidden; background: var(--brand-deep); color: #fff; }
+.ot-feature > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ot-feature::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10, 18, 48, 0.85) 0%, rgba(10, 18, 48, 0.55) 45%, rgba(10, 18, 48, 0.1) 100%); }
+.ot-feature-body { position: relative; z-index: 1; display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; max-width: 640px; padding: var(--space-20) var(--space-10); }
+.ot-feature-body .ot-caption { color: rgba(255, 255, 255, 0.8); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; }
+.ot-feature-body p { color: rgba(255, 255, 255, 0.9); }
+@media (max-width: 599px) { .ot-feature-body { padding: var(--space-12) var(--space-6); } }
+
+/* Product page */
+.ot-gallery { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.ot-gallery .ot-media { background: #f7f7fa; }
+.ot-thumbs { display: flex; gap: var(--space-2); overflow-x: auto; }
+.ot-thumb { flex: none; width: 72px; height: 72px; padding: 0; border: 2px solid transparent; background: #f7f7fa; cursor: pointer; overflow: hidden; }
+.ot-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ot-thumb[aria-pressed="true"] { border-color: var(--brand); }
+.ot-qty { display: inline-flex; align-items: center; border: 1px solid var(--divider-strong); height: 48px; }
+.ot-qty button { width: 44px; height: 100%; border: 0; background: #fff; font: inherit; font-size: 18px; cursor: pointer; color: var(--ink); }
+.ot-qty button:disabled { color: var(--ink-5); cursor: not-allowed; }
+.ot-qty span { min-width: 40px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ot-accordion { border-top: 1px solid var(--divider-strong); }
+.ot-accordion details { border-bottom: 1px solid var(--divider-strong); }
+.ot-accordion summary { list-style: none; display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) 0; cursor: pointer; font-weight: 600; font-size: var(--fs-body); }
+.ot-accordion summary::-webkit-details-marker { display: none; }
+.ot-accordion summary::after { content: "+"; font-size: 20px; font-weight: 400; color: var(--ink-3); }
+.ot-accordion details[open] summary::after { content: "−"; }
+.ot-accordion details > div { padding: 0 0 var(--space-4); }
+.ot-breadcrumb { display: flex; flex-wrap: wrap; gap: var(--space-2); font-size: var(--fs-caption); color: var(--ink-3); }
+.ot-scope .ot-breadcrumb a { color: var(--ink-3); }
+
+/* Header basket link */
+.ot-scope a.ot-basket-link { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 var(--space-2); color: var(--ink); font-weight: 600; font-size: var(--fs-dense); }
+.ot-scope a.ot-basket-link:hover { color: var(--brand); text-decoration: none; }
+.ot-basket-count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 12px; line-height: 20px; text-align: center; font-variant-numeric: tabular-nums; }
+
+/* ── Member area ────────────────────────────────────────── */
+/* Membership card: navy, crest, certificate-like typography */
+.ot-member-card { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-8); background: var(--brand-deep); color: #fff; min-width: 0; }
+.ot-member-card::after { content: ""; position: absolute; right: -60px; bottom: -60px; width: 220px; height: 220px; border-radius: 999px; border: 1px solid rgba(244, 201, 93, 0.25); box-shadow: 0 0 0 24px rgba(244, 201, 93, 0.06); }
+.ot-member-card-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.ot-member-card .ot-caption { color: rgba(255, 255, 255, 0.7); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; }
+.ot-member-card-number { font-weight: 800; font-size: var(--fs-display-sm); line-height: 1; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+.ot-member-card-rule { height: 1px; background: rgba(255, 255, 255, 0.18); }
+
+/* Big ruled stat row (homepage style) */
+.ot-stat-row { --ot-min: 180px; border-top: 1px solid var(--divider-strong); border-bottom: 1px solid var(--divider-strong); }
+.ot-stat-row > div { padding: var(--space-6) var(--space-6) var(--space-6) 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.ot-stat-row > div + div { padding-left: var(--space-6); border-left: 1px solid var(--divider-strong); }
+@media (max-width: 767px) { .ot-stat-row > div + div { border-left: 0; padding-left: 0; } .ot-stat-row > div { border-bottom: 1px solid var(--divider); } }
+
+/* Ledger: ruled rows with aligned columns */
+.ot-ledger { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--ink); }
+.ot-ledger-row { display: grid; grid-template-columns: 120px minmax(0, 1fr) auto auto; gap: var(--space-4) var(--space-6); align-items: center; padding: var(--space-4) 0; border-bottom: 1px solid var(--divider-strong); }
+.ot-ledger-head { padding: var(--space-3) 0; font-size: var(--fs-caption); color: var(--ink-3); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.ot-ledger-amount { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+@media (max-width: 639px) {
+  .ot-ledger-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .ot-ledger-row { gap: var(--space-2) var(--space-4); }
+  .ot-ledger-row > :first-child, .ot-ledger-row > :nth-child(2) { grid-column: 1 / -1; }
+  .ot-ledger-row > :nth-child(3) { justify-self: start; }
+  .ot-ledger-head { display: none; }
+}
+
+/* Definition list (profile) */
+.ot-dl { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); column-gap: var(--space-12); }
+.ot-dl > div { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4) 0; border-bottom: 1px solid var(--divider-strong); }
+.ot-dl dt { font-size: var(--fs-caption); color: var(--ink-3); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.ot-dl dd { margin: 0; font-size: var(--fs-body); line-height: var(--lh-24); color: var(--ink); }
+
+/* ── Admin ──────────────────────────────────────────────── */
+.ot-table-wrap { width: 100%; overflow-x: auto; border-top: 1px solid var(--ink); }
+.ot-table { width: 100%; border-collapse: collapse; font-size: var(--fs-dense); line-height: var(--lh-20); }
+.ot-table th { text-align: left; padding: var(--space-3) var(--space-4) var(--space-3) 0; font-size: var(--fs-caption); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--divider-strong); white-space: nowrap; }
+.ot-table td { padding: var(--space-4) var(--space-4) var(--space-4) 0; border-bottom: 1px solid var(--divider-strong); vertical-align: top; }
+.ot-table td.num, .ot-table th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ot-table tr.is-highlight td { background: var(--accent-tint); }
+.ot-table .ot-sub { display: block; color: var(--ink-3); font-size: var(--fs-caption); }
+.ot-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-6); }
+.ot-toolbar-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.ot-scope .ot-link-btn { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; font-size: var(--fs-dense); color: var(--brand); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+.ot-scope .ot-link-btn--danger { color: var(--signal-ink); }
+.ot-tab-count { display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: var(--ink); font-size: 11px; line-height: 18px; text-align: center; }
+.ui-dialog--lg { max-width: 880px; }
+.ot-check-row { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-dense); cursor: pointer; }

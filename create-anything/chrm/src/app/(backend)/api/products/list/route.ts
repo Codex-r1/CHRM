@@ -1,5 +1,6 @@
 // app/api/products/list/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
       'Surrogate-Control': 'no-store'
     };
 
-    // Fetch all products - ONLY columns that exist in your table
+    // Active products only (soft-deleted products have is_active = false), in admin sort order
     const { data: products, error: productsError } = await supabase
       .from('products')
       .select(`
@@ -25,9 +26,15 @@ export async function GET(request: NextRequest) {
         description,
         base_price,
         category,
-        is_out_of_stock
+        is_out_of_stock,
+        featured_image_url,
+        sort_order,
+        created_at,
+        product_images ( image_url, is_primary, sort_order )
       `)
-      .order('name', { ascending: true }); // Using name instead of sort_order
+      .or('is_active.is.null,is_active.eq.true')
+      .order('sort_order', { ascending: true })
+      .order('name', { ascending: true });
 
     if (productsError) {
       console.error('Error fetching products:', productsError);
@@ -72,6 +79,13 @@ export async function GET(request: NextRequest) {
         base_price: product.base_price,
         category: product.category,
         is_out_of_stock: product.is_out_of_stock || false,
+        featured_image_url: product.featured_image_url || null,
+        created_at: product.created_at,
+        images: ((product as any).product_images || [])
+          .slice()
+          .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary) || (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .map((img: any) => img.image_url)
+          .filter(Boolean),
         variants: productVariants.map((variant: any) => ({
           id: variant.id,
           color_name: variant.color_name,

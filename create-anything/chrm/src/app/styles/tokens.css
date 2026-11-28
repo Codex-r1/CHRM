@@ -1,0 +1,93 @@
+/*
+ * Old Turians design tokens.
+ * Extracted from the "Old Turians Website v3" design export. Every spacing,
+ * type and line-height value sits on a 4px grid.
+ */
+:root {
+  /* Surfaces */
+  --bg-page: #ffffff;
+  --bg-card: #ffffff;
+  --bg-raised: #f6f5fd;
+  --bg-sunken: #f1f0f8;
+
+  /* Ink scale */
+  --ink: #0d0d1a;
+  --ink-2: #1f1f33;
+  --ink-3: #6b6b82;
+  --ink-4: #9c9cb0;
+  --ink-5: #c8c8d6;
+  --divider: #ecebf3;
+  --divider-strong: #dcdbe6;
+
+  /* Brand: navy */
+  --brand: #1e3a8a;
+  --brand-2: #2d4fa8;
+  --brand-3: #5874c2;
+  --brand-deep: #0f2563;
+  --brand-tint: #eaeef9;
+  --brand-tint-2: #d7def2;
+  --brand-fg: #ffffff;
+
+  /* Accent: gold */
+  --accent: #f4b41b;
+  --accent-2: #e0a111;
+  --accent-soft: #f4c95d;
+  --accent-tint: #fff6dc;
+  --accent-ink: #7a5800;
+
+  /* Status */
+  --leaf: #1f9d6a;
+  --leaf-tint: #e2f6ee;
+  --leaf-ink: #126b47;
+  --signal: #e1364d;
+  --signal-tint: #fde3e7;
+  --signal-ink: #a6182c;
+  --honey: #c4811f;
+  --honey-tint: #fbeed2;
+  --honey-ink: #7d4f08;
+  --sky: #2a5db0;
+  --sky-tint: #dde5f6;
+  --sky-ink: #143c82;
+
+  /* Spacing (multiples of 4) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* Type scale */
+  --fs-caption: 12px;
+  --fs-dense: 14px;
+  --fs-body: 16px;
+  --fs-title: 20px;
+  --fs-h3: 24px;
+  --fs-h2: 28px;
+  --fs-h1: 32px;
+  --fs-display-sm: 40px;
+  --fs-display: 48px;
+  --fs-display-lg: 56px;
+  --fs-hero: 64px;
+
+  /* Line heights */
+  --lh-16: 16px;
+  --lh-20: 20px;
+  --lh-24: 24px;
+  --lh-28: 28px;
+  --lh-32: 32px;
+  --lh-40: 40px;
+  --lh-48: 48px;
+  --lh-56: 56px;
+  --lh-64: 64px;
+
+  /* Layout */
+  --container: 1200px;
+  --header-h: 80px;
+}

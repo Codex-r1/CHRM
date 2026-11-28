@@ -1,89 +1,66 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
+import { useState, type FormEvent } from "react";
+import { Elements, PaymentElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { Loader2, Lock } from "lucide-react";
+import { Button } from "./ui";
+import { Notice } from "./site/primitives";
 
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-);
+const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
-function CheckoutForm({
-  clientSecret,
-  onSuccess,
-  onError,
-}: {
+interface StripeCheckoutProps {
   clientSecret: string;
-  onSuccess: () => void;
-  onError: (msg: string) => void;
-}) {
+  /** Label for the pay button, e.g. "Pay KES 4,500". */
+  payLabel?: string;
+  onSuccess: (paymentIntentId: string) => void;
+  onError: (message: string) => void;
+}
+
+function CheckoutForm({ payLabel = "Pay securely", onSuccess, onError }: Omit<StripeCheckoutProps, "clientSecret">) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
-
     setLoading(true);
 
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/payment-success`,
-      },
+      confirmParams: { return_url: `${window.location.origin}/payment-success` },
       redirect: "if_required",
     });
 
     if (error) {
       onError(error.message || "Payment failed");
       setLoading(false);
-    } else if (paymentIntent?.status === "succeeded") {
-      onSuccess();
+    } else if (paymentIntent?.status === "succeeded" || paymentIntent?.status === "processing") {
+      onSuccess(paymentIntent.id);
     } else {
+      onError(`Payment was not completed (status: ${paymentIntent?.status ?? "unknown"}).`);
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="ot-stack" style={{ gap: "var(--space-6)" }}>
       <PaymentElement />
-      <button
-        type="submit"
-        disabled={!stripe || loading}
-        className="w-full py-3.5 bg-[#1B3A6B] text-white font-medium rounded-lg hover:bg-[#152e55] transition disabled:opacity-50 flex items-center justify-center gap-2"
-      >
-        {loading ? (
-          <>
-            <Loader2 className="animate-spin" size={18} />
-            Processing...
-          </>
-        ) : (
-          <>
-            <Lock size={18} />
-            Pay securely
-          </>
-        )}
-      </button>
+      <Button type="submit" size="lg" block loading={loading} disabled={!stripe}>
+        {payLabel}
+      </Button>
+      <p className="ot-caption">Card details are handled by Stripe and never reach our servers.</p>
     </form>
   );
 }
 
-export default function StripeCheckout({
-  clientSecret,
-  onSuccess,
-  onError,
-}: {
-  clientSecret: string;
-  onSuccess: () => void;
-  onError: (msg: string) => void;
-}) {
+/** Stripe Payment Element bound to an existing PaymentIntent. */
+export default function StripeCheckout({ clientSecret, ...rest }: StripeCheckoutProps) {
+  if (!stripePromise) {
+    return <Notice tone="danger">Card payments are not configured (missing NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).</Notice>;
+  }
+
   return (
     <Elements
       stripe={stripePromise}
@@ -92,18 +69,17 @@ export default function StripeCheckout({
         appearance: {
           theme: "stripe",
           variables: {
-            colorPrimary: "#1B3A6B",
-            colorText: "#1B3A6B",
-            fontFamily: "system-ui, sans-serif",
+            colorPrimary: "#1e3a8a",
+            colorText: "#0d0d1a",
+            colorDanger: "#a6182c",
+            fontFamily: "Manrope, system-ui, sans-serif",
+            borderRadius: "12px",
           },
         },
+        fonts: [{ cssSrc: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" }],
       }}
     >
-      <CheckoutForm
-        clientSecret={clientSecret}
-        onSuccess={onSuccess}
-        onError={onError}
-      />
+      <CheckoutForm {...rest} />
     </Elements>
   );
 }

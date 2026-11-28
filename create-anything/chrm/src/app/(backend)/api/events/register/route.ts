@@ -1,6 +1,8 @@
 // app/api/events/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
+import { getSessionUser } from '@/app/(backend)/lib/auth/session';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,18 +12,16 @@ const supabase = createClient(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('📝 Registration request body:', body);
-    
-    const {
-      user_id,
-      event_id,
-      attendee_name,
-      attendee_email,
-      attendee_phone,
-      membership_number,
-      is_member,
-      payment_id
-    } = body;
+    // Free events only: paid tickets are recorded by the M-PESA callback / Stripe webhook
+    // once the payment is confirmed. Identity comes from the session, not the body.
+    const { event_id } = body;
+    const attendee_name = String(body.attendee_name ?? '').slice(0, 120);
+    const attendee_email = String(body.attendee_email ?? '').slice(0, 160);
+    const attendee_phone = String(body.attendee_phone ?? '').slice(0, 20);
+    const session = await getSessionUser(request);
+    const user_id = session?.user.id ?? null;
+    const membership_number = session?.user.membership_number ?? null;
+    const is_member = !!session;
 
     // Validate required fields
     if (!event_id) {
@@ -56,12 +56,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Validated registration data:', {
-      event_id,
-      attendee_name,
-      attendee_email,
-      attendee_phone
-    });
 
     // Check if event exists and has capacity
     const { data: event, error: eventError } = await supabase
@@ -79,7 +73,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ Event found:', event.name);
+    if (Number(event.price) > 0) {
+      return NextResponse.json(
+        { error: 'This event requires payment. Please pay with M-PESA or card.' },
+        { status: 402 }
+      );
+    }
 
     // Check capacity
     if (event.max_attendees && event.current_attendees >= event.max_attendees) {
@@ -89,14 +88,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user already registered
-    if (user_id) {
-      const { data: existingRegistration } = await supabase
-        .from('event_registrations')
-        .select('id')
-        .eq('event_id', event_id)
-        .eq('user_id', user_id)
-        .maybeSingle();
+    // One registration per person (by account, or by email for guests).
+    {
+      const base = supabase.from('event_registrations').select('id').eq('event_id', event_id);
+      const { data: existingRegistration } = await (user_id
+        ? base.eq('user_id', user_id)
+        : base.eq('attendee_email', attendee_email.trim().toLowerCase())
+      ).limit(1).maybeSingle();
 
       if (existingRegistration) {
         return NextResponse.json(
@@ -110,7 +108,7 @@ export async function POST(request: NextRequest) {
     const registrationData = {
       user_id: user_id || null,
       event_id: event_id,
-      payment_id: payment_id || null,
+      payment_id: null,
       attendee_name: attendee_name.trim(),
       attendee_email: attendee_email.trim().toLowerCase(),
       attendee_phone: attendee_phone.trim(),
@@ -119,7 +117,6 @@ export async function POST(request: NextRequest) {
       status: 'confirmed'
     };
 
-    console.log('📝 Creating registration with data:', registrationData);
 
     const { data: registration, error: regError } = await supabase
       .from('event_registrations')
@@ -130,7 +127,7 @@ export async function POST(request: NextRequest) {
     if (regError) {
       console.error('❌ Registration error:', regError);
       return NextResponse.json(
-        { error: 'Failed to create registration: ' + regError.message },
+        { error: 'Failed to create registration. Please try again.' },
         { status: 500 }
       );
     }

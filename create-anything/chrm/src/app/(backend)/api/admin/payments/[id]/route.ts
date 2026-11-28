@@ -1,5 +1,6 @@
 // app/api/admin/payments/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(

@@ -1,18 +1,75 @@
 // app/api/payments/stk-push/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { mpesaService } from '../../../lib/mpesa/service';
 import { supabaseAdmin } from '../../../lib/supabase/admin';
+import { hashRegistrationPassword } from '../../../lib/registration/password';
+import { randomBytes } from 'crypto';
+import { REGISTRATION_FEE_KES } from '../../../lib/registration/fees';
+import { getSessionUser } from '../../../lib/auth/session';
+
+/**
+ * Works out what to charge from the database, never from the request body.
+ * Returns the amount in KES plus the user the payment belongs to, or an error message.
+ */
+async function resolveCharge(
+  paymentType: string,
+  metadata: Record<string, any>,
+  request: NextRequest
+): Promise<{ amount: number; userId: string | null } | { error: string; status: number }> {
+  const admin = supabaseAdmin();
+  switch (paymentType) {
+    case 'registration':
+      return { amount: REGISTRATION_FEE_KES, userId: null };
+    case 'event': {
+      const eventId = metadata.event_id || metadata.eventId;
+      if (!eventId) return { error: 'Missing event.', status: 400 };
+      const { data: event } = await admin
+        .from('events')
+        .select('id, price, is_active, max_attendees, current_attendees')
+        .eq('id', eventId)
+        .maybeSingle();
+      if (!event || event.is_active === false) return { error: 'This event is not open for registration.', status: 404 };
+      if (!(Number(event.price) > 0)) return { error: 'This event is free; no payment is needed.', status: 400 };
+      if (event.max_attendees && event.current_attendees >= event.max_attendees) return { error: 'This event is fully booked.', status: 409 };
+      const session = await getSessionUser(request);
+      return { amount: Number(event.price), userId: session?.user.id ?? null };
+    }
+    case 'merchandise': {
+      if (!metadata.order_id) return { error: 'Missing order.', status: 400 };
+      const { data: order } = await admin
+        .from('orders')
+        .select('id, total, status, user_id')
+        .eq('id', metadata.order_id)
+        .maybeSingle();
+      if (!order) return { error: 'Order not found.', status: 404 };
+      if (order.status !== 'pending') return { error: 'This order has already been paid or closed.', status: 409 };
+      return { amount: Number(order.total), userId: order.user_id ?? null };
+    }
+    default:
+      return { error: 'This payment type is not supported.', status: 400 };
+  }
+}
+
+const REFERENCE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid misreading
+
+/** 12-character M-PESA account reference, unique per payment: e.g. "REG-7K2M9QXA". */
+function uniqueAccountReference(prefix: string): string {
+  const bytes = randomBytes(8);
+  let suffix = '';
+  for (const b of bytes) suffix += REFERENCE_ALPHABET[b % REFERENCE_ALPHABET.length];
+  return `${prefix.slice(0, 3)}-${suffix}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('STK Push Request Body:', JSON.stringify(body, null, 2));
+    // Never log the raw body: registration requests contain the member's password.
+    console.log('STK Push request:', { paymentType: body?.paymentType });
     
     const {
       phoneNumber,
-      amount,
       paymentType,
-      userId,
       userEmail,
       userName,
       metadata = {},
@@ -21,12 +78,12 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // 1. Validate required input parameters
-    if (!phoneNumber || !amount || !paymentType) {
+    if (!phoneNumber || !paymentType) {
       return NextResponse.json(
         {
           success: false,
           error: 'Missing required fields',
-          message: 'Phone number, amount, and payment type are required.',
+          message: 'Phone number and payment type are required.',
         },
         { status: 400 }
       );
@@ -45,9 +102,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (paymentType === 'registration') {
+      const email = String(registrationData?.email || '').toLowerCase().trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || String(registrationData?.password || '').length < 8) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid registration details', message: 'Please check your email address and use a password of at least 8 characters.' },
+          { status: 400 }
+        );
+      }
+      const { data: existing } = await supabaseAdmin().from('profiles').select('id').eq('email', email).maybeSingle();
+      if (existing) {
+        return NextResponse.json(
+          { success: false, error: 'account_exists', message: 'This email is already registered. Please log in instead.' },
+          { status: 409 }
+        );
+      }
+    }
+
+    // The amount and owner come from the database; the request's `amount`/`userId` are ignored.
+    const charge = await resolveCharge(String(paymentType), metadata || {}, request);
+    if ('error' in charge) {
+      return NextResponse.json({ success: false, error: charge.error, message: charge.error }, { status: charge.status });
+    }
+    const chargeAmount = Math.round(charge.amount);
+    if (!(chargeAmount > 0)) {
+      return NextResponse.json({ success: false, error: 'Invalid amount', message: 'Invalid amount.' }, { status: 400 });
+    }
+
     // 2. Format phone number
     const cleanPhone = phoneNumber.replace(/\s+/g, '');
-    const formattedPhone = cleanPhone.startsWith('0')
+    const formattedPhone: string = cleanPhone.startsWith('0')
       ? `254${cleanPhone.substring(1)}`
       : cleanPhone.startsWith('7') || cleanPhone.startsWith('1')
       ? `254${cleanPhone}`
@@ -55,47 +139,41 @@ export async function POST(request: NextRequest) {
       ? cleanPhone.substring(1)
       : cleanPhone;
 
-    // 3. Generate account reference and transaction description
-let accountReference = '';
-let description = '';
+    if (!/^254\d{9}$/.test(formattedPhone)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid phone number', message: 'Enter a Safaricom number such as 0712 345 678.' },
+        { status: 400 }
+      );
+    }
 
-switch (paymentType) {
-  case 'registration':
-    accountReference = 'REGISTRATION';
-    description = 'Member Reg';
-    break;
+    // 3. Generate a unique account reference and transaction description.
+    // `payments.account_reference` is UNIQUE in the database, and M-PESA allows at
+    // most 12 characters, so each payment gets "<PFX>-<8 random chars>"
+    // (e.g. REG-7K2M9QXA). This is also the reference the member sees on their phone.
+    let referencePrefix = 'PAY';
+    let description = 'Payment';
 
-  case 'renewal':
-    accountReference = metadata.membership_number
-      ? `REN-${metadata.membership_number}`.slice(0, 12)
-      : 'RENEWAL';
-    description = 'Mem Renewal';
-    break;
-
-  case 'event': {
-    // Handle both snake_case and camelCase event IDs
-    const rawEventId = metadata.event_id || metadata.eventId || 'REG';
-    
-    // Extract short ID if UUID is passed (e.g. "EVT-123e4567") to stay <= 12 chars
-    const shortId = String(rawEventId).replace(/-/g, '').slice(0, 8);
-    accountReference = `EVT-${shortId}`.slice(0, 12);
-    
-    // Ensure event_id is standardized inside metadata for the callback
-    metadata.event_id = rawEventId;
-    
-    description = 'Event Reg';
-    break;
-  }
-
-  case 'merchandise':
-    accountReference = `MERCH-${Date.now().toString().slice(-5)}`;
-    description = 'Merch Order';
-    break;
-
-  default:
-    accountReference = `PAY-${Date.now().toString().slice(-8)}`;
-    description = 'Payment';
-}
+    switch (paymentType) {
+      case 'registration':
+        referencePrefix = 'REG';
+        description = 'Member Reg';
+        break;
+      case 'renewal':
+        referencePrefix = 'REN';
+        description = 'Mem Renewal';
+        break;
+      case 'event':
+        referencePrefix = 'EVT';
+        // Handle both snake_case and camelCase event IDs, standardised for the callback
+        metadata.event_id = metadata.event_id || metadata.eventId || 'REG';
+        description = 'Event Reg';
+        break;
+      case 'merchandise':
+        referencePrefix = 'MER';
+        description = 'Merch Order';
+        break;
+    }
+    let accountReference = uniqueAccountReference(referencePrefix);
 
     let paymentRecord: any = null;
 
@@ -113,7 +191,7 @@ switch (paymentType) {
         email: registrationData.email?.toLowerCase().trim(),
         full_name: registrationData.full_name,
         phone: registrationData.phone,
-        password: registrationData.password,
+        password_hash: registrationData.password ? await hashRegistrationPassword(registrationData.password) : undefined,
         graduation_year: registrationData.graduation_year,
         course: registrationData.course,
         country: registrationData.country,
@@ -124,21 +202,28 @@ switch (paymentType) {
       });
     }
 
-    // Create payment record
-    const { data: newPayment, error: paymentError } = await supabaseAdmin()
-      .from('payments')
-      .insert({
-        user_id: userId || null,
-        amount: parseFloat(amount),
-        payment_type: paymentType,
-        phone: formattedPhone,
-        account_reference: accountReference,
-        description: description,
-        status: 'pending',
-        metadata: metadataWithRegistration,
-      })
-      .select()
-      .single();
+    // Create payment record (retry once with a fresh reference on the unlikely collision)
+    const insertPayment = () =>
+      supabaseAdmin()
+        .from('payments')
+        .insert({
+          user_id: charge.userId,
+          amount: chargeAmount,
+          payment_type: paymentType,
+          phone: formattedPhone,
+          account_reference: accountReference,
+          description: description,
+          status: 'pending',
+          metadata: metadataWithRegistration,
+        })
+        .select()
+        .single();
+
+    let { data: newPayment, error: paymentError } = await insertPayment();
+    if (paymentError?.code === '23505') {
+      accountReference = uniqueAccountReference(referencePrefix);
+      ({ data: newPayment, error: paymentError } = await insertPayment());
+    }
 
     if (paymentError) {
       console.error('Error creating payment record:', paymentError);
@@ -146,7 +231,8 @@ switch (paymentType) {
         {
           success: false,
           error: 'Failed to create payment record',
-          message: paymentError.message,
+          // Shown to the member; database details stay in the server log above.
+          message: 'We could not start the payment. Please try again in a moment.',
         },
         { status: 500 }
       );
@@ -158,7 +244,7 @@ switch (paymentType) {
     // 5. Trigger STK Push
     const stkResponse = await mpesaService.initiateSTKPush({
       phoneNumber: formattedPhone,
-      amount: Math.round(parseFloat(amount)),
+      amount: chargeAmount,
       accountReference,
       transactionDesc: description,
     });
@@ -202,7 +288,7 @@ switch (paymentType) {
     return NextResponse.json(
       {
         success: false,
-        error: error.message || 'Failed to initiate payment',
+        error: 'Failed to initiate payment',
         message: 'Please try again later',
       },
       { status: 500 }

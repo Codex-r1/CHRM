@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
-import { cookies } from "next/headers";
+import { setSessionCookies } from "@/app/(backend)/lib/auth/session";
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +14,9 @@ export async function POST(request: Request) {
       );
     }
 
+    if (typeof email !== "string" || typeof password !== "string" || email.length > 254 || password.length > 200) {
+      return NextResponse.json({ error: "Invalid email or password." }, { status: 400 });
+    }
     const cleanEmail = email.toLowerCase().trim();
 
     // 1. Authenticate with Supabase
@@ -29,7 +33,7 @@ export async function POST(request: Request) {
         );
       }
       return NextResponse.json(
-        { error: authError?.message || "Invalid email or password." },
+        { error: "Invalid email or password." },
         { status: 401 }
       );
     }
@@ -66,37 +70,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5. Set session cookies (both the user_id cookie AND the Supabase tokens)
-    const cookieStore = cookies();
-
-    cookieStore.set("session_user_id", userId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-      path: "/",
-    });
-
-    // Store the Supabase access token so API routes can validate it
-    if (authData.session?.access_token) {
-      cookieStore.set("sb-access-token", authData.session.access_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 7, // 1 week
-        path: "/",
-      });
-    }
-
-    if (authData.session?.refresh_token) {
-      cookieStore.set("sb-refresh-token", authData.session.refresh_token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-        path: "/",
-      });
-    }
+    // 5. Set httpOnly session cookies (the server verifies these on every request)
+    if (authData.session) setSessionCookies(authData.session, userId);
 
     // 6. Return success with user data AND the access token
     const userData = {
@@ -111,8 +86,8 @@ export async function POST(request: Request) {
       success: true,
       role: profile.role || "member",
       user: userData,
+      // The refresh token stays in its httpOnly cookie; scripts never see it.
       access_token: authData.session?.access_token,
-      refresh_token: authData.session?.refresh_token,
     });
 
     response.headers.set('Cache-Control', 'no-store, max-age=0');
@@ -122,7 +97,7 @@ export async function POST(request: Request) {
   } catch (err: any) {
     console.error("Login route error:", err);
     return NextResponse.json(
-      { error: err.message || "An unexpected error occurred during login." },
+      { error: "An unexpected error occurred during login." },
       { status: 500 }
     );
   }

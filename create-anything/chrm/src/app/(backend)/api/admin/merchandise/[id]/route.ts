@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from '../../../../lib/supabase/admin';
+import { requireAdmin } from "@/app/(backend)/lib/auth/requireAdmin";
 
 // GET single product
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
+
   try {
     const { id } = params;
 
@@ -42,6 +47,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
+
   try {
     const { id } = params;
     const body = await request.json();
@@ -94,6 +102,8 @@ export async function PATCH(
       if (variants.length > 0) {
         const variantsWithProductId = variants.map((variant: any) => ({
           color_name: variant.color_name,
+          // Required column; previously omitted, which made every edit wipe the product's variants.
+          color_value: variant.color_value || String(variant.color_name || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
           color_hex: variant.color_hex,
           size: variant.size,
           sku: variant.sku,
@@ -169,6 +179,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
+
   // Use same logic as PATCH for now
   return PATCH(request, { params });
 }
@@ -178,6 +191,9 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const denied = await requireAdmin(request);
+  if (denied) return denied;
+
   try {
     const { id } = params;
 

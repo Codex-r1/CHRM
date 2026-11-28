@@ -1,256 +1,195 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Menu, X, Loader2, CheckCircle, Users, ArrowRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from '../../(backend)/context/auth';
-import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
+import { useAuth } from "../../(backend)/context/auth";
+import { MEMBER_NAV_ITEM, PUBLIC_NAV, ROUTES, SOCIETY, type NavItem } from "../content/site";
+import NairobiClock from "./site/NairobiClock";
+import { ArrowRightIcon } from "./site/primitives";
+import { Dialog, Spinner } from "./ui";
+import { useCart } from "../lib/cart";
+
+type LogoutStep = "idle" | "logging" | "success";
+
+function isActive(pathname: string | null, href: string) {
+  if (!pathname) return false;
+  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export default function Header() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [showLogoutOverlay, setShowLogoutOverlay] = useState(false);
-  const [logoutStep, setLogoutStep] = useState<'idle' | 'logging' | 'success'>('idle');
-  
   const { user, loading: authLoading, logout } = useAuth();
-  const router = useRouter();
+  const { count: basketCount, ready: basketReady } = useCart();
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [logoutStep, setLogoutStep] = useState<LogoutStep>("idle");
+  const headerRef = useRef<HTMLElement>(null);
 
+  // Close the menu on navigation, on Escape and on outside click.
+  useEffect(() => setMenuOpen(false), [pathname]);
   useEffect(() => {
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (showLogoutOverlay) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    const onClick = (e: MouseEvent) => {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) setMenuOpen(false);
     };
-  }, [showLogoutOverlay]);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onClick);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onClick);
+    };
+  }, [menuOpen]);
 
   const handleLogout = async () => {
-    if (isLoggingOut) return;
-    setIsLoggingOut(true);
-    setShowLogoutOverlay(true);
-    setLogoutStep('logging');
+    if (logoutStep !== "idle") return;
+    setMenuOpen(false);
+    setLogoutStep("logging");
     try {
       await logout();
-      setLogoutStep('success');
-      await new Promise(resolve => setTimeout(resolve, 800));
-      window.location.href = '/';
+      setLogoutStep("success");
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      window.location.href = "/";
     } catch (error) {
-      console.error('Logout error:', error);
-      setShowLogoutOverlay(false);
-      setIsLoggingOut(false);
-      setLogoutStep('idle');
+      console.error("Logout error:", error);
+      setLogoutStep("idle");
     }
   };
 
-  // Added "Alumni Stories" and refined order for narrative flow
-  const publicNavItems = [
-    { label: "Old Turians", href: "/" },
-    { label: "Alumni Stories", href: "/stories" }, 
-    { label: "Membership", href: "/payments" },
-    { label: "Events", href: "/events" },
-    { label: "Merchandise", href: "/merchandise" },
-    { label: "About Us", href: "/about" },
-    { label: "Get In Touch", href: "/contact" },
-  ];
+  const isAdmin = user?.role === "admin";
+  // Admins don't join, shop or write to the office, so those links are hidden for them.
+  const ADMIN_HIDDEN = new Set<string>([ROUTES.membership, ROUTES.store, ROUTES.contact]);
+  const navItems: NavItem[] = !user
+    ? PUBLIC_NAV
+    : [...PUBLIC_NAV.slice(0, 3), MEMBER_NAV_ITEM, ...PUBLIC_NAV.slice(3)].filter((item) => !isAdmin || !ADMIN_HIDDEN.has(item.href));
 
-  const navItems = user 
-    ? [
-        ...publicNavItems.slice(0, 3),
-        { label: "Find Old Friends", href: "/member/directory" },
-        ...publicNavItems.slice(3)
-      ]
-    : publicNavItems;
+  const dashboardHref = isAdmin ? ROUTES.adminDashboard : ROUTES.memberDashboard;
+  // The dashboard button is a way back; it isn't needed on the dashboard itself.
+  const onDashboard = pathname === dashboardHref;
+  // While auth resolves, render the signed-out actions invisibly so the layout doesn't jump.
+  const authHidden = authLoading ? { visibility: "hidden" as const } : undefined;
 
-  if (authLoading) {
+  const renderNavLink = (item: NavItem, className: string) => {
+    if (item.comingSoon) {
+      return (
+        <span key={item.label} className={className} aria-disabled="true" title="Coming soon">
+          {item.label}
+        </span>
+      );
+    }
     return (
-      <header className="sticky top-0 z-50 w-full border-b border-[#800020]/20 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-12">
-          <div className="h-12 w-48 bg-gray-200 animate-pulse" />
-        </div>
-      </header>
+      <Link key={item.label} href={item.href} className={className} aria-current={isActive(pathname, item.href) ? "page" : undefined}>
+        {item.label}
+      </Link>
     );
-  }
+  };
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full shadow-sm">
-        {/* BRANDING BAR: Refined spacing and typography hierarchy */}
-        <div className="border-b border-[#C9A84C]/30 bg-[#800020] text-white">
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-12">
-            <Link href="/" className="group flex items-center gap-4">
-              <img 
-                src="/St-Andrews-Turi.png" 
-                alt="St Andrew's Turi" 
-                className="h-12 w-auto transition-transform group-hover:scale-105 object-contain"
-              />
-              <div className="flex flex-col">
-                <span className="font-serif text-xl font-semibold tracking-wide text-white leading-none">
-                  St Andrew's Turi
-                </span>
-                <span className="text-[10px] font-medium tracking-[0.15em] text-[#C9A84C] uppercase mt-1">
-                  Est. 1931 · Old Turians
-                </span>
-              </div>
-            </Link>
+      <header ref={headerRef} className="ot-header ot-scope">
+        <div className="ot-header-row">
+          <Link href="/" className="ot-brand">
+            <span className="ot-brand-crest">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/turi-crest.png" alt="St Andrew's Turi crest" width={32} height={56} />
+            </span>
+            <span className="ot-brand-text">
+              <span className="ot-brand-name">{SOCIETY.school}</span>
+              <NairobiClock />
+            </span>
+          </Link>
 
-            {/* Desktop Auth Controls - Refined Button Styles */}
-            <div className="hidden items-center gap-6 md:flex">
-              {user ? (
-                <>
-                  <Link
-                    href="/member/directory"
-                    className="text-xs font-semibold tracking-wider text-white/90 uppercase hover:text-[#C9A84C] transition-colors flex items-center gap-2"
-                  >
-                    <Users size={14} /> Directory
-                  </Link>
-                  <Link
-                    href={user.role === 'admin' ? "/admin/dashboard" : "/member/dashboard"}
-                    className="bg-[#C9A84C] px-5 py-2.5 text-xs font-bold tracking-wider text-[#1B3A6B] uppercase transition-all hover:bg-white"
-                  >
-                    Dashboard
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    disabled={isLoggingOut}
-                    className="text-xs font-semibold tracking-wider text-white/60 hover:text-white transition-colors"
-                  >
-                    {isLoggingOut ? <Loader2 className="animate-spin" size={16} /> : 'Logout'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/login"
-                    className="text-xs font-semibold tracking-wider text-white uppercase hover:text-[#C9A84C] transition-colors"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    href="/payments"
-                    className="bg-[#C9A84C] px-6 py-2.5 text-xs font-bold tracking-wider text-[#1B3A6B] uppercase transition-all hover:bg-white"
-                  >
-                    Join the Society
-                  </Link>
-                </>
-              )}
-            </div>
+          <nav className="ot-nav" aria-label="Main">
+            {navItems.map((item) => renderNavLink(item, "ot-nav-link"))}
+          </nav>
 
+          <div className="ot-header-actions" style={authHidden}>
+            {!isAdmin && (
+              <Link
+                href={ROUTES.storeBasket}
+                className="ot-basket-link"
+                aria-label={basketReady && basketCount > 0 ? `Basket, ${basketCount} ${basketCount === 1 ? "item" : "items"}` : "Basket"}
+              >
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M6 7h12l-1 13H7L6 7z" />
+                  <path d="M9 7a3 3 0 0 1 6 0" />
+                </svg>
+                {basketReady && basketCount > 0 && <span className="ot-basket-count">{basketCount}</span>}
+              </Link>
+            )}
+            {user ? (
+              <button type="button" className="ot-header-text-btn ot-header-desktop-only" onClick={handleLogout}>
+                Log out
+              </button>
+            ) : (
+              <Link href={ROUTES.login} className="ot-header-text-btn ot-header-desktop-only">
+                Log in
+              </Link>
+            )}
+            {!(user && onDashboard) && (
+              <Link href={user ? dashboardHref : ROUTES.membership} className="ot-join">
+                {user ? "Dashboard" : "Join the society"}
+                <ArrowRightIcon size={16} strokeWidth={2} />
+              </Link>
+            )}
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-white md:hidden"
-              aria-label="Toggle menu"
+              type="button"
+              className="ot-menu-btn"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              aria-controls="ot-mobile-menu"
+              onClick={() => setMenuOpen((o) => !o)}
             >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+                {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+              </svg>
             </button>
           </div>
         </div>
 
-        {/* NAVIGATION BAR: Refined spacing and hover states */}
-        <nav className="hidden bg-[#1B3A6B] md:block">
-          <div className="mx-auto max-w-7xl px-6 lg:px-12">
-            <ul className="flex items-center gap-8">
-              {navItems.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <li key={item.label}>
-                    <Link
-                      href={item.href}
-                      className={`block py-4 text-[13px] font-semibold tracking-wide transition-colors relative ${
-                        isActive
-                          ? "text-[#C9A84C]"
-                          : "text-white/80 hover:text-white"
-                      }`}
-                    >
-                      {item.label}
-                      {isActive && (
-                        <motion.div 
-                          layoutId="nav-underline"
-                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#C9A84C]" 
-                        />
-                      )}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </nav>
-
-        {/* Mobile Menu - Logic remains similar but styled cleaner */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="border-t border-[#C9A84C] bg-[#1B3A6B] text-white md:hidden overflow-hidden"
-            >
-              <nav className="flex flex-col px-6 py-6 space-y-4">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className="text-sm font-medium tracking-wide text-white/90 hover:text-[#C9A84C]"
-                  >
-                    {item.label}
+        {menuOpen && (
+          <div id="ot-mobile-menu" className="ot-menu-panel">
+            {navItems.map((item) => renderNavLink(item, "ot-menu-link"))}
+            {user ? (
+              <>
+                {!onDashboard && (
+                  <Link href={dashboardHref} className="ot-menu-link ot-menu-link--strong">
+                    Dashboard
                   </Link>
-                ))}
-                <div className="h-px bg-white/10 my-2" />
-                {user ? (
-                  <>
-                    <Link href="/member/dashboard" className="text-sm font-medium text-[#C9A84C]">Dashboard</Link>
-                    <button onClick={() => { setMobileMenuOpen(false); handleLogout(); }} className="text-left text-sm text-white/60">LOGOUT</button>
-                  </>
-                ) : (
-                  <>
-                    <Link href="/login" className="text-sm font-medium text-[#C9A84C]">Login</Link>
-                    <Link href="/payments" className="text-sm font-medium text-white">Join the Society</Link>
-                  </>
                 )}
-              </nav>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <button type="button" className="ot-menu-link ot-menu-link--strong" onClick={handleLogout}>
+                  Log out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href={ROUTES.login} className="ot-menu-link ot-menu-link--strong">
+                  Log in
+                </Link>
+                <Link href={ROUTES.membership} className="ot-menu-link ot-menu-link--strong">
+                  Join the society
+                </Link>
+              </>
+            )}
+          </div>
+        )}
       </header>
 
-      {/* Logout Overlay*/}
-      <AnimatePresence>
-        {showLogoutOverlay && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] bg-[#1B3A6B]/95 backdrop-blur-sm flex items-center justify-center"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white rounded-lg p-8 max-w-sm w-full mx-4 text-center shadow-2xl"
-            >
-              {logoutStep === 'logging' && (
-                <>
-                  <Loader2 className="animate-spin text-[#1B3A6B] mx-auto mb-4" size={32} />
-                  <h3 className="text-xl font-serif font-bold text-[#1B3A6B]">Logging Out</h3>
-                </>
-              )}
-              {logoutStep === 'success' && (
-                <>
-                  <CheckCircle className="text-[#C9A84C] mx-auto mb-4" size={32} />
-                  <h3 className="text-xl font-serif font-bold text-[#1B3A6B]">Goodbye!</h3>
-                </>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Dialog open={logoutStep !== "idle"} onClose={() => undefined} title={logoutStep === "success" ? "Goodbye" : "Logging out"} size="sm">
+        <div className="ot-scope ot-stack" style={{ alignItems: "center", gap: "var(--space-3)", color: "var(--brand)" }}>
+          {logoutStep === "logging" ? <Spinner size={32} label="Logging out" /> : <p className="ot-body">You have been signed out.</p>}
+        </div>
+      </Dialog>
     </>
   );
 }

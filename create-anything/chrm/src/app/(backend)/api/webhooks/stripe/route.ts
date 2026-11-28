@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
+export const dynamic = 'force-dynamic';
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 import {
   sendEmail,
   getEventRegistrationEmail,
   getMerchandiseEmail,
-} from '../../../../../app/(backend)/lib/email/service';  
+} from '../../../../../app/(backend)/lib/email/service';
+import { completeRegistration } from '@/app/(backend)/lib/registration/service';
+import { stripRegistrationSecrets } from '@/app/(backend)/lib/registration/password';
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -63,6 +66,12 @@ export async function POST(request: Request) {
           metadata.payment_type ||
           (metadata.event_id ? "event" : "merchandise");
 
+        // ─── Registration: complete the pending payment created by registration-intent ───
+        if (paymentType === "registration") {
+          await handleRegistrationSucceeded(admin, paymentIntent);
+          break;
+        }
+
         const record = {
           user_id: metadata.user_id || null,
           payment_type: paymentType,
@@ -117,6 +126,24 @@ export async function POST(request: Request) {
           if (fetchErr) {
             console.error("Failed to fetch event:", fetchErr.message);
           } else if (eventRow) {
+            // Record the registration (mirrors the M-PESA callback's event handler)
+            const { data: existingReg } = await admin
+              .from("event_registrations")
+              .select("id")
+              .eq("payment_id", inserted.id)
+              .maybeSingle();
+            if (!existingReg) {
+              const { error: regErr } = await admin.from("event_registrations").insert({
+                event_id: metadata.event_id,
+                payment_id: inserted.id,
+                attendee_name: metadata.attendee_name || "Valued Member",
+                attendee_email: metadata.attendee_email || "",
+                attendee_phone: metadata.attendee_phone || "",
+                ...(metadata.user_id ? { user_id: metadata.user_id } : {}),
+              });
+              if (regErr) console.error("Failed to create event registration:", regErr.message);
+            }
+
             // Increment attendee count
             const { error: updateErr } = await admin
               .from("events")
@@ -153,6 +180,25 @@ export async function POST(request: Request) {
           }
         }
 
+        // ─── Merchandise-specific: mark order paid (mirrors the M-PESA handler) ───
+        if (paymentType === "merchandise" && metadata.order_id) {
+          const { error: orderUpdateErr } = await admin
+            .from("orders")
+            .update({
+              status: "processing",
+              payment_id: inserted.id,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", metadata.order_id)
+            .eq("status", "pending");
+
+          if (orderUpdateErr) {
+            console.error("Failed to mark order paid:", orderUpdateErr.message);
+          } else {
+            console.log("Order marked processing:", metadata.order_id);
+          }
+        }
+
         // ─── Merchandise-specific: send order email ───
         if (paymentType === "merchandise" && metadata.order_id) {
           try {
@@ -185,6 +231,17 @@ export async function POST(request: Request) {
 
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        if (paymentIntent.metadata?.payment_type === "registration") {
+          await admin
+            .from("payments")
+            .update({
+              status: "failed",
+              error_message: paymentIntent.last_payment_error?.message || "Card payment failed",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("checkout_request_id", paymentIntent.id)
+            .eq("status", "pending");
+        }
         console.log(
           "Payment failed:",
           paymentIntent.id,
@@ -202,4 +259,49 @@ export async function POST(request: Request) {
     console.error("Webhook handler error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
+}
+
+/**
+ * Card registration succeeded: create the member account from the pending
+ * payment row (same handler as M-PESA), then confirm the payment. Throws on
+ * failure so the webhook returns 500 and Stripe retries.
+ */
+async function handleRegistrationSucceeded(
+  admin: ReturnType<typeof supabaseAdmin>,
+  paymentIntent: Stripe.PaymentIntent
+) {
+  const { data: payment, error } = await admin
+    .from("payments")
+    .select("*")
+    .eq("checkout_request_id", paymentIntent.id)
+    .maybeSingle();
+
+  if (error || !payment) {
+    throw new Error(`Pending registration payment not found for ${paymentIntent.id}`);
+  }
+  if (payment.status === "confirmed") {
+    console.log("Registration already processed:", paymentIntent.id);
+    return;
+  }
+
+  const result = await completeRegistration(payment);
+  if (!result?.userId) throw new Error("Registration handler did not return userId");
+
+  // Confirm the payment and drop the password hash now that the account exists.
+  // (Not done on payment_failed: the customer can retry the same PaymentIntent with another card.)
+  const { error: updateError } = await admin
+    .from("payments")
+    .update({
+      status: "confirmed",
+      user_id: result.userId,
+      receipt_number: (paymentIntent.latest_charge as string | null) ?? paymentIntent.id,
+      paid_at: new Date().toISOString(),
+      confirmed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      metadata: stripRegistrationSecrets(payment.metadata),
+    })
+    .eq("id", payment.id);
+
+  if (updateError) throw new Error("Failed to confirm registration payment: " + updateError.message);
+  console.log("Card registration completed:", result.userId, result.membershipNumber);
 }

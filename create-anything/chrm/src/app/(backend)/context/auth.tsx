@@ -37,29 +37,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check for existing session on mount
   useEffect(() => {
     const checkSession = async () => {
+      // Show the cached user straight away, then confirm with the server, which checks
+      // the httpOnly session cookies. A stale cache is cleared if the server says no.
       try {
         const storedUser = localStorage.getItem("user");
         if (storedUser) {
           try {
-            const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
+            setUser(JSON.parse(storedUser));
             setLoading(false);
-            return;
-          } catch (e) {
+          } catch {
             localStorage.removeItem("user");
           }
         }
 
-        const response = await fetch('/api/auth/session', {
-          credentials: 'include',
-        });
-        
+        const response = await fetch('/api/auth/session', { credentials: 'include', cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
           if (data.user) {
             setUser(data.user);
             localStorage.setItem("user", JSON.stringify(data.user));
+            if (data.access_token) localStorage.setItem("access_token", data.access_token);
           }
+        } else if (response.status === 401 || response.status === 404) {
+          setUser(null);
+          localStorage.removeItem("user");
+          localStorage.removeItem("access_token");
         }
       } catch (error) {
         console.error('Session check error:', error);
@@ -94,9 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.access_token) {
         localStorage.setItem('access_token', data.access_token);
       }
-      if (data.refresh_token) {
-        localStorage.setItem('refresh_token', data.refresh_token);
-      }
+      localStorage.removeItem('refresh_token'); // legacy: no longer stored in the browser
 
       const redirectPath = data.role === 'admin' ? '/admin/dashboard' : '/member/dashboard';
       window.location.href = redirectPath;
@@ -166,9 +166,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // ← NEW: update token if refresh returns a new one
         if (data.access_token) {
           localStorage.setItem('access_token', data.access_token);
-        }
-        if (data.refresh_token) {
-          localStorage.setItem('refresh_token', data.refresh_token);
         }
       }
     } catch (error) {

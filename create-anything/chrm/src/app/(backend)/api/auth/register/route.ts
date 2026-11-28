@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from "@/app/(backend)/lib/supabase/admin";
 
 export async function POST(request: Request) {
@@ -14,6 +15,7 @@ export async function POST(request: Request) {
     }
 
     const cleanEmail = email.toLowerCase().trim();
+    const { password: _password, ...safeRegistrationData } = registrationData;
 
     // 1. Check if user already exists
     const { data: existingUser } = await supabaseAdmin()
@@ -85,8 +87,9 @@ export async function POST(request: Request) {
         amount: registration_fee || 1500,
         status: "pending",
         metadata: {
+          // The auth user already has the password; never persist it here.
           registration_data: {
-            ...registrationData,
+            ...safeRegistrationData,
             user_id: userId,
           },
         },

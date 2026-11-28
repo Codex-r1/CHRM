@@ -15,8 +15,18 @@ interface STKPushResponse {
   CustomerMessage: string
 }
 
+/** Callback URL with the shared secret the callback route checks (see api/mpesa/callback). */
+function callbackUrl(): string {
+  const base = process.env.MPESA_CALLBACK_URL || `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback`
+  const secret = process.env.MPESA_CALLBACK_SECRET
+  if (!secret) return base
+  const url = new URL(base)
+  url.searchParams.set('token', secret)
+  return url.toString()
+}
+
 export class MpesaService {
-  private baseURL = 'https://sandbox.safaricom.co.ke' // Use production URL for live
+  private baseURL = process.env.MPESA_ENV === 'production' ? 'https://api.safaricom.co.ke' : 'https://sandbox.safaricom.co.ke'
   private consumerKey = process.env.MPESA_CONSUMER_KEY!
   private consumerSecret = process.env.MPESA_CONSUMER_SECRET!
   private passkey = process.env.MPESA_PASSKEY!
@@ -57,7 +67,7 @@ export class MpesaService {
   PartyA: request.phoneNumber,
   PartyB: this.shortCode,
   PhoneNumber: request.phoneNumber,
-  CallBackURL: process.env.MPESA_CALLBACK_URL || `${process.env.NEXT_PUBLIC_APP_URL}/api/mpesa/callback`, // ← FIXED
+  CallBackURL: callbackUrl(),
   AccountReference: request.accountReference,
   TransactionDesc: request.transactionDesc
 }

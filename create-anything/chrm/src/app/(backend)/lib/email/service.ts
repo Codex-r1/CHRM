@@ -1,3 +1,4 @@
+import { escapeHtml } from '@/app/(backend)/lib/security/html';
 import { supabaseAdmin } from "../supabase/admin";
 
 export interface EmailData {
@@ -70,7 +71,7 @@ export function getRegistrationEmail(name: string, email: string) {
             <h1 style="font-family: 'Georgia', serif; color: #1B3A6B;">Welcome to the Old Turians Society</h1>
           </div>
           <div class="content">
-            <h2>Dear ${name},</h2>
+            <h2>Dear ${escapeHtml(name)},</h2>
             <p>We are delighted to welcome you to the Old Turians Society, the official alumni network of St Andrew's Turi.</p>
             <p>Your membership has been successfully registered. Here's what you can look forward to:</p>
             <ul>
@@ -102,9 +103,9 @@ export function getRegistrationEmail(name: string, email: string) {
 export function getMerchandiseEmail(name: string, email: string, order: any) {
   const itemsHtml = (order.items || []).map((item: any) => `
     <tr>
-      <td>${item.name}</td>
-      <td>${item.color_name || ''} / ${item.size || ''}</td>
-      <td>${item.quantity}</td>
+      <td>${escapeHtml(item.name)}</td>
+      <td>${escapeHtml(item.color_name || '')} / ${escapeHtml(item.size || '')}</td>
+      <td>${escapeHtml(item.quantity)}</td>
       <td>KES ${(item.price * item.quantity).toLocaleString()}</td>
     </tr>
   `).join('');
@@ -143,11 +144,11 @@ export function getMerchandiseEmail(name: string, email: string, order: any) {
             <h1 style="font-family: 'Georgia', serif; color: #1B3A6B;">Order Confirmation</h1>
           </div>
           <div class="content">
-            <h2>Dear ${name},</h2>
+            <h2>Dear ${escapeHtml(name)},</h2>
             <p>Thank you for your merchandise order! Your order has been confirmed and is being processed.</p>
             
             <p><strong>Order #:</strong> ${order.id}</p>
-            <p><strong>Shipping Method:</strong> ${order.shipping_method || 'Standard'}</p>
+            <p><strong>Shipping Method:</strong> ${escapeHtml(order.shipping_method || 'Standard')}</p>
             
             <table>
               <thead>
@@ -230,7 +231,7 @@ export function getEventRegistrationEmail(name: string, email: string, event: an
             <h1 style="font-family: 'Georgia', serif; color: #1B3A6B;">Event Registration Confirmed</h1>
           </div>
           <div class="content">
-            <h2>Dear ${name},</h2>
+            <h2>Dear ${escapeHtml(name)},</h2>
             <p>Your registration for the following event has been confirmed:</p>
             
             <div class="event-details">
